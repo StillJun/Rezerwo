@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: rezerwo-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        value: Rezerwo <noreply@rezerwo.app>
+    healthCheckPath: /api/health
+    autoDeploy: true
