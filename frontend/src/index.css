@@ -3,3 +3,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,san
 input::placeholder,textarea::placeholder{color:#b8b2c0}
 .rise{animation:rise .3s ease both}@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 button:disabled{opacity:.5;cursor:not-allowed}
+
+/* ---- Mobile: prevent horizontal overflow ---- */
+img,video{max-width:100%}
+select,input,textarea,button{max-width:100%}
+
+/* ---- Mobile: slots grid — 3 cols on narrow screens ---- */
+@media(max-width:400px){
+  .slot-grid{grid-template-columns:repeat(3,1fr)!important}
+}
+
+/* ---- Mobile: marketplace search box ---- */
+@media(max-width:480px){
+  .search-row{flex-direction:column}
+  .cat-row{gap:4px}
+  .cat-chip{padding:6px 10px;font-size:12px}
+}
+
+/* ---- Mobile: panel tabs scroll ---- */
+@media(max-width:520px){
+  .panel-tabs{overflow-x:auto;gap:4px;padding-bottom:4px;scrollbar-width:none}
+  .panel-tabs::-webkit-scrollbar{display:none}
+  .panel-tab{white-space:nowrap;padding:8px 12px;font-size:13px}
+}
+
+/* ---- Touch targets ---- */
+@media(max-width:768px){
+  button,a,[role="button"]{min-height:44px}
+  .slot-btn{min-height:44px}
+  .lang-trigger{min-height:36px}
+}

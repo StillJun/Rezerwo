@@ -12,10 +12,12 @@ export const q = async (text, params) => (await pool.query(text, params)).rows;
 export async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS owners (
-      id            BIGSERIAL PRIMARY KEY,
-      email         TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+      id                 BIGSERIAL PRIMARY KEY,
+      email              TEXT NOT NULL UNIQUE,
+      password_hash      TEXT NOT NULL,
+      email_verified     BOOLEAN NOT NULL DEFAULT FALSE,
+      verification_token TEXT,
+      created_at         TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
     CREATE TABLE IF NOT EXISTS businesses (
@@ -137,11 +139,24 @@ export async function initDb() {
       created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS idx_waitlist_biz ON waitlist(business_id);
+
+    CREATE TABLE IF NOT EXISTS feedback (
+      id         BIGSERIAL PRIMARY KEY,
+      kind       TEXT NOT NULL DEFAULT 'bug',
+      message    TEXT NOT NULL,
+      email      TEXT DEFAULT '',
+      page       TEXT DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `);
 
   // migrations for existing installations
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS slug TEXT`).catch(() => {});
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_businesses_slug ON businesses(slug) WHERE slug IS NOT NULL`).catch(() => {});
+  await pool.query(`ALTER TABLE owners ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
+  await pool.query(`ALTER TABLE owners ADD COLUMN IF NOT EXISTS verification_token TEXT`).catch(() => {});
+  // grandfather existing owners (created before email verification feature) as already verified
+  await pool.query(`UPDATE owners SET email_verified = TRUE WHERE verification_token IS NULL AND email_verified = FALSE`).catch(() => {});;
 
   console.log("Database ready (tables checked/created)");
 }

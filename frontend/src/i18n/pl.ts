@@ -92,6 +92,52 @@ export const pl = {
   terms: "Regulamin",
   privacy: "Polityka prywatności",
   footer: "Polska platforma rezerwacji beauty",
+
+  // nav
+  help: "Pomoc",
+
+  // categories (translated labels)
+  catLabels: {
+    nails:       "Manicure",
+    barber:      "Barber",
+    hair:        "Fryzjer",
+    brows:       "Brwi",
+    tattoo:      "Tatuaż",
+    beauty:      "Salon kosmetyczny",
+    laser:       "Depilacja laserowa",
+    sugaring:    "Sugaring",
+    lashes:      "Przedłużanie rzęs",
+    massage:     "Masaż",
+    spa:         "SPA",
+    cosmetology: "Kosmetolog",
+    makeup:      "Wizaż",
+    aesthetic:   "Medycyna estetyczna",
+    podology:    "Podolog",
+  } as Record<string, string>,
+
+  // feedback widget
+  feedbackBtn:     "Zgłoś błąd / pomysł",
+  feedbackTitle:   "Zgłoszenie",
+  feedbackKindBug: "Błąd",
+  feedbackKindIdea:"Pomysł",
+  feedbackKindOther:"Inne",
+  feedbackMsg:     "Opis *",
+  feedbackEmail:   "Twój email (opcjonalnie)",
+  feedbackSend:    "Wyślij",
+  feedbackSent:    "Dziękujemy za zgłoszenie!",
+
+  // password strength
+  pwTooShort:    "Min. 9 znaków",
+  pwNeedLower:   "Dodaj małą literę",
+  pwNeedUpper:   "Dodaj wielką literę",
+  pwNeedDigit:   "Dodaj cyfrę",
+  pwNeedSpecial: "Dodaj znak specjalny (!@#$%)",
+  pwStrong:      "Silne hasło ✓",
+
+  // loading / errors
+  loading:       "Ładowanie…",
+  errorFetch:    "Błąd połączenia. Spróbuj ponownie.",
+  retry:         "Spróbuj ponownie",
 };
 
 export type T = typeof pl;

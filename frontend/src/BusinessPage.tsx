@@ -8,6 +8,8 @@ import { api } from "./api";
 import { navigate } from "./App";
 import type { PublicBusiness, PublicService, BookingResult, Review } from "./types";
 import { useTranslation } from "./i18n";
+import { LangDropdown } from "./components/LangDropdown";
+import { CategoryIcon } from "./icons/CategoryIcon";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -20,7 +22,6 @@ const BANNERS: Record<string, string> = {
   gold:   "linear-gradient(135deg,#f6d365,#fda085)",
 };
 const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"];
-const CAT_EMOJI: Record<string,string> = {nails:"💅",barber:"💈",hair:"✂️",brows:"👁️",tattoo:"🎨"};
 
 function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
@@ -266,11 +267,17 @@ function BookingWizard({ biz, initService, onClose }: {
             <div style={S.successIcon}><Check size={30} color="#fff"/></div>
             <h3 style={{fontSize:20,fontWeight:800,margin:"16px 0 8px"}}>{t.done}</h3>
             {result.confirmRequired ? (
-              <p style={{fontSize:14,color:"#71717a",lineHeight:1.6}}
-                dangerouslySetInnerHTML={{__html: t.pendingMsg(result.businessName).replace(result.businessName,`<strong>${result.businessName}</strong>`)}}/>
+              <p style={{fontSize:14,color:"#71717a",lineHeight:1.6}}>
+                {t.pendingMsg(result.businessName)}
+              </p>
             ) : (
-              <p style={{fontSize:14,color:"#71717a",lineHeight:1.6}}
-                dangerouslySetInnerHTML={{__html: t.confirmedMsg(result.businessName, `<strong>${formatDate(state.date, t.months)}</strong>`, `<strong>${state.slot!=null?minToTime(state.slot):""}</strong>`)}}/>
+              <p style={{fontSize:14,color:"#71717a",lineHeight:1.6}}>
+                {t.confirmedMsg(
+                  result.businessName,
+                  formatDate(state.date, t.months),
+                  state.slot != null ? minToTime(state.slot) : ""
+                )}
+              </p>
             )}
             <button style={{...S.primary,marginTop:20}} onClick={onClose}>{t.backToProfile}</button>
           </div>
@@ -528,6 +535,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
         <button style={S.navBack} onClick={()=>navigate("/")}>
           <ArrowLeft size={16}/> {t.back}
         </button>
+        <LangDropdown/>
       </div>
 
       {/* banner */}
@@ -554,7 +562,8 @@ export default function BusinessPage({ slug }: { slug: string }) {
               {biz.verified && <span style={S.verBadge}><BadgeCheck size={16}/></span>}
             </div>
             <div style={S.bizMeta}>
-              {CAT_EMOJI[biz.category]||"🏢"} {biz.category}
+              <CategoryIcon id={biz.category} size={14} color="#a8a2b0"/>
+              {" "}{t.catLabels[biz.category] ?? biz.category}
               {biz.city && ` · ${biz.city}`}{biz.district && `, ${biz.district}`}
             </div>
           </div>
@@ -616,7 +625,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
                   </div>
                   <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:6}}>
                     <span style={{fontSize:15,fontWeight:800,color:ACC}}>{s.price} zł</span>
-                    <button style={S.bookBtn} onClick={()=>setBooking(s)}>Zarezerwuj</button>
+                    <button style={S.bookBtn} onClick={()=>setBooking(s)}>{t.book}</button>
                   </div>
                 </div>
               ))}
@@ -665,7 +674,7 @@ const S: Record<string, CSSProperties> = {
   page:    {minHeight:"100vh",background:"#faf8fb",fontFamily:font},
   center:  {minHeight:"100vh",display:"grid",placeItems:"center",fontFamily:font},
 
-  navBar:  {position:"sticky" as const,top:0,background:"rgba(250,248,251,.95)",backdropFilter:"blur(8px)",zIndex:20,padding:"10px 16px"},
+  navBar:  {position:"sticky" as const,top:0,background:"rgba(250,248,251,.95)",backdropFilter:"blur(8px)",zIndex:20,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"},
   navBack: {display:"flex",alignItems:"center",gap:6,border:"none",background:"transparent",color:ACC,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:font},
   backBtn2:{padding:"10px 18px",borderRadius:10,border:"none",background:ACC,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:8,fontFamily:font},
 

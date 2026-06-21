@@ -4,8 +4,9 @@ import { Search, MapPin, BadgeCheck, ChevronRight, Store } from "lucide-react";
 import { api } from "./api";
 import { navigate } from "./App";
 import type { PublicBusiness, Meta } from "./types";
-import { useTranslation, FLAGS, LANG_LABELS } from "./i18n";
-import type { Lang } from "./i18n";
+import { useTranslation } from "./i18n";
+import { LangDropdown } from "./components/LangDropdown";
+import { CategoryIcon } from "./icons/CategoryIcon";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -19,7 +20,7 @@ const BANNERS: Record<string, string> = {
 };
 
 export default function MarketplacePage() {
-  const { t, lang, setLang } = useTranslation();
+  const { t } = useTranslation();
   const [meta, setMeta] = useState<Meta|null>(null);
   const [city, setCity] = useState("");
   const [district, setDistrict] = useState("");
@@ -49,11 +50,7 @@ export default function MarketplacePage() {
           <span style={{fontSize:20,fontWeight:800,letterSpacing:-0.5}}>Rezerwo</span>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          {(["pl","en","ru","ua"] as Lang[]).map(l => (
-            <button key={l} style={{...S.langBtn,...(lang===l?S.langBtnOn:{})}} onClick={()=>setLang(l)}>
-              {FLAGS[l]} {LANG_LABELS[l]}
-            </button>
-          ))}
+          <LangDropdown/>
           <button style={S.panelBtn} onClick={()=>navigate("/panel")}>
             <Store size={14}/> {t.panelOwner.split(" ")[0]}
           </button>
@@ -94,7 +91,7 @@ export default function MarketplacePage() {
             {meta?.categories.map(c=>(
               <button key={c.id} style={{...S.catChip,...(category===c.id?S.catChipOn:{})}}
                 onClick={()=>setCategory(c.id)}>
-                {c.emoji} {c.pl}
+                {c.emoji} {t.catLabels[c.id] ?? c.pl}
               </button>
             ))}
           </div>
@@ -150,7 +147,7 @@ export default function MarketplacePage() {
         </span>
         <span style={{marginLeft:8}}>·</span>
         <span style={{marginLeft:8}}>
-          <span style={S.footLink} onClick={()=>navigate("/pomoc")}>Pomoc</span>
+          <span style={S.footLink} onClick={()=>navigate("/pomoc")}>{t.help}</span>
         </span>
       </footer>
     </div>
@@ -158,8 +155,9 @@ export default function MarketplacePage() {
 }
 
 function BusinessCard({ biz }: { biz: PublicBusiness }) {
+  const { t } = useTranslation();
   const cat = biz.category;
-  const catEmoji: Record<string,string> = {nails:"💅",barber:"💈",hair:"✂️",brows:"👁️",tattoo:"🎨"};
+  const catLabel = t.catLabels[cat] ?? cat;
 
   return (
     <div style={S.card} onClick={()=>navigate(`/${biz.slug}`)}>
@@ -169,7 +167,8 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
           <div style={{flex:1,minWidth:0}}>
             <div style={S.cardName}>{biz.name}</div>
             <div style={S.cardMeta}>
-              {catEmoji[cat]||"🏢"} {cat} {biz.city && `· ${biz.city}`}{biz.district && `, ${biz.district}`}
+              <CategoryIcon id={cat} size={13} color="#a8a2b0"/>
+              {" "}{catLabel}{biz.city && ` · ${biz.city}`}{biz.district && `, ${biz.district}`}
             </div>
           </div>
           {biz.verified && (
@@ -180,7 +179,7 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
           <p style={S.cardAbout}>{biz.about.length>90?biz.about.slice(0,88)+"…":biz.about}</p>
         )}
         <div style={S.cardFooter}>
-          <span style={S.bookBtn}>Zarezerwuj <ChevronRight size={14}/></span>
+          <span style={S.bookBtn}>{t.book} <ChevronRight size={14}/></span>
         </div>
       </div>
     </div>
@@ -193,8 +192,6 @@ const S: Record<string, CSSProperties> = {
   logoRow:{display:"flex",alignItems:"center",gap:10},
   logo:   {width:32,height:32,borderRadius:9,background:"linear-gradient(135deg,#7c3aed,#ec4899)",color:"#fff",fontWeight:800,fontSize:18,display:"grid",placeItems:"center",boxShadow:"0 3px 12px #7c3aed55"},
   panelBtn:{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:10,border:"1.5px solid #ece8f0",background:"#fff",fontSize:13,fontWeight:600,color:"#52525b",cursor:"pointer",fontFamily:font},
-  langBtn: {padding:"6px 9px",borderRadius:8,border:"1.5px solid #ece8f0",background:"#fff",fontSize:12,fontWeight:600,color:"#71717a",cursor:"pointer",fontFamily:font},
-  langBtnOn:{background:"#1b1420",color:"#fff",borderColor:"#1b1420"},
 
   hero:   {background:"radial-gradient(1200px 600px at 50% -10%,#efe4ff,#faf8fb 60%)",padding:"40px 20px 50px",textAlign:"center"},
   heroTitle:{fontSize:"clamp(26px,5vw,44px)",fontWeight:900,letterSpacing:-1,margin:"0 0 10px",color:"#1b1420"},

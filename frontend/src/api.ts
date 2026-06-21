@@ -31,6 +31,8 @@ export const api = {
     req<AuthOk>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => req<{ user: User }>("/auth/me"),
+  verifyEmail: (token: string) => req<{ ok: boolean }>(`/auth/verify-email/${encodeURIComponent(token)}`),
+  resendVerification: () => req<{ ok: boolean }>("/auth/resend-verification", { method: "POST" }),
 
   /* meta */
   meta: () => req<Meta>("/meta"),
@@ -112,4 +114,8 @@ export const api = {
     req<{ id: number; clientName: string; clientPhone: string; clientEmail: string; serviceName: string | null; preferredDate: string | null; createdAt: string }[]>("/waitlist"),
   notifyWaitlist: (id: number) =>
     req<{ ok: boolean }>(`/waitlist/${id}/notify`, { method: "PUT" }),
+
+  /* feedback */
+  submitFeedback: (data: { kind: string; message: string; email?: string; page?: string }) =>
+    req<{ ok: boolean }>("/feedback", { method: "POST", body: JSON.stringify(data) }),
 };

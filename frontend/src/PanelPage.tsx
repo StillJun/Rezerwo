@@ -9,6 +9,9 @@ import {
 import { api, getToken, setToken, clearToken } from "./api";
 import { navigate } from "./App";
 import type { Business, Service, Meta, Appointment, Review } from "./types";
+import { useTranslation } from "./i18n";
+import { LangDropdown } from "./components/LangDropdown";
+import { CategoryIcon } from "./icons/CategoryIcon";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -30,6 +33,47 @@ const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }
   done:      { label: "Zakończona", color: "#374151", bg: "#f3f4f6" },
   no_show:   { label: "Nieobecność",color: "#7c2d12", bg: "#ffedd5" },
 };
+
+function pwChecks(pw: string) {
+  return {
+    len:     pw.length >= 9,
+    lower:   /[a-z]/.test(pw),
+    upper:   /[A-Z]/.test(pw),
+    digit:   /\d/.test(pw),
+    special: /[^A-Za-z0-9]/.test(pw),
+  };
+}
+function pwScore(pw: string) { return Object.values(pwChecks(pw)).filter(Boolean).length; }
+
+function PasswordStrength({ pw }: { pw: string }) {
+  const { t } = useTranslation();
+  if (!pw) return null;
+  const c = pwChecks(pw);
+  const score = Object.values(c).filter(Boolean).length;
+  const colors = ["#ef4444","#f97316","#eab308","#22c55e","#16a34a"];
+  const color = colors[score - 1] ?? "#ef4444";
+  const hints = [
+    !c.len     && t.pwTooShort,
+    !c.lower   && t.pwNeedLower,
+    !c.upper   && t.pwNeedUpper,
+    !c.digit   && t.pwNeedDigit,
+    !c.special && t.pwNeedSpecial,
+  ].filter(Boolean) as string[];
+
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+        {[1,2,3,4,5].map(i => (
+          <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: i <= score ? color : "#f0ebf5", transition: "background .2s" }}/>
+        ))}
+      </div>
+      {score === 5
+        ? <div style={{ fontSize: 11.5, color: "#16a34a", fontWeight: 600 }}>{t.pwStrong}</div>
+        : hints.length > 0 && <div style={{ fontSize: 11.5, color: "#71717a" }}>{hints[0]}</div>
+      }
+    </div>
+  );
+}
 
 function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
@@ -96,14 +140,15 @@ function Auth({ onAuth }: { onAuth: () => void }) {
             <div style={S.catGrid}>
               {meta?.categories.map(c => (
                 <button key={c.id} style={{...S.catBtn,...(cat===c.id?S.catBtnOn:{})}} onClick={()=>setCat(c.id)}>
-                  <span style={{fontSize:18}}>{c.emoji}</span> {c.pl}
+                  <CategoryIcon id={c.id} size={16} color={cat===c.id?"#7c3aed":"#52525b"}/> {c.pl}
                 </button>
               ))}
             </div>
           </>
         )}
         <Field icon={<User size={15}/>} value={email} onChange={setEmail} placeholder="email@firma.pl" type="email"/>
-        <Field icon={<User size={15}/>} value={pw} onChange={setPw} placeholder="hasło (min. 6 znaków)" type="password"/>
+        <Field icon={<User size={15}/>} value={pw} onChange={setPw} placeholder="hasło (min. 9 znaków)" type="password"/>
+        {mode === "register" && <PasswordStrength pw={pw}/>}
         {err && <div style={S.err}>{err}</div>}
         <button style={S.primary} onClick={submit} disabled={busy}>{busy?"…":mode==="register"?"Załóż konto":"Zaloguj"}</button>
         <div style={S.switch}>{mode==="register"?"Masz już konto?":"Nie masz konta?"}{" "}
@@ -118,7 +163,19 @@ function Auth({ onAuth }: { onAuth: () => void }) {
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist">("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
+  const [resendDone, setResendDone] = useState(false);
+  const [resendBusy, setResendBusy] = useState(false);
+
   useEffect(() => { api.business().then(setBiz).catch(console.error); }, []);
+  useEffect(() => {
+    api.me().then(r => setEmailVerified(r.user.emailVerified ?? true)).catch(() => {});
+  }, []);
+
+  const handleResend = async () => {
+    setResendBusy(true);
+    try { await api.resendVerification(); setResendDone(true); } catch { /* ignore */ } finally { setResendBusy(false); }
+  };
 
   return (
     <div style={S.app}>
@@ -130,7 +187,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
             <div style={{fontSize:11.5,color:"#a8a2b0"}}>Panel właściciela</div>
           </div>
         </div>
-        <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <LangDropdown/>
           {biz?.slug && (
             <a href={`/${biz.slug}`} target="_blank" rel="noreferrer"
                style={{...S.iconBtn, textDecoration:"none", color:"#52525b"}} title="Podgląd profilu">
@@ -140,6 +198,25 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <button style={S.iconBtn} onClick={onLogout} title="Wyloguj"><LogOut size={17}/></button>
         </div>
       </header>
+
+      {emailVerified === false && (
+        <div style={{ background: "#fef3c7", borderBottom: "1px solid #fcd34d", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13, color: "#92400e", flex: 1 }}>
+            ⚠️ Potwierdź adres email — twój profil nie jest widoczny w wyszukiwarce Rezerwo.
+          </span>
+          {resendDone ? (
+            <span style={{ fontSize: 13, color: "#065f46", fontWeight: 600 }}>Wysłano! Sprawdź skrzynkę.</span>
+          ) : (
+            <button
+              style={{ background: "#f59e0b", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 0 }}
+              disabled={resendBusy}
+              onClick={handleResend}
+            >
+              {resendBusy ? "…" : "Wyślij link ponownie"}
+            </button>
+          )}
+        </div>
+      )}
 
       <div style={S.tabs}>
         <button style={{...S.tab,...(tab==="appointments"?S.tabOn:{})}} onClick={()=>setTab("appointments")}>

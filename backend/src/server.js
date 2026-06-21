@@ -2,24 +2,74 @@ import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import { randomBytes } from "crypto";
 import { q, initDb } from "./db.js";
 import { hashPassword, verifyPassword, signToken, setAuthCookie, clearAuthCookie, requireAuth } from "./auth.js";
-import { startReminderScheduler, notifyOwnerNewBooking } from "./reminders.js";
+import { startReminderScheduler, notifyOwnerNewBooking, sendVerificationEmail } from "./reminders.js";
 
 const app = express();
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
-app.use(express.json());
+
+// Security headers
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// CORS — allow prod domain + localhost dev
+const ALLOWED_ORIGINS = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  "http://localhost:5173",
+  "http://localhost:4173",
+].filter(Boolean);
+app.use(cors({
+  origin(origin, cb) {
+    // allow requests with no origin (curl, mobile apps, server-to-server)
+    if (!origin) return cb(null, true);
+    // allow Vercel preview URLs
+    if (/\.vercel\.app$/.test(origin) || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
+    cb(new Error("CORS: not allowed"));
+  },
+  credentials: true,
+}));
+
+app.use(express.json({ limit: "64kb" }));
 app.use(cookieParser());
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+
+// Rate limiting — general API
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
+app.use("/api/", limiter);
+
+// Stricter limit for auth endpoints (prevent brute-force)
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+app.use("/api/auth/", authLimiter);
 
 /* ---------- reference data ---------- */
 const CATEGORIES = [
-  { id: "nails",  pl: "Manicure",  emoji: "💅" },
-  { id: "barber", pl: "Barber",    emoji: "💈" },
-  { id: "hair",   pl: "Fryzjer",   emoji: "✂️" },
-  { id: "brows",  pl: "Brwi",      emoji: "👁️" },
-  { id: "tattoo", pl: "Tatuaż",    emoji: "🎨" },
+  { id: "nails",      pl: "Manicure",              emoji: "💅" },
+  { id: "barber",     pl: "Barber",                emoji: "💈" },
+  { id: "hair",       pl: "Fryzjer",               emoji: "✂️" },
+  { id: "brows",      pl: "Brwi",                  emoji: "👁️" },
+  { id: "tattoo",     pl: "Tatuaż",                emoji: "🎨" },
+  { id: "beauty",     pl: "Salon kosmetyczny",      emoji: "💄" },
+  { id: "laser",      pl: "Depilacja laserowa",     emoji: "🔆" },
+  { id: "sugaring",   pl: "Sugaring",               emoji: "🍯" },
+  { id: "lashes",     pl: "Przedłużanie rzęs",      emoji: "✨" },
+  { id: "massage",    pl: "Masaż",                  emoji: "💆" },
+  { id: "spa",        pl: "SPA",                    emoji: "🧖" },
+  { id: "cosmetology",pl: "Kosmetolog",             emoji: "🧴" },
+  { id: "makeup",     pl: "Wizaż",                  emoji: "💋" },
+  { id: "aesthetic",  pl: "Medycyna estetyczna",    emoji: "⚕️" },
+  { id: "podology",   pl: "Podolog",                emoji: "🦶" },
 ];
+
+/* ---------- password validation ---------- */
+function validatePassword(pw) {
+  if (typeof pw !== "string" || pw.length < 9) return "Hasło musi mieć co najmniej 9 znaków.";
+  if (!/[a-z]/.test(pw)) return "Hasło musi zawierać małą literę.";
+  if (!/[A-Z]/.test(pw)) return "Hasło musi zawierać wielką literę.";
+  if (!/\d/.test(pw)) return "Hasło musi zawierać cyfrę.";
+  if (!/[^A-Za-z0-9]/.test(pw)) return "Hasło musi zawierać znak specjalny (np. !@#$%).";
+  return null;
+}
 const CITIES = {
   "Wrocław":        ["Stare Miasto", "Śródmieście", "Krzyki", "Fabryczna", "Psie Pole", "Jagodno", "Brochów", "Ołtaszyn"],
   "Warszawa":       ["Śródmieście", "Mokotów", "Wola", "Praga-Północ", "Praga-Południe", "Ursynów", "Bemowo", "Żoliborz", "Ochota", "Targówek", "Bielany", "Wilanów"],
@@ -134,18 +184,24 @@ const apptClient = (a) => ({
 app.post("/api/auth/register", async (req, res) => {
   try {
     const { email, password, businessName, category = "barber" } = req.body || {};
-    if (!email || !password || password.length < 6 || !businessName)
-      return res.status(400).json({ error: "Email, hasło (min 6) i nazwa firmy są wymagane" });
+    const pwErr = validatePassword(password);
+    if (!email || !businessName) return res.status(400).json({ error: "Email i nazwa firmy są wymagane" });
+    if (pwErr) return res.status(400).json({ error: pwErr });
     const [exists] = await q("SELECT id FROM owners WHERE email=$1", [email]);
     if (exists) return res.status(409).json({ error: "Ten email jest już zarejestrowany" });
 
     const hash = await hashPassword(password);
-    const [owner] = await q("INSERT INTO owners (email, password_hash) VALUES ($1,$2) RETURNING id, email", [email, hash]);
+    const verToken = randomBytes(32).toString("hex");
+    const [owner] = await q(
+      "INSERT INTO owners (email, password_hash, verification_token) VALUES ($1,$2,$3) RETURNING id, email",
+      [email, hash, verToken]
+    );
     const slug = await generateSlug(businessName);
     await q("INSERT INTO businesses (owner_id, name, category, slug) VALUES ($1,$2,$3,$4)", [owner.id, businessName, category, slug]);
     const safe = { id: Number(owner.id), email: owner.email };
     const token = signToken(safe);
     setAuthCookie(res, token);
+    sendVerificationEmail(email, verToken).catch(() => {});
     res.json({ user: safe, token });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
@@ -164,7 +220,39 @@ app.post("/api/auth/login", async (req, res) => {
 });
 
 app.post("/api/auth/logout", (_req, res) => { clearAuthCookie(res); res.json({ ok: true }); });
-app.get("/api/auth/me", requireAuth, (req, res) => res.json({ user: req.user }));
+
+app.get("/api/auth/me", requireAuth, async (req, res) => {
+  try {
+    const [owner] = await q("SELECT id, email, email_verified FROM owners WHERE id=$1", [req.user.id]);
+    if (!owner) return res.status(401).json({ error: "Sesja wygasła" });
+    res.json({ user: { id: Number(owner.id), email: owner.email, emailVerified: owner.email_verified } });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+app.get("/api/auth/verify-email/:token", async (req, res) => {
+  try {
+    const token = String(req.params.token).replace(/[^a-f0-9]/gi, "").slice(0, 64);
+    if (!token) return res.status(400).json({ error: "Nieprawidłowy token" });
+    const [owner] = await q(
+      "UPDATE owners SET email_verified=TRUE, verification_token=NULL WHERE verification_token=$1 AND email_verified=FALSE RETURNING id",
+      [token]
+    );
+    if (!owner) return res.status(400).json({ error: "Link weryfikacyjny jest nieprawidłowy lub już wykorzystany." });
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+app.post("/api/auth/resend-verification", requireAuth, async (req, res) => {
+  try {
+    const [owner] = await q("SELECT id, email, email_verified FROM owners WHERE id=$1", [req.user.id]);
+    if (!owner) return res.status(401).json({ error: "Nie znaleziono konta" });
+    if (owner.email_verified) return res.json({ ok: true });
+    const token = randomBytes(32).toString("hex");
+    await q("UPDATE owners SET verification_token=$1 WHERE id=$2", [token, owner.id]);
+    sendVerificationEmail(owner.email, token).catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
 
 /* ---------- owner business helpers ---------- */
 async function myBusiness(ownerId) {
@@ -301,12 +389,19 @@ app.put("/api/clients/:phone/note", requireAuth, async (req, res) => {
 app.get("/api/public/businesses", async (req, res) => {
   try {
     const { city, district, category } = req.query;
-    let sql = "SELECT * FROM businesses WHERE slug IS NOT NULL";
+    // Only show businesses whose owner verified email + profile is complete (city, address, ≥1 service)
+    let sql = `SELECT b.* FROM businesses b
+      JOIN owners o ON o.id = b.owner_id
+      WHERE b.slug IS NOT NULL
+        AND o.email_verified = TRUE
+        AND b.city != ''
+        AND b.address != ''
+        AND EXISTS (SELECT 1 FROM services s WHERE s.business_id = b.id)`;
     const params = [];
-    if (city) { sql += ` AND city=$${params.length+1}`; params.push(city); }
-    if (district) { sql += ` AND district=$${params.length+1}`; params.push(district); }
-    if (category) { sql += ` AND category=$${params.length+1}`; params.push(category); }
-    sql += " ORDER BY verified DESC, created_at ASC";
+    if (city) { sql += ` AND b.city=$${params.length+1}`; params.push(city); }
+    if (district) { sql += ` AND b.district=$${params.length+1}`; params.push(district); }
+    if (category) { sql += ` AND b.category=$${params.length+1}`; params.push(category); }
+    sql += " ORDER BY b.verified DESC, b.created_at ASC";
     const rows = await q(sql, params);
     res.json(rows.map(publicBizClient));
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
@@ -455,6 +550,21 @@ app.put("/api/waitlist/:id/notify", requireAuth, async (req, res) => {
   const b = await myBusiness(req.user.id);
   await q("UPDATE waitlist SET notified=TRUE WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   res.json({ ok: true });
+});
+
+/* ---------- public: feedback ---------- */
+app.post("/api/feedback", async (req, res) => {
+  try {
+    const { kind = "bug", message, email = "", page = "" } = req.body || {};
+    if (!message || String(message).trim().length < 5)
+      return res.status(400).json({ error: "Opisz problem (min 5 znaków)" });
+    const safeKind = ["bug","idea","other"].includes(kind) ? kind : "other";
+    const safeMsg = String(message).slice(0, 2000).trim();
+    const safeEmail = String(email).slice(0, 200).trim();
+    const safePage = String(page).slice(0, 200).trim();
+    await q("INSERT INTO feedback (kind, message, email, page) VALUES ($1,$2,$3,$4)", [safeKind, safeMsg, safeEmail, safePage]);
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
 app.post("/api/public/businesses/:slug/service-request", async (req, res) => {

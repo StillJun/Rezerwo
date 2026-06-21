@@ -2,7 +2,12 @@ import cron from "node-cron";
 import { Resend } from "resend";
 import { q } from "./db.js";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+let _resend = null;
+function getResend() {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
+  return _resend;
+}
 const FROM = process.env.FROM_EMAIL || "Rezerwo <noreply@rezerwo.app>";
 
 function minToTime(min) {
@@ -10,8 +15,9 @@ function minToTime(min) {
 }
 
 async function sendReminderEmail({ to, clientName, businessName, serviceName, date, startMin }) {
+  const r = getResend(); if (!r) return;
   const time = minToTime(startMin);
-  await resend.emails.send({
+  await r.emails.send({
     from: FROM,
     to,
     subject: `Przypomnienie o wizycie — ${businessName}`,
@@ -35,8 +41,9 @@ async function sendReminderEmail({ to, clientName, businessName, serviceName, da
 }
 
 async function sendOwnerNotification({ to, businessName, clientName, clientPhone, serviceName, date, startMin }) {
+  const r = getResend(); if (!r) return;
   const time = minToTime(startMin);
-  await resend.emails.send({
+  await r.emails.send({
     from: FROM,
     to,
     subject: `Nowa rezerwacja — ${clientName} (${date} ${time})`,
@@ -57,7 +64,7 @@ async function sendOwnerNotification({ to, businessName, clientName, clientPhone
 }
 
 async function runReminders() {
-  if (!process.env.RESEND_API_KEY) return; // skip if not configured
+  if (!getResend()) { console.log("[reminders] email off (no RESEND_API_KEY)"); return; }
 
   const now = new Date();
   // find active appointments in the next 25 hours that have an email
@@ -114,9 +121,30 @@ async function runReminders() {
   }
 }
 
+export async function sendVerificationEmail(toEmail, token) {
+  const r = getResend();
+  if (!r) { console.log("[email] verification email skipped (no RESEND_API_KEY)"); return; }
+  const verifyUrl = `${process.env.CLIENT_URL || "http://localhost:5173"}/verify-email?token=${token}`;
+  await r.emails.send({
+    from: FROM,
+    to: toEmail,
+    subject: "Potwierdź adres email — Rezerwo",
+    html: `
+      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+        <h2 style="color:#7c3aed;margin-bottom:8px">Witaj w Rezerwo!</h2>
+        <p>Kliknij poniższy przycisk, aby potwierdzić swój adres email i opublikować profil w wyszukiwarce:</p>
+        <a href="${verifyUrl}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-weight:700;margin:16px 0;font-size:15px">Potwierdź email</a>
+        <p style="color:#71717a;font-size:13px">Jeśli nie rejestrowałeś się w Rezerwo, zignoruj tę wiadomość.</p>
+        <hr style="border:none;border-top:1px solid #ece8f0;margin:20px 0"/>
+        <p style="color:#a8a2b0;font-size:12px">Rezerwo · platforma rezerwacji online</p>
+      </div>
+    `,
+  });
+}
+
 // notify owner immediately on new/confirmed appointment (called from booking route)
 export async function notifyOwnerNewBooking(apptId) {
-  if (!process.env.RESEND_API_KEY) return;
+  if (!getResend()) return;
   try {
     const [appt] = await q(`
       SELECT a.*, b.name AS business_name, s.name AS service_name, o.email AS owner_email
