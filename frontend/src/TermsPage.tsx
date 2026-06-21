@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 import { navigate } from "./App";
 
-const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
-const ACC = "#7c3aed";
+const font = "'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif";
+const ACC  = "#7c3aed";
 
 export default function TermsPage() {
   return (
@@ -77,12 +77,12 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 const S: Record<string, CSSProperties> = {
-  page:    { minHeight:"100vh", background:"#faf8fb", fontFamily:font, padding:"0 20px 60px" },
+  page:    { minHeight:"100vh", background:"radial-gradient(ellipse 800px 500px at 15% 30%, rgba(124,58,237,.04) 0%, transparent 65%), #fbf7f4", fontFamily:font, padding:"0 20px 60px" },
   wrap:    { maxWidth:720, margin:"0 auto", paddingTop:20 },
-  back:    { border:"none", background:"transparent", color:ACC, fontWeight:700, fontSize:14, cursor:"pointer", fontFamily:font, padding:0, marginBottom:24 },
-  h1:      { fontSize:"clamp(22px,4vw,32px)", fontWeight:900, letterSpacing:-0.5, color:"#1b1420", margin:"0 0 6px" },
-  meta:    { fontSize:13, color:"#a8a2b0", marginBottom:32 },
-  section: { marginBottom:28 },
-  h2:      { fontSize:16, fontWeight:800, color:"#1b1420", margin:"0 0 10px" },
+  back:    { border:"1.5px solid #efe9ee", background:"#fff", color:ACC, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:font, padding:"7px 16px", borderRadius:999, marginBottom:28, display:"inline-flex", alignItems:"center", gap:6 },
+  h1:      { fontSize:"clamp(22px,4vw,34px)", fontWeight:500, letterSpacing:"-0.03em", color:"#1a1320", margin:"0 0 6px", fontFamily:"'Fraunces',Georgia,serif" },
+  meta:    { fontSize:13, color:"#8b8194", marginBottom:32 },
+  section: { background:"#fff", borderRadius:18, padding:"20px 24px", marginBottom:14, border:"1px solid #efe9ee", boxShadow:"0 2px 6px rgba(26,19,32,.04)" },
+  h2:      { fontSize:16, fontWeight:500, color:"#1a1320", margin:"0 0 10px", fontFamily:"'Fraunces',Georgia,serif" },
   content: { fontSize:14.5, color:"#52525b", lineHeight:1.75 },
 };

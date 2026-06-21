@@ -5,8 +5,9 @@ import { api } from "./api";
 import { useTranslation } from "./i18n";
 import { Check } from "lucide-react";
 
-const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
-const ACC = "#7c3aed";
+const font = "'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif";
+const ACC  = "#7c3aed";
+const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
 
 export default function SupportPage() {
   const { t } = useTranslation();
@@ -55,7 +56,7 @@ export default function SupportPage() {
 
             {err && <div style={S.err}>{err}</div>}
 
-            <button style={S.btn} onClick={send} disabled={busy}>
+            <button className="btn-primary" style={S.btn} onClick={send} disabled={busy}>
               {busy ? "…" : t.send}
             </button>
           </div>
@@ -109,21 +110,21 @@ const FAQ = [
 ];
 
 const S: Record<string, CSSProperties> = {
-  page:       { minHeight:"100vh", background:"#faf8fb", fontFamily:font, padding:"0 20px 60px" },
+  page:       { minHeight:"100vh", background:"radial-gradient(ellipse 800px 500px at 15% 30%, rgba(124,58,237,.045) 0%, transparent 65%), #fbf7f4", fontFamily:font, padding:"0 20px 60px" },
   wrap:       { maxWidth:600, margin:"0 auto", paddingTop:20 },
-  back:       { border:"none", background:"transparent", color:ACC, fontWeight:700, fontSize:14, cursor:"pointer", fontFamily:font, padding:0, marginBottom:24 },
-  h1:         { fontSize:"clamp(22px,4vw,32px)", fontWeight:900, letterSpacing:-0.5, color:"#1b1420", margin:"0 0 6px" },
-  sub:        { fontSize:15, color:"#71717a", margin:"0 0 24px" },
-  card:       { background:"#fff", borderRadius:18, padding:"22px", boxShadow:"0 2px 20px #1b142012", marginBottom:32 },
+  back:       { border:"1.5px solid #efe9ee", background:"#fff", color:ACC, fontWeight:700, fontSize:13, cursor:"pointer", fontFamily:font, padding:"7px 16px", borderRadius:999, marginBottom:28, display:"inline-flex", alignItems:"center", gap:6 },
+  h1:         { fontSize:"clamp(22px,4vw,34px)", fontWeight:500, letterSpacing:"-0.03em", color:"#1a1320", margin:"0 0 6px", fontFamily:"'Fraunces',Georgia,serif" },
+  sub:        { fontSize:15, color:"#8b8194", margin:"0 0 24px" },
+  card:       { background:"#fff", borderRadius:22, padding:"24px", boxShadow:"0 2px 8px rgba(26,19,32,.05)", border:"1px solid #efe9ee", marginBottom:32 },
   lbl:        { fontSize:12.5, fontWeight:600, color:"#52525b", display:"block", margin:"12px 0 6px" },
-  input:      { width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #ece8f0", fontSize:14.5, outline:"none", background:"#faf8fb", marginBottom:4, boxSizing:"border-box" as const, fontFamily:font },
+  input:      { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:14.5, outline:"none", background:"#fbf7f4", marginBottom:4, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
   err:        { background:"#fef2f2", color:"#dc2626", fontSize:13, padding:"10px 12px", borderRadius:10, marginBottom:8, textAlign:"center" as const },
-  btn:        { width:"100%", marginTop:14, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:"linear-gradient(135deg,#7c3aed,#ec4899)", color:"#fff", border:"none", borderRadius:13, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 20px #7c3aed44" },
-  successBox: { textAlign:"center" as const, padding:"40px 20px", background:"#fff", borderRadius:18, boxShadow:"0 2px 20px #1b142012", marginBottom:32 },
-  successIcon:{ width:56, height:56, borderRadius:999, background:"linear-gradient(135deg,#7c3aed,#ec4899)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto" },
+  btn:        { width:"100%", marginTop:14, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 20px rgba(124,58,237,.35)" },
+  successBox: { textAlign:"center" as const, padding:"40px 20px", background:"#fff", borderRadius:22, border:"1px solid #efe9ee", marginBottom:32 },
+  successIcon:{ width:56, height:56, borderRadius:999, background:GRAD, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", boxShadow:"0 4px 18px rgba(124,58,237,.36)" },
   faq:        { marginTop:8 },
-  faqTitle:   { fontSize:18, fontWeight:800, margin:"0 0 14px", letterSpacing:-0.3 },
-  faqItem:    { background:"#fff", borderRadius:14, padding:"14px 16px", marginBottom:8, cursor:"pointer", boxShadow:"0 1px 6px #1b142008" },
-  faqQ:       { display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:14.5, fontWeight:600, gap:12 },
+  faqTitle:   { fontSize:18, fontWeight:500, margin:"0 0 14px", fontFamily:"'Fraunces',Georgia,serif", color:"#1a1320" },
+  faqItem:    { background:"#fff", borderRadius:16, padding:"14px 18px", marginBottom:8, cursor:"pointer", border:"1px solid #efe9ee" },
+  faqQ:       { display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:14.5, fontWeight:600, gap:12, color:"#1a1320" },
   faqA:       { fontSize:14, color:"#52525b", margin:"10px 0 0", lineHeight:1.6 },
 };
