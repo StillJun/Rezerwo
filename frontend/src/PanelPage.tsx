@@ -296,8 +296,14 @@ function AppointmentsTab({ biz }: { biz: Business }) {
   const [filter, setFilter] = useState<"today"|"upcoming"|"all">("today");
   const [date, setDate] = useState(todayStr());
   const [list, setList] = useState<Appointment[]>([]);
+  const [pendingList, setPendingList] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<string|null>(null);
+
+  const loadPending = useCallback(async () => {
+    const data = await api.appointments({ status: "pending" });
+    setPendingList(data);
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -314,11 +320,11 @@ function AppointmentsTab({ biz }: { biz: Business }) {
     } catch { /**/ } finally { setLoading(false); }
   }, [filter, date]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); loadPending(); }, [load, loadPending]);
 
   const changeStatus = async (id: number, status: string) => {
     await api.updateAppointment(id, status);
-    load();
+    await Promise.all([load(), loadPending()]);
   };
 
   const shiftDate = (d: number) => {
@@ -338,6 +344,53 @@ function AppointmentsTab({ biz }: { biz: Business }) {
       <div style={S.sectionHead} className="section-head">
         <div><h2 style={S.h2}>{t.p_apptTitle}</h2>
           <p style={S.muted}>{t.p_apptSub}</p></div>
+      </div>
+
+      {/* ── Oczekujące section ── */}
+      <div style={{marginBottom:20}}>
+        <div style={{fontSize:13,fontWeight:700,color:"#92400e",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
+          <BellRing size={14}/> {t.p_pendingSection}
+          {pendingList.length > 0 && (
+            <span style={{background:"#f59e0b",color:"#fff",borderRadius:999,fontSize:11,fontWeight:800,padding:"1px 7px",marginLeft:2}}>
+              {pendingList.length}
+            </span>
+          )}
+        </div>
+        {pendingList.length === 0 ? (
+          <div style={{fontSize:13,color:"#a8a2b0",padding:"10px 0"}}>{t.p_pendingEmpty}</div>
+        ) : (
+          <div style={{...S.card,border:"1.5px solid #fde68a"}}>
+            {pendingList.map(a => (
+              <div key={a.id} className="appt-row" style={{...S.apptRow,background:"#fffbeb"}}>
+                <div className="appt-time" style={{minWidth:52,textAlign:"center"}}>
+                  <div style={{fontSize:15,fontWeight:800,color:"#d97706"}}>{minToTime(a.startMin)}</div>
+                  <div style={{fontSize:11,color:"#a8a2b0"}}>{a.duration}min</div>
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:14,fontWeight:700}}>{a.clientName}</div>
+                  <div style={{fontSize:12.5,color:"#7c3aed",fontWeight:600}}>{a.clientPhone}</div>
+                  <div style={{fontSize:12.5,color:"#71717a"}}>{a.serviceName||"—"}</div>
+                  <div style={{fontSize:12,color:"#92400e"}}>{dateLabel(a.date, t)} {minToTime(a.startMin)}</div>
+                  {a.comment && <div style={{fontSize:12,color:"#7c3aed",marginTop:2}}>💬 {a.comment}</div>}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+                  <button style={{...S.miniBtn,background:"#059669",color:"#fff",borderColor:"#059669",fontWeight:700,padding:"6px 12px",fontSize:12,borderRadius:8,gap:4}}
+                    onClick={()=>changeStatus(a.id,"confirmed")}>
+                    <Check size={13}/> {t.p_btnConfirm}
+                  </button>
+                  <button style={{...S.miniBtn,background:"#fff",color:"#dc2626",borderColor:"#dc2626",fontWeight:700,padding:"6px 12px",fontSize:12,borderRadius:8,gap:4}}
+                    onClick={()=>changeStatus(a.id,"cancelled")}>
+                    <X size={13}/> {t.p_btnReject}
+                  </button>
+                  <button style={{...S.miniBtn,color:"#52525b"}}
+                    onClick={()=>setClient(a.clientPhone)} title={t.p_apptClientHistory}>
+                    <NotebookPen size={13}/>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div style={{display:"flex",gap:6,marginBottom:14}}>
@@ -384,14 +437,6 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                       onClick={()=>setClient(a.clientPhone)} title={t.p_apptClientHistory}>
                       <NotebookPen size={13}/>
                     </button>
-                    {a.status==="pending" && <>
-                      <button style={{...S.miniBtn,color:"#059669"}} onClick={()=>changeStatus(a.id,"confirmed")}>
-                        <CheckCircle2 size={14}/>
-                      </button>
-                      <button style={{...S.miniBtn,color:"#dc2626"}} onClick={()=>changeStatus(a.id,"cancelled")}>
-                        <XCircle size={14}/>
-                      </button>
-                    </>}
                     {a.status==="confirmed" && <>
                       <button style={{...S.miniBtn,color:"#059669"}} onClick={()=>changeStatus(a.id,"done")} title={t.p_apptDoneTitle}>
                         <Check size={14}/>
@@ -399,12 +444,10 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                       <button style={{...S.miniBtn,color:"#dc2626"}} onClick={()=>changeStatus(a.id,"cancelled")} title={t.p_apptCancelTitle}>
                         <XCircle size={14}/>
                       </button>
-                    </>}
-                    {a.status==="confirmed" && (
                       <button style={{...S.miniBtn,color:"#f59e0b"}} onClick={()=>changeStatus(a.id,"no_show")} title={t.p_apptNoShowTitle}>
                         <User size={14}/>
                       </button>
-                    )}
+                    </>}
                   </div>
                 </div>
               </div>

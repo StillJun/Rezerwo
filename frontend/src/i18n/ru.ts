@@ -155,6 +155,10 @@ export const ru: T = {
   p_apptDoneTitle:     "Готово",
   p_apptCancelTitle:   "Отмена",
   p_apptNoShowTitle:   "Не пришёл",
+  p_pendingSection:    "Ожидают подтверждения",
+  p_pendingEmpty:      "Нет ожидающих бронирований.",
+  p_btnConfirm:        "Подтвердить",
+  p_btnReject:         "Отклонить",
 
   p_statusPending:     "Ожидает",
   p_statusConfirmed:   "Подтверждена",

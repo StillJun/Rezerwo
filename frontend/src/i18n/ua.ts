@@ -155,6 +155,10 @@ export const ua: T = {
   p_apptDoneTitle:     "Готово",
   p_apptCancelTitle:   "Скасувати",
   p_apptNoShowTitle:   "Не прийшов",
+  p_pendingSection:    "Очікують підтвердження",
+  p_pendingEmpty:      "Немає бронювань, що очікують.",
+  p_btnConfirm:        "Підтвердити",
+  p_btnReject:         "Відхилити",
 
   p_statusPending:     "Очікує",
   p_statusConfirmed:   "Підтверджена",

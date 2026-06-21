@@ -170,6 +170,10 @@ export const pl = {
   p_apptDoneTitle:     "Gotowe",
   p_apptCancelTitle:   "Anuluj",
   p_apptNoShowTitle:   "Nieobecność",
+  p_pendingSection:    "Oczekujące na potwierdzenie",
+  p_pendingEmpty:      "Brak oczekujących rezerwacji.",
+  p_btnConfirm:        "Potwierdź",
+  p_btnReject:         "Odrzuć",
 
   // panel: status labels
   p_statusPending:     "Oczekuje",

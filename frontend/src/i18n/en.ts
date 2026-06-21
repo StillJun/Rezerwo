@@ -155,6 +155,10 @@ export const en: T = {
   p_apptDoneTitle:     "Done",
   p_apptCancelTitle:   "Cancel",
   p_apptNoShowTitle:   "No-show",
+  p_pendingSection:    "Awaiting confirmation",
+  p_pendingEmpty:      "No pending bookings.",
+  p_btnConfirm:        "Confirm",
+  p_btnReject:         "Reject",
 
   p_statusPending:     "Pending",
   p_statusConfirmed:   "Confirmed",
