@@ -143,6 +143,7 @@ export const ua: T = {
   p_tabWaitlist:       "Черга",
   p_tabProfile:        "Профіль",
   p_tabRequests:       "Запити",
+  p_tabWidget:         "Віджет",
 
   p_reqTitle:          "Запити на послуги",
   p_reqSub:            "Клієнти цікавляться послугами не з вашого списку.",

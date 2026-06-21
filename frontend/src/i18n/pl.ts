@@ -157,6 +157,7 @@ export const pl = {
   p_tabWaitlist:       "Lista",
   p_tabProfile:        "Profil",
   p_tabRequests:       "Zapytania",
+  p_tabWidget:         "Widget",
 
   // panel: service requests
   p_reqTitle:          "Zapytania o usługi",

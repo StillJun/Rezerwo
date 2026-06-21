@@ -4,7 +4,7 @@ import {
   Store, LogOut, Scissors, Plus, Trash2, Save, Check, Bell, Clock,
   MapPin, Phone, Instagram, Pencil, X, BadgeCheck, Image, Calendar,
   XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
-  ExternalLink, Star, BellRing, Flag, MessageSquarePlus,
+  ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
@@ -193,7 +193,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
 /* ========== DASHBOARD ========== */
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist"|"requests">("appointments");
+  const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist"|"requests"|"widget">("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resendDone, setResendDone] = useState(false);
@@ -268,6 +268,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <button className="panel-tab" style={{...S.tab,...(tab==="profile"?S.tabOn:{})}} onClick={()=>setTab("profile")}>
           <Store size={15}/> {t.p_tabProfile}
         </button>
+        <button className="panel-tab" style={{...S.tab,...(tab==="widget"?S.tabOn:{})}} onClick={()=>setTab("widget")}>
+          <Code size={15}/> {t.p_tabWidget}
+        </button>
       </div>
 
       <div style={S.body} className="panel-body">
@@ -277,6 +280,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab==="waitlist"     && biz && <WaitlistTab/>}
         {tab==="requests"     && <ServiceRequestsTab/>}
         {tab==="profile"      && <ProfileTab biz={biz} setBiz={setBiz}/>}
+        {tab==="widget"       && biz && <WidgetTab biz={biz}/>}
       </div>
     </div>
   );
@@ -1120,4 +1124,101 @@ const S: Record<string, CSSProperties> = {
   primary: { width:"100%", marginTop:14, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 8px 22px rgba(124,58,237,.35)" },
   switch:  { textAlign:"center" as const, fontSize:13, color:"#8b8194", marginTop:16 },
   link:    { color:ACC, fontWeight:700, cursor:"pointer" },
+};
+
+/* ========== WIDGET TAB ========== */
+function WidgetTab({ biz }: { biz: Business }) {
+  const { t } = useTranslation();
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  const profileUrl = biz.slug ? `${window.location.origin}/${biz.slug}` : "";
+  const btnCode = profileUrl
+    ? `<a href="${profileUrl}" style="display:inline-block;padding:12px 24px;background:linear-gradient(115deg,#7c3aed,#e0399e,#ff7a59);color:#fff;font-family:Inter,sans-serif;font-size:15px;font-weight:700;border-radius:999px;text-decoration:none;">📅 Zarezerwuj w Rezerwo</a>`
+    : "";
+
+  const copy = (text: string, setCopied: (v: boolean) => void) => {
+    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+  };
+
+  if (!profileUrl) return (
+    <div style={WS.empty}>
+      Uzupełnij profil i URL salonu, aby korzystać z widgetu.
+    </div>
+  );
+
+  return (
+    <div className="rise">
+      <h2 style={S.h2}>{t.w_title}</h2>
+      <p style={S.muted}>{t.w_sub}</p>
+
+      {/* Link */}
+      <div style={WS.section}>
+        <div style={WS.secHead}>
+          <Link size={16} color={ACC}/>
+          <span style={WS.secTitle}>{t.w_yourLink}</span>
+        </div>
+        <div style={WS.codeBox}>{profileUrl}</div>
+        <div style={WS.btnRow}>
+          <button className="btn-primary" style={WS.copyBtn} onClick={() => copy(profileUrl, setCopiedLink)}>
+            {copiedLink ? "✓ " + t.p_copied : t.w_copyLink}
+          </button>
+          <a href={profileUrl} target="_blank" rel="noreferrer" style={WS.previewLink}>
+            <ExternalLink size={14}/> Podgląd
+          </a>
+        </div>
+      </div>
+
+      {/* Button code */}
+      <div style={WS.section}>
+        <div style={WS.secHead}>
+          <Code size={16} color={ACC}/>
+          <span style={WS.secTitle}>{t.w_btnCode}</span>
+        </div>
+        <div style={{...WS.codeBox, fontSize:11, wordBreak:"break-all" as const, lineHeight:1.6}}>{btnCode}</div>
+        <div style={WS.btnRow}>
+          <button className="btn-primary" style={WS.copyBtn} onClick={() => copy(btnCode, setCopiedCode)}>
+            {copiedCode ? "✓ " + t.p_copied : t.w_copyCode}
+          </button>
+        </div>
+
+        {/* Preview */}
+        <div style={{marginTop:18, paddingTop:16, borderTop:"1px solid #efe9ee"}}>
+          <div style={{fontSize:12, color:"#8b8194", marginBottom:10, fontWeight:600}}>Podgląd przycisku:</div>
+          <a href={profileUrl} target="_blank" rel="noreferrer"
+            style={{display:"inline-block", padding:"12px 24px", background:GRAD, color:"#fff", fontFamily:"Inter,sans-serif", fontSize:15, fontWeight:700, borderRadius:999, textDecoration:"none"}}>
+            📅 Zarezerwuj w Rezerwo
+          </a>
+        </div>
+      </div>
+
+      {/* How to use */}
+      <div style={WS.howBox}>
+        <div style={WS.howTitle}>{t.w_howTitle}</div>
+        <div style={WS.howItem}>
+          <span style={WS.howIcon}>📱</span>
+          <span>{t.w_howInstagram}</span>
+        </div>
+        <div style={WS.howItem}>
+          <span style={WS.howIcon}>🌐</span>
+          <span>{t.w_howSite}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const WS: Record<string, CSSProperties> = {
+  section:    { background:"#fff", borderRadius:20, padding:"18px 20px", marginBottom:14, border:"1px solid #efe9ee", boxShadow:"0 2px 8px rgba(26,19,32,.04)" },
+  secHead:    { display:"flex", alignItems:"center", gap:8, marginBottom:10 },
+  secTitle:   { fontSize:14, fontWeight:700, color:"#1a1320" },
+  codeBox:    { background:"#f3eefe", borderRadius:12, padding:"12px 14px", fontSize:13, color:"#7c3aed", fontFamily:"monospace", wordBreak:"break-word" as const, marginBottom:12 },
+  btnRow:     { display:"flex", gap:8, alignItems:"center" },
+  copyBtn:    { display:"flex", alignItems:"center", gap:6, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"9px 18px", fontSize:13, fontWeight:700, cursor:"pointer", boxShadow:"0 4px 14px rgba(124,58,237,.28)" },
+  previewLink:{ display:"flex", alignItems:"center", gap:5, color:ACC, fontSize:13, fontWeight:600, textDecoration:"none" },
+  howBox:     { background:"#fff", borderRadius:18, padding:"16px 20px", border:"1px solid #efe9ee" },
+  howTitle:   { fontSize:14, fontWeight:700, color:"#1a1320", marginBottom:12 },
+  howItem:    { display:"flex", alignItems:"flex-start", gap:10, marginBottom:10, fontSize:13.5, color:"#52525b", lineHeight:1.5 },
+  howIcon:    { fontSize:18, flexShrink:0 },
+  empty:      { textAlign:"center" as const, color:"#8b8194", fontSize:14, padding:"36px 0", background:"#fff", borderRadius:20, border:"1px solid #efe9ee" },
 };

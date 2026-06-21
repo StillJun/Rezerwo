@@ -143,6 +143,7 @@ export const en: T = {
   p_tabWaitlist:       "Waitlist",
   p_tabProfile:        "Profile",
   p_tabRequests:       "Requests",
+  p_tabWidget:         "Widget",
 
   p_reqTitle:          "Service requests",
   p_reqSub:            "Clients asking about services not on your list.",
