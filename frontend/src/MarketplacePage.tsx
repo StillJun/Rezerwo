@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { CSSProperties } from "react";
-import { Search, MapPin, BadgeCheck, ChevronRight, Store } from "lucide-react";
+import { Search, MapPin, BadgeCheck, ChevronRight, Store, Clock, Zap, UserCheck, Bell } from "lucide-react";
 import { api } from "./api";
 import { navigate } from "./App";
 import type { PublicBusiness, Meta } from "./types";
@@ -10,8 +10,14 @@ import { CategoryIcon } from "./icons/CategoryIcon";
 import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
 
-const ACC = "#7c3aed";
-const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
+const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
+const MESH = [
+  "radial-gradient(ellipse 900px 600px at 12% 35%, rgba(124,58,237,.055) 0%, transparent 65%)",
+  "radial-gradient(ellipse 700px 500px at 88% 72%, rgba(224,57,158,.042) 0%, transparent 60%)",
+  "radial-gradient(ellipse 600px 400px at 58% 2%,  rgba(255,122,89,.035) 0%, transparent 58%)",
+  "#fbf7f4",
+].join(",");
+
 const BANNERS: Record<string, string> = {
   violet: "linear-gradient(135deg,#a18cd1,#fbc2eb)",
   rose:   "linear-gradient(135deg,#ff9a9e,#fecfef)",
@@ -23,14 +29,14 @@ const BANNERS: Record<string, string> = {
 
 export default function MarketplacePage() {
   const { t } = useTranslation();
-  const [meta, setMeta] = useState<Meta|null>(null);
-  const [city, setCity] = useState("");
+  const [meta, setMeta]         = useState<Meta|null>(null);
+  const [city, setCity]         = useState("");
   const [district, setDistrict] = useState("");
   const [category, setCategory] = useState("");
-  const [nameQ, setNameQ] = useState("");
-  const [results, setResults] = useState<PublicBusiness[]>([]);
+  const [nameQ, setNameQ]       = useState("");
+  const [results, setResults]   = useState<PublicBusiness[]>([]);
   const [searched, setSearched] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]   = useState(false);
 
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
 
@@ -46,37 +52,45 @@ export default function MarketplacePage() {
   };
 
   const handleKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") search(); };
-
   const districts = city && meta ? (meta.cities[city]||[]) : [];
 
+  // Split title: last word gets gradient treatment
+  const words = t.searchTitle.split(" ");
+  const accent = words.pop() || "";
+  const base   = words.join(" ");
+
   return (
-    <div style={S.page}>
-      {/* header */}
+    <div style={{ minHeight:"100vh", background: MESH, fontFamily:"'Inter',system-ui,sans-serif", color:"#1a1320" }}>
+
+      {/* ══ HEADER ══ */}
       <header style={S.header}>
-        <div style={S.logoRow}>
-          <div style={S.logo}>R</div>
-          <span style={{fontSize:20,fontWeight:800,letterSpacing:-0.5}}>Rezerwo</span>
+        <div style={S.logoRow} onClick={() => navigate("/")} role="link" tabIndex={0} onKeyDown={e=>e.key==="Enter"&&navigate("/")}>
+          <div style={S.logoMark}>R</div>
+          <span style={S.logoText}>Rezerwo</span>
         </div>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <LangDropdown/>
-          <button style={S.panelBtn} onClick={()=>navigate("/panel")}>
+          <button className="panel-btn-sec" style={S.panelBtn} onClick={() => navigate("/panel")}>
             <Store size={14}/> {t.panelOwner.split(" ")[0]}
           </button>
         </div>
       </header>
 
-      {/* hero */}
-      <div style={S.hero}>
-        <h1 style={S.heroTitle}>{t.searchTitle}</h1>
+      {/* ══ HERO ══ */}
+      <section style={S.hero}>
+        <h1 style={S.heroTitle} className="hero-title">
+          {base}{" "}<span className="grad-text">{accent}</span>
+        </h1>
         <p style={S.heroSub}>{t.searchSub}</p>
 
-        {/* search box */}
-        <div style={S.searchBox} className="search-box">
-          {/* name search */}
-          <div style={{...S.fieldWrap, marginBottom: 10}} className="search-field">
-            <Search size={15} color="#a8a2b0"/>
+        {/* Search card — only glass element on page */}
+        <div style={S.searchCard} className="search-box">
+
+          {/* Name row */}
+          <div style={S.nameRow} className="search-field">
+            <Search size={15} color="#8b8194"/>
             <input
-              style={S.sel}
+              style={S.nameInput}
               value={nameQ}
               onChange={e => setNameQ(e.target.value)}
               onKeyDown={handleKey}
@@ -84,11 +98,13 @@ export default function MarketplacePage() {
             />
             {nameQ && (
               <button onClick={() => setNameQ("")}
-                style={{border:"none",background:"none",cursor:"pointer",color:"#a8a2b0",padding:"0 4px",display:"flex"}}>
+                style={{ border:"none", background:"none", cursor:"pointer", color:"#8b8194", padding:"0 4px", display:"flex", lineHeight:1, fontSize:18 }}>
                 ×
               </button>
             )}
           </div>
+
+          {/* City / District */}
           <div style={S.searchRow} className="search-row">
             {(() => {
               const cityOpts: SelectOption[] = [
@@ -101,7 +117,7 @@ export default function MarketplacePage() {
               ];
               return (
                 <>
-                  <div style={{ flex: 1, minWidth: 160 }} className="search-field">
+                  <div style={{ flex:1, minWidth:160 }} className="search-field">
                     <Select
                       value={city}
                       onChange={v => { setCity(v); setDistrict(""); }}
@@ -109,18 +125,18 @@ export default function MarketplacePage() {
                       placeholder={t.allCities}
                       searchable
                       startIcon={<MapPin size={15}/>}
-                      style={{ marginBottom: 0 }}
+                      style={{ marginBottom:0 }}
                     />
                   </div>
                   {city && districts.length > 0 && (
-                    <div style={{ flex: 1, minWidth: 160 }} className="search-field">
+                    <div style={{ flex:1, minWidth:160 }} className="search-field">
                       <Select
                         value={district}
                         onChange={setDistrict}
                         options={distOpts}
                         placeholder={t.allDistricts}
                         startIcon={<MapPin size={15}/>}
-                        style={{ marginBottom: 0 }}
+                        style={{ marginBottom:0 }}
                       />
                     </div>
                   )}
@@ -129,152 +145,286 @@ export default function MarketplacePage() {
             })()}
           </div>
 
-          {/* category chips */}
+          {/* Category chips */}
           <div style={S.catRow} className="cat-row">
-            <button className="cat-chip" style={{...S.catChip,...(!category?S.catChipOn:{})}} onClick={()=>setCategory("")}>
+            <button
+              className="cat-chip"
+              style={{ ...S.catChip, ...(!category ? S.catChipOn : {}) }}
+              onClick={() => setCategory("")}
+            >
               {t.allCategories}
             </button>
-            {meta?.categories.map(c=>(
-              <button key={c.id} className="cat-chip" style={{...S.catChip,...(category===c.id?S.catChipOn:{})}}
-                onClick={()=>setCategory(c.id)}>
+            {meta?.categories.map(c => (
+              <button
+                key={c.id}
+                className="cat-chip"
+                style={{ ...S.catChip, ...(category === c.id ? S.catChipOn : {}) }}
+                onClick={() => setCategory(c.id)}
+              >
                 {c.emoji} {t.catLabels[c.id] ?? c.pl}
               </button>
             ))}
           </div>
 
-          <button style={S.searchBtn} onClick={search}>
+          {/* CTA */}
+          <button className="btn-primary" style={S.searchBtn} onClick={search}>
             <Search size={16}/> {t.search}
           </button>
         </div>
-      </div>
+      </section>
 
-      {/* results */}
+      {/* ══ BENEFITS (shown before first search) ══ */}
+      {!searched && (
+        <section style={S.benefitsWrap} className="benefits-grid">
+          {([
+            { icon: <Clock size={20} strokeWidth={2}/>,     title: t.benefit1, sub: t.benefit1Sub },
+            { icon: <Zap size={20} strokeWidth={2}/>,       title: t.benefit2, sub: t.benefit2Sub },
+            { icon: <UserCheck size={20} strokeWidth={2}/>, title: t.benefit3, sub: t.benefit3Sub },
+            { icon: <Bell size={20} strokeWidth={2}/>,      title: t.benefit4, sub: t.benefit4Sub },
+          ] as { icon: React.ReactNode; title: string; sub: string }[]).map((b, i) => (
+            <div key={i} style={S.benefitCard}>
+              <div style={S.benefitIcon}>{b.icon}</div>
+              <div>
+                <div style={S.benefitTitle}>{b.title}</div>
+                <div style={S.benefitSub}>{b.sub}</div>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
+      {/* ══ RESULTS ══ */}
       <div style={S.results}>
-        {loading && <div style={S.empty}>{t.searching}</div>}
+
+        {/* Skeleton */}
+        {loading && (
+          <div style={S.grid} className="biz-grid">
+            {[1,2,3,4,5,6].map(i => (
+              <div key={i} style={S.skelCard}>
+                <div className="skeleton-line" style={{ height:88, borderRadius:"26px 26px 0 0" }}/>
+                <div style={{ padding:"14px 18px 18px" }}>
+                  <div className="skeleton-line" style={{ height:14, width:"68%", marginBottom:8 }}/>
+                  <div className="skeleton-line" style={{ height:11, width:"42%" }}/>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {!loading && searched && !results.length && (
           <div style={S.empty}>
-            <div style={{fontSize:32,marginBottom:12}}>🔍</div>
-            {t.noResults}<br/>
-            <span style={{fontSize:13,color:"#a8a2b0"}}>{t.noResultsSub}</span>
+            <div style={S.emptyIcon}>🔍</div>
+            <div style={S.emptyTitle}>{t.noResults}</div>
+            <div style={S.emptySub}>{t.noResultsSub}</div>
           </div>
         )}
 
         {!loading && !searched && (
           <div style={S.empty}>
-            <div style={{fontSize:32,marginBottom:12}}>💅</div>
-            {t.pickCity}
+            <div style={S.emptyIcon}>💅</div>
+            <div style={S.emptyTitle}>{t.pickCity}</div>
           </div>
         )}
 
-        {!loading && results.length>0 && (
+        {!loading && results.length > 0 && (
           <>
             <div style={S.resultsHeader}>{t.found(results.length)}</div>
             <div style={S.grid} className="biz-grid">
-              {results.map(b=>(
-                <BusinessCard key={b.id} biz={b}/>
-              ))}
+              {results.map(b => <BusinessCard key={b.id} biz={b}/>)}
             </div>
           </>
         )}
       </div>
 
-      <footer style={S.footer}>
+      {/* ══ FOOTER ══ */}
+      <footer style={S.footer} className="page-footer">
         © 2025 Rezerwo · {t.footer}
-        <span style={{marginLeft:16}}>
-          <span style={S.footLink} onClick={()=>navigate("/panel")}>{t.panelOwner}</span>
-        </span>
-        <span style={{marginLeft:16}}>
-          <span style={S.footLink} onClick={()=>navigate("/regulamin")}>{t.terms}</span>
-        </span>
-        <span style={{marginLeft:8}}>·</span>
-        <span style={{marginLeft:8}}>
-          <span style={S.footLink} onClick={()=>navigate("/prywatnosc")}>{t.privacy}</span>
-        </span>
-        <span style={{marginLeft:8}}>·</span>
-        <span style={{marginLeft:8}}>
-          <span style={S.footLink} onClick={()=>navigate("/pomoc")}>{t.help}</span>
-        </span>
+        <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
+        <span style={S.footLink} onClick={() => navigate("/panel")}>{t.panelOwner}</span>
+        <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
+        <span style={S.footLink} onClick={() => navigate("/regulamin")}>{t.terms}</span>
+        <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
+        <span style={S.footLink} onClick={() => navigate("/prywatnosc")}>{t.privacy}</span>
+        <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
+        <span style={S.footLink} onClick={() => navigate("/pomoc")}>{t.help}</span>
       </footer>
     </div>
   );
 }
 
+/* ══ BUSINESS CARD ══ */
 function BusinessCard({ biz }: { biz: PublicBusiness }) {
   const { t } = useTranslation();
-  const cat = biz.category;
-  const catLabel = t.catLabels[cat] ?? cat;
+  const catLabel = t.catLabels[biz.category] ?? biz.category;
 
   return (
-    <div className="biz-card" style={S.card} onClick={()=>navigate(`/${biz.slug}`)}>
-      <div style={{...S.cardBanner,background:BANNERS[biz.banner]||BANNERS.violet}}/>
+    <div className="biz-card" style={S.card} onClick={() => navigate(`/${biz.slug}`)}>
+      {/* Banner */}
+      <div style={{ ...S.cardBanner, background: BANNERS[biz.banner] || BANNERS.violet }}>
+        {biz.verified && (
+          <span style={S.verBadge}>
+            <BadgeCheck size={12}/> Zweryfikowany
+          </span>
+        )}
+      </div>
+
+      {/* Body */}
       <div style={S.cardBody}>
-        <div style={S.cardTop}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={S.cardName}>{biz.name}</div>
-            <div style={S.cardMeta}>
-              <CategoryIcon id={cat} size={13} color="#a8a2b0"/>
-              {" "}{catLabel}{biz.city && ` · ${biz.city}`}{biz.district && `, ${biz.district}`}
-            </div>
-          </div>
-          {biz.verified && (
-            <span style={S.verBadge}><BadgeCheck size={12}/></span>
-          )}
+        <div style={S.cardName}>{biz.name}</div>
+        <div style={S.cardMeta}>
+          <CategoryIcon id={biz.category} size={13} color="#8b8194"/>
+          {" "}{catLabel}{biz.city && ` · ${biz.city}`}{biz.district && `, ${biz.district}`}
         </div>
         {biz.about && (
-          <p style={S.cardAbout}>{biz.about.length>90?biz.about.slice(0,88)+"…":biz.about}</p>
+          <p style={S.cardAbout}>
+            {biz.about.length > 90 ? biz.about.slice(0, 88) + "…" : biz.about}
+          </p>
         )}
         <div style={S.cardFooter}>
-          {biz.avgRating && (
+          {biz.avgRating ? (
             <span style={S.ratingBadge}>
               ★ {biz.avgRating.toFixed(1)}
-              {(biz.reviewCount ?? 0) > 0 && <span style={{opacity:.7,fontSize:11}}> ({biz.reviewCount})</span>}
+              {(biz.reviewCount ?? 0) > 0 && (
+                <span style={{ opacity:.65, fontSize:11 }}> ({biz.reviewCount})</span>
+              )}
             </span>
-          )}
-          <span style={S.bookBtn}>{t.book} <ChevronRight size={14}/></span>
+          ) : <span/>}
+          <span style={S.bookBtn}>{t.book} <ChevronRight size={13}/></span>
         </div>
       </div>
     </div>
   );
 }
 
+/* ══ STYLES ══ */
 const S: Record<string, CSSProperties> = {
-  page:   {minHeight:"100vh",background:"#faf8fb",fontFamily:font},
-  header: {maxWidth:900,margin:"0 auto",padding:"16px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"},
-  logoRow:{display:"flex",alignItems:"center",gap:10},
-  logo:   {width:32,height:32,borderRadius:9,background:"linear-gradient(135deg,#7c3aed,#ec4899)",color:"#fff",fontWeight:800,fontSize:18,display:"grid",placeItems:"center",boxShadow:"0 3px 12px #7c3aed55"},
-  panelBtn:{display:"flex",alignItems:"center",gap:6,padding:"9px 16px",borderRadius:10,border:"1.5px solid #ece8f0",background:"#fff",fontSize:13,fontWeight:600,color:"#52525b",cursor:"pointer",fontFamily:font},
+  // Header
+  header: {
+    maxWidth: 960, margin: "0 auto", padding: "16px 24px",
+    display: "flex", justifyContent: "space-between", alignItems: "center",
+  },
+  logoRow: { display: "flex", alignItems: "center", gap: 10, cursor: "pointer" },
+  logoMark: {
+    width: 34, height: 34, borderRadius: 10, background: GRAD,
+    color: "#fff", fontWeight: 800, fontSize: 19, display: "grid", placeItems: "center",
+    boxShadow: "0 4px 16px rgba(124,58,237,.40)",
+    fontFamily: "'Fraunces',Georgia,serif", letterSpacing: -0.5,
+  },
+  logoText: {
+    fontSize: 20, fontWeight: 500, letterSpacing: "-0.03em",
+    fontFamily: "'Fraunces',Georgia,serif", color: "#1a1320",
+  },
+  panelBtn: {
+    display: "flex", alignItems: "center", gap: 6,
+    padding: "9px 18px", borderRadius: 999,
+    border: "1.5px solid #efe9ee", background: "#fff",
+    fontSize: 13, fontWeight: 600, color: "#52525b", cursor: "pointer",
+    fontFamily: "'Inter',system-ui,sans-serif",
+    boxShadow: "0 1px 4px rgba(26,19,32,.05)",
+    transition: "box-shadow .2s,transform .2s",
+  },
 
-  hero:   {background:"radial-gradient(1200px 600px at 50% -10%,#efe4ff,#faf8fb 60%)",padding:"40px 20px 50px",textAlign:"center"},
-  heroTitle:{fontSize:"clamp(26px,5vw,44px)",fontWeight:900,letterSpacing:-1,margin:"0 0 10px",color:"#1b1420"},
-  heroSub:{fontSize:16,color:"#71717a",margin:"0 0 28px"},
+  // Hero
+  hero: { padding: "52px 20px 56px", textAlign: "center", maxWidth: 680, margin: "0 auto" },
+  heroTitle: {
+    fontSize: "clamp(30px,5.5vw,54px)", fontWeight: 500,
+    fontFamily: "'Fraunces',Georgia,serif", letterSpacing: "-0.03em",
+    margin: "0 0 14px", color: "#1a1320", lineHeight: 1.15,
+  },
+  heroSub: { fontSize: 16, color: "#8b8194", margin: "0 0 32px", lineHeight: 1.65 },
 
-  searchBox:{background:"#fff",borderRadius:20,padding:"20px",maxWidth:600,margin:"0 auto",boxShadow:"0 8px 40px #7c3aed18"},
-  searchRow:{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap" as const},
-  fieldWrap:{display:"flex",alignItems:"center",gap:8,border:"1.5px solid #ece8f0",borderRadius:12,padding:"0 12px",flex:1,minWidth:160,background:"#faf8fb"},
-  sel:      {border:"none",outline:"none",background:"transparent",fontSize:14,padding:"12px 0",flex:1,fontFamily:font,cursor:"pointer",color:"#1b1420"},
-  catRow:   {display:"flex",gap:6,flexWrap:"wrap" as const,marginBottom:14},
-  catChip:  {padding:"7px 13px",borderRadius:999,border:"1.5px solid #ece8f0",background:"#fff",fontSize:13,fontWeight:600,color:"#71717a",cursor:"pointer",fontFamily:font},
-  catChipOn:{background:ACC,color:"#fff",borderColor:ACC},
-  searchBtn:{width:"100%",display:"flex",justifyContent:"center",alignItems:"center",gap:8,background:"linear-gradient(135deg,#7c3aed,#ec4899)",color:"#fff",border:"none",borderRadius:13,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:font,boxShadow:"0 6px 20px #7c3aed44"},
+  // Search card
+  searchCard: {
+    background: "rgba(255,255,255,.82)",
+    backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
+    border: "1px solid rgba(255,255,255,.65)", borderRadius: 26,
+    padding: "22px 22px 18px",
+    boxShadow: "0 8px 40px rgba(26,19,32,.08), 0 1px 0 rgba(255,255,255,.8) inset",
+    maxWidth: 620, margin: "0 auto",
+  },
+  nameRow: {
+    display: "flex", alignItems: "center", gap: 8,
+    border: "1.5px solid #efe9ee", borderRadius: 18, padding: "0 14px",
+    background: "#fff", marginBottom: 10,
+  },
+  nameInput: {
+    border: "none", outline: "none", background: "transparent",
+    fontSize: 14, padding: "13px 0", flex: 1, color: "#1a1320",
+    fontFamily: "'Inter',system-ui,sans-serif",
+  },
+  searchRow: { display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" as const },
+  catRow:    { display: "flex", gap: 6, flexWrap: "wrap" as const, marginBottom: 14 },
+  catChip: {
+    padding: "7px 14px", borderRadius: 999, border: "1.5px solid #efe9ee",
+    background: "#fff", fontSize: 12.5, fontWeight: 600, color: "#8b8194",
+    cursor: "pointer", fontFamily: "'Inter',system-ui,sans-serif",
+    transition: "all .15s ease",
+  },
+  catChipOn: { background: "#7c3aed", color: "#fff", borderColor: "#7c3aed" },
+  searchBtn: {
+    width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: 8,
+    background: GRAD, color: "#fff", border: "none", borderRadius: 999,
+    padding: "15px", fontSize: 15, fontWeight: 700, cursor: "pointer",
+    fontFamily: "'Inter',system-ui,sans-serif",
+    boxShadow: "0 6px 24px rgba(124,58,237,.35)",
+    transition: "transform .2s,box-shadow .2s",
+  },
 
-  results:{maxWidth:900,margin:"0 auto",padding:"28px 20px 60px"},
-  empty:  {textAlign:"center" as const,color:"#a8a2b0",fontSize:15,padding:"50px 0",lineHeight:1.8},
-  resultsHeader:{fontSize:14,color:"#71717a",marginBottom:14},
-  grid:   {display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:16},
+  // Benefits
+  benefitsWrap: {
+    maxWidth: 960, margin: "0 auto 8px", padding: "0 20px 44px",
+    display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 14,
+  },
+  benefitCard: {
+    background: "#fff", borderRadius: 20, padding: "18px 18px",
+    display: "flex", alignItems: "flex-start", gap: 14,
+    boxShadow: "0 2px 8px rgba(26,19,32,.05)", border: "1px solid #efe9ee",
+  },
+  benefitIcon: {
+    width: 44, height: 44, borderRadius: 14,
+    background: "rgba(124,58,237,.08)",
+    display: "grid", placeItems: "center", color: "#7c3aed", flexShrink: 0,
+  },
+  benefitTitle: { fontSize: 13, fontWeight: 700, color: "#1a1320", marginBottom: 4 },
+  benefitSub:   { fontSize: 12, color: "#8b8194", lineHeight: 1.45 },
 
-  card:     {background:"#fff",borderRadius:18,overflow:"hidden",boxShadow:"0 2px 16px #1b142012",cursor:"pointer",transition:"transform .15s,box-shadow .15s"},
-  cardBanner:{height:80},
-  cardBody: {padding:"14px 16px 16px"},
-  cardTop:  {display:"flex",alignItems:"flex-start",gap:8,marginBottom:6},
-  cardName: {fontSize:15,fontWeight:800,letterSpacing:-0.3,marginBottom:3},
-  cardMeta: {fontSize:12.5,color:"#71717a"},
-  verBadge: {color:ACC,display:"flex",marginTop:2},
-  cardAbout:{fontSize:13,color:"#71717a",margin:"6px 0",lineHeight:1.5},
-  cardFooter:{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"},
-  ratingBadge:{display:"flex",alignItems:"center",gap:3,fontSize:13,fontWeight:700,color:"#f59e0b"},
-  bookBtn:  {display:"flex",alignItems:"center",gap:4,color:ACC,fontWeight:700,fontSize:13.5},
+  // Results
+  results:       { maxWidth: 960, margin: "0 auto", padding: "8px 20px 64px" },
+  resultsHeader: { fontSize: 13.5, color: "#8b8194", fontWeight: 500, marginBottom: 18 },
+  grid:          { display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))", gap: 18 },
 
-  footer:   {textAlign:"center" as const,padding:"20px",fontSize:12.5,color:"#a8a2b0"},
-  footLink: {color:ACC,fontWeight:600,cursor:"pointer"},
+  // Skeleton card
+  skelCard: { background: "#fff", borderRadius: 26, overflow: "hidden", border: "1px solid #efe9ee" },
+
+  // Empty states
+  empty:      { textAlign: "center" as const, padding: "64px 20px" },
+  emptyIcon:  { fontSize: 42, marginBottom: 14 },
+  emptyTitle: { fontSize: 16, color: "#1a1320", fontWeight: 600, marginBottom: 6 },
+  emptySub:   { fontSize: 13.5, color: "#8b8194" },
+
+  // Business card
+  card: {
+    background: "#fff", borderRadius: 26, overflow: "hidden", cursor: "pointer",
+    boxShadow: "0 2px 8px rgba(26,19,32,.05)", border: "1px solid #efe9ee",
+    transition: "transform .2s ease, box-shadow .2s ease",
+  },
+  cardBanner: { height: 88, position: "relative" as const },
+  verBadge: {
+    position: "absolute" as const, bottom: 8, left: 10,
+    display: "flex", alignItems: "center", gap: 4,
+    background: "rgba(0,0,0,.40)", backdropFilter: "blur(6px)",
+    color: "#fff", fontSize: 10.5, fontWeight: 700,
+    padding: "3px 9px", borderRadius: 999,
+  },
+  cardBody:    { padding: "14px 18px 18px" },
+  cardName:    { fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 4, color: "#1a1320" },
+  cardMeta:    { fontSize: 12.5, color: "#8b8194", display: "flex", alignItems: "center", gap: 4 },
+  cardAbout:   { fontSize: 13, color: "#8b8194", margin: "8px 0 0", lineHeight: 1.5 },
+  cardFooter:  { marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" },
+  ratingBadge: { display: "flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: "#f59e0b" },
+  bookBtn:     { display: "flex", alignItems: "center", gap: 3, color: "#7c3aed", fontWeight: 700, fontSize: 13 },
+
+  // Footer
+  footer:   { textAlign: "center" as const, padding: "24px 20px 32px", fontSize: 12.5, color: "#8b8194", borderTop: "1px solid #efe9ee" },
+  footLink: { color: "#7c3aed", fontWeight: 600, cursor: "pointer" },
 };

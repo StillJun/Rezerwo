@@ -239,6 +239,15 @@ export const en: T = {
   p_profileSave:       "Save profile",
   p_pickSelect:        "— select —",
 
+  benefit1:    "Online booking 24/7",
+  benefit1Sub: "Book anytime — the salon is always available",
+  benefit2:    "Done in 30 seconds",
+  benefit2Sub: "Choose service, date and time — no calls needed",
+  benefit3:    "No registration",
+  benefit3Sub: "Just your name and number — no accounts or passwords",
+  benefit4:    "Appointment reminders",
+  benefit4Sub: "Email reminder before your visit — never miss it",
+
   p_authBack:          "← Rezerwo",
   p_panelTag:          "Panel",
   p_authRegisterTitle: "Create business account",

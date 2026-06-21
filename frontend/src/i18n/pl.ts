@@ -261,6 +261,16 @@ export const pl = {
   p_profileSave:       "Zapisz profil",
   p_pickSelect:        "— wybierz —",
 
+  // marketplace: benefits
+  benefit1:    "Rezerwacja online 24/7",
+  benefit1Sub: "Rezerwuj kiedy chcesz — salon czeka o każdej porze",
+  benefit2:    "Gotowe w 30 sekund",
+  benefit2Sub: "Wybierz usługę, datę i godzinę — bez dzwonienia",
+  benefit3:    "Bez rejestracji",
+  benefit3Sub: "Podaj imię i numer — żadnych kont, żadnych haseł",
+  benefit4:    "Przypomnienia przed wizytą",
+  benefit4Sub: "Email z przypomnieniem — nie zapomnisz o terminie",
+
   // panel: auth
   p_authBack:          "← Rezerwo",
   p_panelTag:          "Panel",

@@ -239,6 +239,15 @@ export const ua: T = {
   p_profileSave:       "Зберегти профіль",
   p_pickSelect:        "— вибрати —",
 
+  benefit1:    "Онлайн-запис 24/7",
+  benefit1Sub: "Записуйтесь будь-коли — салон завжди доступний",
+  benefit2:    "Готово за 30 секунд",
+  benefit2Sub: "Оберіть послугу, дату та час — без дзвінків",
+  benefit3:    "Без реєстрації",
+  benefit3Sub: "Лише ім'я та номер — жодних акаунтів і паролів",
+  benefit4:    "Нагадування про запис",
+  benefit4Sub: "Email перед візитом — не забудете про зустріч",
+
   p_authBack:          "← Rezerwo",
   p_panelTag:          "Панель",
   p_authRegisterTitle: "Створити акаунт",
