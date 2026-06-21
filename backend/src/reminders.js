@@ -8,7 +8,7 @@ function getResend() {
   if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
   return _resend;
 }
-const FROM = process.env.FROM_EMAIL || "Rezerwo <noreply@rezerwo.app>";
+const FROM = process.env.FROM_EMAIL || "Rezerwo <onboarding@resend.dev>";
 
 function minToTime(min) {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
