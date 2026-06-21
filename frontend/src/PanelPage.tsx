@@ -127,7 +127,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<"register"|"login">("register");
   const [email, setEmail] = useState(""); const [pw, setPw] = useState("");
-  const [biz, setBiz] = useState(""); const [cat, setCat] = useState("barber");
+  const [biz, setBiz] = useState(""); const [cats, setCats] = useState<string[]>(["barber"]);
   const [meta, setMeta] = useState<Meta|null>(null);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
@@ -136,7 +136,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
     setErr(""); setBusy(true);
     try {
       const r = mode === "register"
-        ? await api.register(email, pw, biz, cat)
+        ? await api.register(email, pw, biz, cats)
         : await api.login(email, pw);
       setToken(r.token); onAuth();
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
@@ -159,11 +159,16 @@ function Auth({ onAuth }: { onAuth: () => void }) {
             <Field icon={<Store size={15}/>} value={biz} onChange={setBiz} placeholder={t.p_bizNamePh}/>
             <label style={S.lbl}>{t.p_fieldCategory}</label>
             <div style={S.catGrid}>
-              {meta?.categories.map(c => (
-                <button key={c.id} style={{...S.catBtn,...(cat===c.id?S.catBtnOn:{})}} onClick={()=>setCat(c.id)}>
-                  <CategoryIcon id={c.id} size={16} color={cat===c.id?"#7c3aed":"#52525b"}/> {t.catLabels[c.id] ?? c.pl}
-                </button>
-              ))}
+              {meta?.categories.map(c => {
+                const on = cats.includes(c.id);
+                return (
+                  <button key={c.id} style={{...S.catBtn,...(on?S.catBtnOn:{})}} onClick={()=>
+                    setCats(prev => on ? (prev.length > 1 ? prev.filter(x => x!==c.id) : prev) : [...prev, c.id])
+                  }>
+                    <CategoryIcon id={c.id} size={16} color={on?"#7c3aed":"#52525b"}/> {t.catLabels[c.id] ?? c.pl}
+                  </button>
+                );
+              })}
             </div>
           </>
         )}
@@ -847,12 +852,14 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
     set("hours", hours);
   };
 
-  // Build Select options
-  const catOptions: SelectOption[] = meta.categories.map(c => ({
-    value: c.id,
-    label: t.catLabels[c.id] ?? c.pl,
-    icon: <CategoryIcon id={c.id} size={15} color={form.category === c.id ? ACC : "#71717a"}/>,
-  }));
+  const formCats = form.categories && form.categories.length > 0 ? form.categories : [form.category].filter(Boolean);
+  const toggleFormCat = (id: string) => {
+    const next = formCats.includes(id)
+      ? (formCats.length > 1 ? formCats.filter(x => x !== id) : formCats)
+      : [...formCats, id];
+    set("categories", next);
+    set("category", next[0]);
+  };
   const cityOptions: SelectOption[] = [
     { value: "", label: t.p_pickSelect },
     ...Object.keys(meta.cities).map(c => ({ value: c, label: c })),
@@ -894,12 +901,16 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       </div>
 
       <label style={S.lbl}>{t.p_fieldCategory}</label>
-      <Select
-        value={form.category}
-        onChange={v => set("category", v)}
-        options={catOptions}
-        placeholder={t.p_pickSelect}
-      />
+      <div style={S.catGrid}>
+        {meta.categories.map(c => {
+          const on = formCats.includes(c.id);
+          return (
+            <button key={c.id} style={{...S.catBtn,...(on?S.catBtnOn:{})}} onClick={() => toggleFormCat(c.id)}>
+              <CategoryIcon id={c.id} size={15} color={on ? ACC : "#52525b"}/> {t.catLabels[c.id] ?? c.pl}
+            </button>
+          );
+        })}
+      </div>
 
       <div style={{display:"flex",gap:10}}>
         <div style={{flex:1}}>

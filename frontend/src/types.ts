@@ -1,7 +1,7 @@
 export interface User { id: number; email: string; emailVerified?: boolean; role?: "owner" | "admin"; }
 
 export interface Business {
-  id: number; slug: string; name: string; category: string; city: string; district: string;
+  id: number; slug: string; name: string; category: string; categories: string[]; city: string; district: string;
   address: string; phone: string; instagram: string; about: string; banner: string;
   hours: Record<string, [string, string]>; photos: string[];
   confirmRequired: boolean; reminderHours: number[]; verified: boolean;
@@ -19,7 +19,7 @@ export interface Meta {
 }
 
 export interface PublicBusiness {
-  id: number; slug: string; name: string; category: string;
+  id: number; slug: string; name: string; category: string; categories: string[];
   city: string; district: string; address: string; phone: string;
   instagram: string; about: string; banner: string;
   hours: Record<string, [string, string]>; photos: string[];

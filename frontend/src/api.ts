@@ -25,8 +25,8 @@ type AuthOk = { user: User; token: string };
 
 export const api = {
   /* auth */
-  register: (email: string, password: string, businessName: string, category: string) =>
-    req<AuthOk>("/auth/register", { method: "POST", body: JSON.stringify({ email, password, businessName, category }) }),
+  register: (email: string, password: string, businessName: string, categories: string[]) =>
+    req<AuthOk>("/auth/register", { method: "POST", body: JSON.stringify({ email, password, businessName, categories }) }),
   login: (email: string, password: string) =>
     req<AuthOk>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),
@@ -122,7 +122,7 @@ export const api = {
   /* admin */
   adminBusinesses: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
-    return req<{ id: number; slug: string; name: string; category: string; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string }[]>(`/admin/businesses${qs}`);
+    return req<{ id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string }[]>(`/admin/businesses${qs}`);
   },
   adminApprove:  (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/approve`,  { method: "POST" }),
   adminReject:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/reject`,   { method: "POST" }),

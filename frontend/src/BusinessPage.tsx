@@ -570,9 +570,13 @@ export default function BusinessPage({ slug }: { slug: string }) {
               {biz.verified && <span style={S.verBadge}><BadgeCheck size={16}/></span>}
             </div>
             <div style={S.bizMeta}>
-              <CategoryIcon id={biz.category} size={14} color="#a8a2b0"/>
-              {" "}{t.catLabels[biz.category] ?? biz.category}
-              {biz.city && ` · ${biz.city}`}{biz.district && `, ${biz.district}`}
+              {(biz.categories && biz.categories.length > 0 ? biz.categories : [biz.category].filter(Boolean)).map((cid, i) => (
+                <span key={cid} style={i === 0 ? S.catPrimary : S.catExtra}>
+                  {i === 0 && <CategoryIcon id={cid} size={13} color="#8b8194"/>}
+                  {" "}{t.catLabels[cid] ?? cid}
+                </span>
+              ))}
+              {biz.city && <><span style={{color:"#d1c8d8"}}>·</span>{biz.city}{biz.district && `, ${biz.district}`}</>}
             </div>
           </div>
         </div>
@@ -696,8 +700,10 @@ const S: Record<string, CSSProperties> = {
 
   bizHead: { marginBottom:14 },
   bizName: { fontSize:26, fontWeight:500, fontFamily:"'Fraunces',Georgia,serif", letterSpacing:"-0.03em", display:"flex", alignItems:"center", gap:10, color:"#1a1320", lineHeight:1.2 },
-  bizMeta: { fontSize:13.5, color:"#8b8194", marginTop:6, display:"flex", alignItems:"center", gap:4 },
-  verBadge:{ color:ACC, display:"flex" },
+  bizMeta:   { fontSize:13.5, color:"#8b8194", marginTop:6, display:"flex", alignItems:"center", gap:6, flexWrap:"wrap" as const },
+  catPrimary:{ display:"flex", alignItems:"center", gap:4 },
+  catExtra:  { fontSize:11, padding:"2px 8px", borderRadius:999, background:"#f3eefe", color:"#7c3aed", fontWeight:600 },
+  verBadge:  { color:ACC, display:"flex" },
   about:   { fontSize:14.5, color:"#52525b", lineHeight:1.75, margin:"12px 0 18px" },
 
   infoRow: { display:"flex", flexWrap:"wrap" as const, gap:8, marginBottom:20 },

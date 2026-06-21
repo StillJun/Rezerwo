@@ -171,8 +171,12 @@ function calcSlots(hours, bookedAppts, serviceMin, dateStr) {
 }
 
 /* ---------- row → client mappers ---------- */
+const toCategories = (b) =>
+  (b.categories && b.categories.length > 0) ? b.categories : [b.category].filter(Boolean);
+
 const bizClient = (b) => ({
   id: Number(b.id), slug: b.slug, name: b.name, category: b.category,
+  categories: toCategories(b),
   city: b.city, district: b.district, address: b.address, phone: b.phone,
   instagram: b.instagram, about: b.about, banner: b.banner,
   hours: b.hours, photos: b.photos, confirmRequired: b.confirm_required,
@@ -181,6 +185,7 @@ const bizClient = (b) => ({
 });
 const publicBizClient = (b) => ({
   id: Number(b.id), slug: b.slug, name: b.name, category: b.category,
+  categories: toCategories(b),
   city: b.city, district: b.district, address: b.address, phone: b.phone,
   instagram: b.instagram, about: b.about, banner: b.banner,
   hours: b.hours, photos: b.photos, verified: b.verified,
@@ -209,7 +214,7 @@ const apptClient = (a) => ({
 /* ---------- auth ---------- */
 app.post("/api/auth/register", registerLimiter, async (req, res) => {
   try {
-    const { email, password, businessName, category = "barber" } = req.body || {};
+    const { email, password, businessName, categories, category = "barber" } = req.body || {};
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return res.status(400).json({ error: "Podaj prawidłowy email" });
     if (!businessName || typeof businessName !== "string" || businessName.trim().length < 2 || businessName.length > 100)
@@ -219,6 +224,10 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
     const [exists] = await q("SELECT id FROM owners WHERE email=$1", [email]);
     if (exists) return res.status(409).json({ error: "Ten email jest już zarejestrowany" });
 
+    const cats = Array.isArray(categories) && categories.length > 0 ? categories : [category];
+    if (cats.some(c => typeof c !== "string" || c.length > 50))
+      return res.status(400).json({ error: "Nieprawidłowa kategoria" });
+
     const hash = await hashPassword(password);
     const verToken = randomBytes(32).toString("hex");
     const [owner] = await q(
@@ -226,7 +235,8 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
       [email, hash, verToken]
     );
     const slug = await generateSlug(businessName);
-    await q("INSERT INTO businesses (owner_id, name, category, slug) VALUES ($1,$2,$3,$4)", [owner.id, businessName, category, slug]);
+    await q("INSERT INTO businesses (owner_id, name, category, categories, slug) VALUES ($1,$2,$3,$4,$5)",
+      [owner.id, businessName, cats[0], cats, slug]);
     const safe = { id: Number(owner.id), email: owner.email };
     const token = signToken(safe);
     setAuthCookie(res, token);
@@ -312,14 +322,15 @@ app.put("/api/business", requireAuth, async (req, res) => {
     slug = await generateSlug(m.name, b.id);
   }
 
+  const cats = Array.isArray(m.categories) && m.categories.length > 0 ? m.categories : [m.category].filter(Boolean);
   const [row] = await q(`
     UPDATE businesses SET
       slug=$1, name=$2, category=$3, city=$4, district=$5, address=$6, phone=$7, instagram=$8,
-      about=$9, banner=$10, hours=$11, photos=$12, confirm_required=$13, reminder_hours=$14
-    WHERE owner_id=$15 RETURNING *`,
-    [slug, m.name, m.category, m.city, m.district, m.address, m.phone, m.instagram, m.about, m.banner,
+      about=$9, banner=$10, hours=$11, photos=$12, confirm_required=$13, reminder_hours=$14, categories=$15
+    WHERE owner_id=$16 RETURNING *`,
+    [slug, m.name, cats[0], m.city, m.district, m.address, m.phone, m.instagram, m.about, m.banner,
      JSON.stringify(m.hours || {}), JSON.stringify(m.photos || []),
-     m.confirmRequired, JSON.stringify(m.reminderHours || [24,4]), req.user.id]);
+     m.confirmRequired, JSON.stringify(m.reminderHours || [24,4]), cats, req.user.id]);
   res.json(bizClient(row));
 });
 
@@ -440,7 +451,7 @@ app.get("/api/public/businesses", async (req, res) => {
     const params = [];
     if (city) { sql += ` AND b.city=$${params.length+1}`; params.push(city); }
     if (district) { sql += ` AND b.district=$${params.length+1}`; params.push(district); }
-    if (category) { sql += ` AND b.category=$${params.length+1}`; params.push(category); }
+    if (category) { sql += ` AND $${params.length+1} = ANY(b.categories)`; params.push(category); }
     if (nameQ) { sql += ` AND b.name ILIKE $${params.length+1}`; params.push(`%${nameQ.trim()}%`); }
     sql += " GROUP BY b.id ORDER BY b.verified DESC, avg_rating DESC NULLS LAST, b.created_at ASC";
     const rows = await q(sql, params);
@@ -645,6 +656,7 @@ app.get("/api/admin/businesses", requireAuth, requireAdmin, async (req, res) => 
     const rows = await q(sql, params);
     res.json(rows.map(r => ({
       id: Number(r.id), slug: r.slug, name: r.name, category: r.category,
+      categories: toCategories(r),
       city: r.city, status: r.status, verified: r.verified, ownerEmail: r.owner_email,
       createdAt: r.created_at,
     })));

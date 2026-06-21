@@ -13,7 +13,7 @@ const MESH = [
   "#fbf7f4",
 ].join(",");
 
-type BizRow = { id: number; slug: string; name: string; category: string; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string };
+type BizRow = { id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string };
 type Stats = { owners: number; businesses: Record<string, number>; appointments7d: number };
 type FbRow = { id: number; kind: string; message: string; email: string; page: string; createdAt: string };
 
@@ -100,7 +100,7 @@ function BizList({ status }: { status: "pending"|"approved"|"rejected" }) {
         <div key={b.id} style={S.row}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:700,fontSize:14}}>{b.name}</div>
-            <div style={{fontSize:12.5,color:"#71717a"}}>{b.category} · {b.city || "—"}</div>
+            <div style={{fontSize:12.5,color:"#71717a"}}>{(b.categories||[b.category]).join(", ")} · {b.city || "—"}</div>
             <div style={{fontSize:12,color:"#a8a2b0"}}>{b.ownerEmail}</div>
             {b.slug && (
               <a href={`/${b.slug}`} target="_blank" rel="noreferrer"

@@ -255,7 +255,8 @@ export default function MarketplacePage() {
 /* ══ BUSINESS CARD ══ */
 function BusinessCard({ biz }: { biz: PublicBusiness }) {
   const { t } = useTranslation();
-  const catLabel = t.catLabels[biz.category] ?? biz.category;
+  const bizCats = biz.categories && biz.categories.length > 0 ? biz.categories : [biz.category].filter(Boolean);
+  const primaryCat = bizCats[0];
 
   return (
     <div className="biz-card" style={S.card} onClick={() => navigate(`/${biz.slug}`)}>
@@ -272,8 +273,13 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
       <div style={S.cardBody}>
         <div style={S.cardName}>{biz.name}</div>
         <div style={S.cardMeta}>
-          <CategoryIcon id={biz.category} size={13} color="#8b8194"/>
-          {" "}{catLabel}{biz.city && ` · ${biz.city}`}{biz.district && `, ${biz.district}`}
+          <CategoryIcon id={primaryCat} size={13} color="#8b8194"/>
+          {" "}{t.catLabels[primaryCat] ?? primaryCat}
+          {bizCats.length > 1 && bizCats.slice(1).map(cid => (
+            <span key={cid} style={S.catExtraTag}>{t.catLabels[cid] ?? cid}</span>
+          ))}
+          {biz.city && <span style={{color:"#c4bac8"}}> · </span>}
+          {biz.city}{biz.district && `, ${biz.district}`}
         </div>
         {biz.about && (
           <p style={S.cardAbout}>
@@ -418,7 +424,8 @@ const S: Record<string, CSSProperties> = {
   },
   cardBody:    { padding: "14px 18px 18px" },
   cardName:    { fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 4, color: "#1a1320" },
-  cardMeta:    { fontSize: 12.5, color: "#8b8194", display: "flex", alignItems: "center", gap: 4 },
+  cardMeta:    { fontSize: 12.5, color: "#8b8194", display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" as const },
+  catExtraTag: { fontSize: 11, padding: "1px 7px", borderRadius: 999, background: "#f3eefe", color: "#7c3aed", fontWeight: 600, lineHeight: "18px" },
   cardAbout:   { fontSize: 13, color: "#8b8194", margin: "8px 0 0", lineHeight: 1.5 },
   cardFooter:  { marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" },
   ratingBadge: { display: "flex", alignItems: "center", gap: 3, fontSize: 13, fontWeight: 700, color: "#f59e0b" },
