@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { CSSProperties } from "react";
 import {
-  MapPin, Phone, Instagram, Clock, ChevronLeft, ChevronRight,
+  MapPin, Phone, Instagram, Clock, ChevronLeft,
   BadgeCheck, X, Check, MessageSquarePlus, ArrowLeft,
 } from "lucide-react";
 import { api } from "./api";
@@ -260,7 +260,7 @@ function BookingWizard({ biz, initService, onClose }: {
 
             {err && <div style={S.err}>{err}</div>}
 
-            <button style={S.primary} onClick={book} disabled={busy}>
+            <button className="btn-primary" style={S.primary} onClick={book} disabled={busy}>
               {busy?"…":t.confirmBooking}
             </button>
             <p style={S.hint}>{t.bookingHint}</p>
@@ -522,7 +522,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
       <div style={{textAlign:"center" as const}}>
         <div style={{fontSize:40,marginBottom:12}}>🔍</div>
         <div style={{fontSize:18,fontWeight:700,marginBottom:8}}>{t.notFound}</div>
-        <button style={{...S.backBtn2}} onClick={()=>navigate("/")}>{t.backToSearch}</button>
+        <button className="btn-primary" style={S.backBtn2} onClick={()=>navigate("/")}>{t.backToSearch}</button>
       </div>
     </div>
   );
@@ -643,7 +643,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
 
         {/* CTA + service request + waitlist */}
         <div style={S.ctaBox}>
-          <button style={S.ctaMain} onClick={()=>setBooking(services[0]||null)}>
+          <button className="btn-primary" style={S.ctaMain} onClick={()=>setBooking(services[0]||null)}>
             {t.bookVisit}
           </button>
           <button style={S.ctaSecondary} onClick={()=>setWaitlist("open")}>
@@ -679,73 +679,72 @@ export default function BusinessPage({ slug }: { slug: string }) {
 }
 
 const S: Record<string, CSSProperties> = {
-  page:    {minHeight:"100vh",background:"#faf8fb",fontFamily:font},
-  center:  {minHeight:"100vh",display:"grid",placeItems:"center",fontFamily:font},
+  page:   { minHeight:"100vh", background:MESH, fontFamily:font },
+  center: { minHeight:"100vh", display:"grid", placeItems:"center", fontFamily:font, background:MESH },
 
-  navBar:  {position:"sticky" as const,top:0,background:"rgba(250,248,251,.95)",backdropFilter:"blur(8px)",zIndex:20,padding:"10px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"},
-  navBack: {display:"flex",alignItems:"center",gap:6,border:"none",background:"transparent",color:ACC,fontWeight:700,fontSize:14,cursor:"pointer",fontFamily:font},
-  backBtn2:{padding:"10px 18px",borderRadius:10,border:"none",background:ACC,color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer",marginTop:8,fontFamily:font},
+  navBar:  { position:"sticky" as const, top:0, background:"rgba(251,247,244,.92)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", zIndex:20, padding:"10px 20px", display:"flex", justifyContent:"space-between", alignItems:"center", borderBottom:"1px solid rgba(239,233,238,.6)" },
+  navBack: { display:"flex", alignItems:"center", gap:6, border:"none", background:"transparent", color:ACC, fontWeight:700, fontSize:14, cursor:"pointer", fontFamily:font },
+  backBtn2:{ padding:"11px 22px", borderRadius:999, border:"none", background:GRAD, color:"#fff", fontWeight:700, fontSize:14, cursor:"pointer", marginTop:8, fontFamily:font, boxShadow:"0 4px 16px rgba(124,58,237,.35)" },
 
-  banner:  {height:200,position:"relative" as const,overflow:"hidden"},
-  bannerPhoto:{position:"absolute" as const,inset:0,width:"100%",height:"100%",objectFit:"cover" as const,opacity:0.85},
-  photoDots:{position:"absolute" as const,bottom:10,left:0,right:0,display:"flex",justifyContent:"center",gap:6},
-  photoDot: {width:8,height:8,borderRadius:999,border:"none",background:"rgba(255,255,255,.5)",cursor:"pointer",padding:0},
-  photoDotOn:{background:"#fff"},
+  banner:     { height:220, position:"relative" as const, overflow:"hidden" },
+  bannerPhoto:{ position:"absolute" as const, inset:0, width:"100%", height:"100%", objectFit:"cover" as const, opacity:0.88 },
+  photoDots:  { position:"absolute" as const, bottom:12, left:0, right:0, display:"flex", justifyContent:"center", gap:6 },
+  photoDot:   { width:7, height:7, borderRadius:999, border:"none", background:"rgba(255,255,255,.5)", cursor:"pointer", padding:0, transition:"background .2s" },
+  photoDotOn: { background:"#fff", width:20 },
 
-  content: {maxWidth:640,margin:"0 auto",padding:"20px 16px 60px"},
+  content: { maxWidth:660, margin:"0 auto", padding:"22px 18px 80px" },
 
-  bizHead: {marginBottom:12},
-  bizName: {fontSize:24,fontWeight:900,letterSpacing:-0.5,display:"flex",alignItems:"center",gap:8},
-  bizMeta: {fontSize:13.5,color:"#71717a",marginTop:4},
-  verBadge:{color:ACC,display:"flex"},
-  about:   {fontSize:14.5,color:"#52525b",lineHeight:1.7,margin:"12px 0 16px"},
+  bizHead: { marginBottom:14 },
+  bizName: { fontSize:26, fontWeight:500, fontFamily:"'Fraunces',Georgia,serif", letterSpacing:"-0.03em", display:"flex", alignItems:"center", gap:10, color:"#1a1320", lineHeight:1.2 },
+  bizMeta: { fontSize:13.5, color:"#8b8194", marginTop:6, display:"flex", alignItems:"center", gap:4 },
+  verBadge:{ color:ACC, display:"flex" },
+  about:   { fontSize:14.5, color:"#52525b", lineHeight:1.75, margin:"12px 0 18px" },
 
-  infoRow: {display:"flex",flexWrap:"wrap" as const,gap:8,marginBottom:20},
-  infoChip:{display:"flex",alignItems:"center",gap:6,background:"#fff",border:"1.5px solid #ece8f0",borderRadius:10,padding:"7px 12px",fontSize:13,fontWeight:500,color:"#52525b",cursor:"default"},
+  infoRow: { display:"flex", flexWrap:"wrap" as const, gap:8, marginBottom:20 },
+  infoChip:{ display:"flex", alignItems:"center", gap:6, background:"#fff", border:"1.5px solid #efe9ee", borderRadius:999, padding:"7px 14px", fontSize:13, fontWeight:500, color:"#52525b", textDecoration:"none" },
 
-  hoursBox:{background:"#fff",borderRadius:14,padding:"14px 16px",marginBottom:20,boxShadow:"0 2px 8px #1b142008"},
-  hoursGrid:{display:"flex",flexDirection:"column" as const,gap:6,marginTop:8},
-  hoursRow: {display:"flex",gap:12,fontSize:13,color:"#71717a"},
+  hoursBox: { background:"#fff", borderRadius:20, padding:"16px 18px", marginBottom:22, boxShadow:"0 2px 8px rgba(26,19,32,.05)", border:"1px solid #efe9ee" },
+  hoursGrid:{ display:"flex", flexDirection:"column" as const, gap:7, marginTop:10 },
+  hoursRow: { display:"flex", gap:14, fontSize:13, color:"#52525b" },
 
-  sectionTitle:{fontSize:13,fontWeight:700,color:ACC,textTransform:"uppercase" as const,letterSpacing:0.5,marginBottom:10},
-  grpLabel:    {fontSize:12,fontWeight:700,color:ACC,textTransform:"uppercase" as const,letterSpacing:0.5,marginBottom:8},
-  svcCard:     {background:"#fff",borderRadius:16,overflow:"hidden",boxShadow:"0 2px 12px #1b142010"},
-  svcRow:      {display:"flex",alignItems:"flex-start",gap:12,padding:"14px 16px",borderBottom:"1px solid #f4f1f7"},
-  bookBtn:     {padding:"7px 14px",borderRadius:9,border:"none",background:ACC,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:font,whiteSpace:"nowrap" as const},
-  empty:       {textAlign:"center" as const,color:"#a8a2b0",fontSize:14,padding:"30px 0"},
+  sectionTitle:{ fontSize:11, fontWeight:700, color:ACC, textTransform:"uppercase" as const, letterSpacing:1, marginBottom:12 },
+  grpLabel:    { fontSize:11, fontWeight:700, color:"#8b8194", textTransform:"uppercase" as const, letterSpacing:0.8, marginBottom:8 },
+  svcCard:     { background:"#fff", borderRadius:22, overflow:"hidden", boxShadow:"0 2px 8px rgba(26,19,32,.05)", border:"1px solid #efe9ee" },
+  svcRow:      { display:"flex", alignItems:"flex-start", gap:12, padding:"14px 18px", borderBottom:"1px solid #efe9ee" },
+  bookBtn:     { padding:"7px 16px", borderRadius:999, border:"none", background:GRAD, color:"#fff", fontSize:12.5, fontWeight:700, cursor:"pointer", fontFamily:font, whiteSpace:"nowrap" as const, boxShadow:"0 2px 10px rgba(124,58,237,.30)" },
+  empty:       { textAlign:"center" as const, color:"#8b8194", fontSize:14, padding:"32px 0" },
 
-  ctaBox:      {marginTop:24,display:"flex",flexDirection:"column" as const,gap:10},
-  ctaMain:     {padding:"15px",borderRadius:14,border:"none",background:"linear-gradient(135deg,#7c3aed,#ec4899)",color:"#fff",fontSize:16,fontWeight:800,cursor:"pointer",fontFamily:font,boxShadow:"0 6px 20px #7c3aed44"},
-  ctaSecondary:{display:"flex",alignItems:"center",justifyContent:"center",gap:8,padding:"13px",borderRadius:14,border:"1.5px solid #ece8f0",background:"#fff",color:"#52525b",fontSize:14,fontWeight:600,cursor:"pointer",fontFamily:font},
+  ctaBox:      { marginTop:26, display:"flex", flexDirection:"column" as const, gap:10 },
+  ctaMain:     { padding:"15px", borderRadius:999, border:"none", background:GRAD, color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 24px rgba(124,58,237,.38)" },
+  ctaSecondary:{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"13px 20px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", color:"#52525b", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:font, transition:"box-shadow .2s,transform .2s" },
 
-  // wizard
-  overlay:  {position:"fixed" as const,inset:0,background:"rgba(27,20,32,.55)",backdropFilter:"blur(4px)",display:"grid",placeItems:"center",padding:16,zIndex:60},
-  wizard:   {background:"#fff",borderRadius:22,width:"100%",maxWidth:460,padding:"20px 22px 26px",boxShadow:"0 24px 80px #00000040",maxHeight:"95vh",overflowY:"auto" as const},
-  wizHead:  {display:"flex",alignItems:"center",gap:10,marginBottom:14},
-  backBtn:  {width:34,height:34,borderRadius:9,border:"none",background:"#f4f1f7",color:"#52525b",cursor:"pointer",display:"grid",placeItems:"center",flexShrink:0},
-  closeBtn: {width:34,height:34,borderRadius:9,border:"none",background:"#f4f1f7",color:"#52525b",cursor:"pointer",display:"grid",placeItems:"center",flexShrink:0},
-  progress: {height:4,background:"#f0ebf5",borderRadius:2,marginBottom:18,overflow:"hidden"},
-  progressFill:{height:"100%",background:`linear-gradient(90deg,${ACC},#ec4899)`,borderRadius:2,transition:"width .3s"},
-  stepTitle:{fontSize:17,fontWeight:800,margin:"0 0 14px",letterSpacing:-0.3},
+  overlay:  { position:"fixed" as const, inset:0, background:"rgba(26,19,32,.55)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"grid", placeItems:"center", padding:16, zIndex:60 },
+  wizard:   { background:"#fff", borderRadius:24, width:"100%", maxWidth:460, padding:"20px 22px 26px", boxShadow:"0 24px 80px rgba(0,0,0,.25)", maxHeight:"95vh", overflowY:"auto" as const },
+  wizHead:  { display:"flex", alignItems:"center", gap:10, marginBottom:14 },
+  backBtn:  { width:34, height:34, borderRadius:10, border:"none", background:"#f4f0f8", color:"#52525b", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
+  closeBtn: { width:34, height:34, borderRadius:10, border:"none", background:"#f4f0f8", color:"#52525b", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
+  progress: { height:3, background:"#efe9ee", borderRadius:2, marginBottom:18, overflow:"hidden" },
+  progressFill:{ height:"100%", background:GRAD, borderRadius:2, transition:"width .3s" },
+  stepTitle:{ fontSize:17, fontWeight:700, margin:"0 0 14px", letterSpacing:"-0.02em", fontFamily:"'Fraunces',Georgia,serif" },
 
-  svcList:    {display:"flex",flexDirection:"column" as const,gap:8},
-  svcOption:  {display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:12,border:"1.5px solid #ece8f0",background:"#faf8fb",cursor:"pointer",width:"100%",fontFamily:font,textAlign:"left" as const},
-  svcSummary: {background:"#f4f1f7",borderRadius:10,padding:"9px 12px",fontSize:13,marginBottom:14,color:"#1b1420"},
+  svcList:    { display:"flex", flexDirection:"column" as const, gap:8 },
+  svcOption:  { display:"flex", alignItems:"center", gap:12, padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", background:"#fbf7f4", cursor:"pointer", width:"100%", fontFamily:font, textAlign:"left" as const, transition:"border-color .15s,background .15s" },
+  svcSummary: { background:"#f4f0f8", borderRadius:12, padding:"9px 14px", fontSize:13, marginBottom:14, color:"#1a1320" },
 
-  datePicker: {display:"flex",gap:8,overflowX:"auto" as const,paddingBottom:8,marginBottom:4},
-  dateChip:   {display:"flex",flexDirection:"column" as const,alignItems:"center",gap:3,padding:"10px 12px",borderRadius:12,border:"1.5px solid #ece8f0",background:"#faf8fb",cursor:"pointer",minWidth:56,fontFamily:font},
-  dateChipOn: {background:ACC,color:"#fff",borderColor:ACC},
+  datePicker: { display:"flex", gap:8, overflowX:"auto" as const, paddingBottom:8, marginBottom:4 },
+  dateChip:   { display:"flex", flexDirection:"column" as const, alignItems:"center", gap:3, padding:"10px 12px", borderRadius:14, border:"1.5px solid #efe9ee", background:"#fbf7f4", cursor:"pointer", minWidth:56, fontFamily:font },
+  dateChipOn: { background:ACC, color:"#fff", borderColor:ACC },
 
-  slotGrid:   {display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12},
-  slotBtn:    {padding:"11px 0",borderRadius:10,border:"1.5px solid #ece8f0",background:"#faf8fb",cursor:"pointer",fontSize:14,fontWeight:700,fontFamily:font,color:"#1b1420"},
-  slotBtnOn:  {background:ACC,color:"#fff",borderColor:ACC},
-  textBtn:    {display:"flex",alignItems:"center",gap:4,border:"none",background:"transparent",color:ACC,fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:font,padding:"4px 0"},
+  slotGrid:   { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:12 },
+  slotBtn:    { padding:"11px 0", borderRadius:12, border:"1.5px solid #efe9ee", background:"#fbf7f4", cursor:"pointer", fontSize:14, fontWeight:700, fontFamily:font, color:"#1a1320" },
+  slotBtnOn:  { background:ACC, color:"#fff", borderColor:ACC },
+  textBtn:    { display:"flex", alignItems:"center", gap:4, border:"none", background:"transparent", color:ACC, fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:font, padding:"4px 0" },
 
-  lbl:    {fontSize:12.5,fontWeight:600,color:"#52525b",display:"block",margin:"12px 0 6px"},
-  input:  {width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid #ece8f0",fontSize:14.5,outline:"none",background:"#faf8fb",marginBottom:4,boxSizing:"border-box" as const,fontFamily:font},
-  err:    {background:"#fef2f2",color:"#dc2626",fontSize:13,padding:"10px 12px",borderRadius:10,marginBottom:8,textAlign:"center" as const},
-  hint:   {fontSize:12,color:"#a8a2b0",textAlign:"center" as const,marginTop:8},
-  primary:{width:"100%",marginTop:12,display:"flex",justifyContent:"center",alignItems:"center",gap:8,background:"linear-gradient(135deg,#7c3aed,#ec4899)",color:"#fff",border:"none",borderRadius:13,padding:"14px",fontSize:15,fontWeight:700,cursor:"pointer",fontFamily:font,boxShadow:"0 6px 20px #7c3aed44"},
+  lbl:    { fontSize:12.5, fontWeight:600, color:"#52525b", display:"block", margin:"12px 0 6px" },
+  input:  { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:14.5, outline:"none", background:"#fbf7f4", marginBottom:4, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
+  err:    { background:"#fef2f2", color:"#dc2626", fontSize:13, padding:"10px 12px", borderRadius:10, marginBottom:8, textAlign:"center" as const },
+  hint:   { fontSize:12, color:"#8b8194", textAlign:"center" as const, marginTop:8 },
+  primary:{ width:"100%", marginTop:12, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 20px rgba(124,58,237,.35)" },
 
-  successIcon:{width:60,height:60,borderRadius:999,background:"linear-gradient(135deg,#7c3aed,#ec4899)",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto"},
+  successIcon:{ width:60, height:60, borderRadius:999, background:GRAD, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", boxShadow:"0 4px 20px rgba(124,58,237,.40)" },
 };
