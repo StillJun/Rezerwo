@@ -7,6 +7,8 @@ import type { PublicBusiness, Meta } from "./types";
 import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
+import { Select } from "./components/Select";
+import type { SelectOption } from "./components/Select";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -65,22 +67,43 @@ export default function MarketplacePage() {
         {/* search box */}
         <div style={S.searchBox}>
           <div style={S.searchRow}>
-            <div style={S.fieldWrap}>
-              <MapPin size={15} color="#a8a2b0"/>
-              <select style={S.sel} value={city} onChange={e=>{setCity(e.target.value);setDistrict("");}}>
-                <option value="">{t.allCities}</option>
-                {meta && Object.keys(meta.cities).map(c=><option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            {city && districts.length>0 && (
-              <div style={S.fieldWrap}>
-                <MapPin size={15} color="#a8a2b0"/>
-                <select style={S.sel} value={district} onChange={e=>setDistrict(e.target.value)}>
-                  <option value="">{t.allDistricts}</option>
-                  {districts.map(d=><option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-            )}
+            {(() => {
+              const cityOpts: SelectOption[] = [
+                { value: "", label: t.allCities },
+                ...(meta ? Object.keys(meta.cities).map(c => ({ value: c, label: c })) : []),
+              ];
+              const distOpts: SelectOption[] = [
+                { value: "", label: t.allDistricts },
+                ...districts.map(d => ({ value: d, label: d })),
+              ];
+              return (
+                <>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <Select
+                      value={city}
+                      onChange={v => { setCity(v); setDistrict(""); }}
+                      options={cityOpts}
+                      placeholder={t.allCities}
+                      searchable
+                      startIcon={<MapPin size={15}/>}
+                      style={{ marginBottom: 0 }}
+                    />
+                  </div>
+                  {city && districts.length > 0 && (
+                    <div style={{ flex: 1, minWidth: 160 }}>
+                      <Select
+                        value={district}
+                        onChange={setDistrict}
+                        options={distOpts}
+                        placeholder={t.allDistricts}
+                        startIcon={<MapPin size={15}/>}
+                        style={{ marginBottom: 0 }}
+                      />
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {/* category chips */}

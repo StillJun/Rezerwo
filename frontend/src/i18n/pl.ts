@@ -138,6 +138,131 @@ export const pl = {
   loading:       "Ładowanie…",
   errorFetch:    "Błąd połączenia. Spróbuj ponownie.",
   retry:         "Spróbuj ponownie",
+
+  // select component
+  selectSearch:     "Szukaj…",
+  selectNoResults:  "Brak wyników",
+
+  // panel: dashboard / banner
+  p_ownerPanel:        "Panel właściciela",
+  p_verifyBanner:      "Potwierdź adres email — twój profil nie jest widoczny w wyszukiwarce Rezerwo.",
+  p_verifySent:        "Wysłano! Sprawdź skrzynkę.",
+  p_verifyResend:      "Wyślij link ponownie",
+
+  // panel: tabs
+  p_tabAppointments:   "Terminy",
+  p_tabServices:       "Usługi",
+  p_tabReviews:        "Opinie",
+  p_tabWaitlist:       "Lista",
+  p_tabProfile:        "Profil",
+
+  // panel: appointments
+  p_apptTitle:         "Terminy",
+  p_apptSub:           "Rezerwacje Twoich klientów.",
+  p_apptToday:         "Dzisiaj",
+  p_apptTomorrow:      "Jutro",
+  p_apptUpcoming:      "Nadchodzące",
+  p_apptAll:           "Wszystkie",
+  p_apptEmpty:         "Brak terminów na ten dzień.",
+  p_apptEmptyAll:      "Brak terminów.",
+  p_apptClientHistory: "Historia klienta",
+  p_apptDoneTitle:     "Gotowe",
+  p_apptCancelTitle:   "Anuluj",
+  p_apptNoShowTitle:   "Nieobecność",
+
+  // panel: status labels
+  p_statusPending:     "Oczekuje",
+  p_statusConfirmed:   "Potwierdzona",
+  p_statusCancelled:   "Anulowana",
+  p_statusDone:        "Zakończona",
+  p_statusNoShow:      "Nieobecność",
+
+  // panel: client modal
+  p_client:            "Klient",
+  p_clientNote:        "Prywatna notatka (widzi tylko właściciel)",
+  p_clientNotePh:      "Alergie, preferencje, szczegóły…",
+  p_clientSaved:       "Zapisano",
+  p_clientSaveNote:    "Zapisz notatkę",
+  p_clientHistory:     (n: number) => `Historia wizyt (${n})`,
+
+  // panel: reviews
+  p_reviewsTitle:      "Opinie klientów",
+  p_reviewsAvg:        (avg: string, n: number) => `Średnia ocena: ${avg} / 5.0 (${n} opinii)`,
+  p_reviewsNone:       "Brak opinii.",
+  p_reviewsEmpty:      "Brak opinii. Pojawią się tutaj po pierwszych wizytach.",
+  p_reviewHidden:      "Ukryta",
+  p_reportTitle:       "Zgłoś opinię",
+  p_reportSent:        "✓ Zgłoszenie zostało wysłane do moderacji.",
+  p_reportDesc:        "Opisz, dlaczego uważasz tę opinię za nieuczciwą lub naruszającą regulamin.",
+  p_reportPh:          "np. Opinia nie dotyczy mojego salonu, zawiera wulgaryzmy…",
+  p_reportSend:        "Wyślij zgłoszenie",
+  p_reportEmpty:       "Podaj powód zgłoszenia.",
+
+  // panel: waitlist
+  p_waitTitle:         "Lista oczekujących",
+  p_waitSub:           "Klienci, którzy chcą być powiadomieni o wolnym terminie.",
+  p_waitEmpty:         "Lista jest pusta. Klienci trafią tu, gdy nie znajdą wolnego terminu.",
+  p_waitPreferred:     (d: string) => `Preferowana data: ${d}`,
+  p_waitNotify:        "Oznacz jako powiadomiony",
+
+  // panel: services
+  p_svcTitle:          "Twoje usługi",
+  p_svcSub:            "Klient widzi je w Twoim profilu i wybiera, na co się umówić.",
+  p_svcAdd:            "Dodaj usługę",
+  p_svcEmpty:          "Brak usług. Dodaj pierwszą — opis, czas trwania i cenę.",
+  p_svcEditTitle:      "Edytuj usługę",
+  p_svcNewTitle:       "Nowa usługa",
+  p_svcGroup:          "Grupa (kolumna) — opcjonalnie",
+  p_svcGroupPh:        "np. Strzyżenie / Broda / Manicure",
+  p_svcNameLabel:      "Nazwa usługi",
+  p_svcNamePh:         "np. Strzyżenie męskie",
+  p_svcDescLabel:      "Opis",
+  p_svcDescPh:         "Krótki opis dla klienta…",
+  p_svcDuration:       "Czas (min)",
+  p_svcPrice:          "Cena (zł)",
+  p_save:              "Zapisz",
+
+  // panel: profile
+  p_profileTitle:      "Profil firmy",
+  p_profileSub:        "To widzą klienci. Wszystko możesz zmienić.",
+  p_verified:          "Zweryfikowany",
+  p_fieldName:         "Nazwa",
+  p_fieldCategory:     "Kategoria",
+  p_fieldCity:         "Miasto",
+  p_fieldDistrict:     "Dzielnica",
+  p_fieldAddress:      "Adres",
+  p_fieldPhone:        "Telefon",
+  p_fieldInstagram:    "Instagram",
+  p_fieldAbout:        "O nas",
+  p_aboutPh:           "Opisz swój salon…",
+  p_workHours:         "Godziny pracy",
+  p_closed:            "nieczynne",
+  p_portfolio:         "Portfolio (zdjęcia)",
+  p_photoUrlPh:        "Wklej URL zdjęcia…",
+  p_photoHint:         "Na start — przez URL. W kolejnym etapie dodamy upload plików (Cloudinary).",
+  p_confirmSetting:    "Potwierdzanie rezerwacji",
+  p_confirmSettingSub: "Ty ręcznie potwierdzasz każdą wizytę",
+  p_remindersSetting:  "Przypomnienia (godz. przed wizytą)",
+  p_remindersSettingSub:"Klient dostanie email/SMS",
+  p_profileSaved:      "Zapisano",
+  p_profileSave:       "Zapisz profil",
+  p_pickSelect:        "— wybierz —",
+
+  // panel: auth
+  p_authBack:          "← Rezerwo",
+  p_panelTag:          "Panel",
+  p_authRegisterTitle: "Załóż konto firmy",
+  p_authLoginTitle:    "Zaloguj się",
+  p_authSub:           "Zarządzaj rezerwacjami, usługami i profilem.",
+  p_bizNamePh:         "Nazwa firmy (np. Beseder Barbershop)",
+  p_emailPh:           "email@firma.pl",
+  p_passwordPh:        "hasło (min. 9 znaków)",
+  p_authRegisterBtn:   "Załóż konto",
+  p_authLoginBtn:      "Zaloguj",
+  p_authHaveAccount:   "Masz już konto?",
+  p_authNoAccount:     "Nie masz konta?",
+  p_authToLogin:       "Zaloguj się",
+  p_authToRegister:    "Załóż konto",
 };
 
 export type T = typeof pl;

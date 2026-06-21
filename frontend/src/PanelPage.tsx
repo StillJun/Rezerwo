@@ -10,8 +10,11 @@ import { api, getToken, setToken, clearToken } from "./api";
 import { navigate } from "./App";
 import type { Business, Service, Meta, Appointment, Review } from "./types";
 import { useTranslation } from "./i18n";
+import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
+import { Select } from "./components/Select";
+import type { SelectOption } from "./components/Select";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -23,16 +26,25 @@ const BANNERS: Record<string, string> = {
   mint:   "linear-gradient(135deg,#a8edea,#fed6e3)",
   gold:   "linear-gradient(135deg,#f6d365,#fda085)",
 };
-const DAYS: [string, string][] = [
-  ["mon","Pon"],["tue","Wt"],["wed","Śr"],["thu","Czw"],["fri","Pt"],["sat","Sob"],["sun","Nd"],
-];
-const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
-  pending:   { label: "Oczekuje",   color: "#92400e", bg: "#fef3c7" },
-  confirmed: { label: "Potwierdzona", color: "#065f46", bg: "#d1fae5" },
-  cancelled: { label: "Anulowana",  color: "#991b1b", bg: "#fee2e2" },
-  done:      { label: "Zakończona", color: "#374151", bg: "#f3f4f6" },
-  no_show:   { label: "Nieobecność",color: "#7c2d12", bg: "#ffedd5" },
+const DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"] as const;
+
+const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
+  pending:   { color: "#92400e", bg: "#fef3c7" },
+  confirmed: { color: "#065f46", bg: "#d1fae5" },
+  cancelled: { color: "#991b1b", bg: "#fee2e2" },
+  done:      { color: "#374151", bg: "#f3f4f6" },
+  no_show:   { color: "#7c2d12", bg: "#ffedd5" },
 };
+
+function statusLabels(t: T): Record<string, { label: string; color: string; bg: string }> {
+  return {
+    pending:   { label: t.p_statusPending,   ...STATUS_COLORS.pending },
+    confirmed: { label: t.p_statusConfirmed, ...STATUS_COLORS.confirmed },
+    cancelled: { label: t.p_statusCancelled, ...STATUS_COLORS.cancelled },
+    done:      { label: t.p_statusDone,      ...STATUS_COLORS.done },
+    no_show:   { label: t.p_statusNoShow,    ...STATUS_COLORS.no_show },
+  };
+}
 
 function pwChecks(pw: string) {
   return {
@@ -43,7 +55,6 @@ function pwChecks(pw: string) {
     special: /[^A-Za-z0-9]/.test(pw),
   };
 }
-function pwScore(pw: string) { return Object.values(pwChecks(pw)).filter(Boolean).length; }
 
 function PasswordStrength({ pw }: { pw: string }) {
   const { t } = useTranslation();
@@ -59,7 +70,6 @@ function PasswordStrength({ pw }: { pw: string }) {
     !c.digit   && t.pwNeedDigit,
     !c.special && t.pwNeedSpecial,
   ].filter(Boolean) as string[];
-
   return (
     <div style={{ marginBottom: 10 }}>
       <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
@@ -79,11 +89,11 @@ function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 }
 function todayStr() { return new Date().toISOString().slice(0,10); }
-function dateLabel(d: string) {
-  const t = todayStr();
-  if (d === t) return "Dzisiaj";
+function dateLabel(d: string, t: T): string {
+  const today = todayStr();
+  if (d === today) return t.p_apptToday;
   const tom = new Date(); tom.setDate(tom.getDate()+1);
-  if (d === tom.toISOString().slice(0,10)) return "Jutro";
+  if (d === tom.toISOString().slice(0,10)) return t.p_apptTomorrow;
   return d.split("-").reverse().join(".");
 }
 
@@ -104,6 +114,7 @@ export default function PanelPage() {
 
 /* ========== AUTH ========== */
 function Auth({ onAuth }: { onAuth: () => void }) {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<"register"|"login">("register");
   const [email, setEmail] = useState(""); const [pw, setPw] = useState("");
   const [biz, setBiz] = useState(""); const [cat, setCat] = useState("barber");
@@ -123,37 +134,42 @@ function Auth({ onAuth }: { onAuth: () => void }) {
 
   return (
     <div style={S.authWrap}>
-      <button style={S.backLink} onClick={() => navigate("/")}>← Rezerwo</button>
+      <button style={S.backLink} onClick={() => navigate("/")}>{t.p_authBack}</button>
       <div style={S.authCard} className="rise">
         <div style={S.logoRow}>
           <div style={S.logo}>R</div>
           <span style={{ fontSize:20, fontWeight:800 }}>Rezerwo</span>
-          <span style={S.panelTag}>Panel</span>
+          <span style={S.panelTag}>{t.p_panelTag}</span>
         </div>
-        <h1 style={S.h1}>{mode === "register" ? "Załóż konto firmy" : "Zaloguj się"}</h1>
-        <p style={S.sub}>Zarządzaj rezerwacjami, usługami i profilem.</p>
+        <h1 style={S.h1}>{mode === "register" ? t.p_authRegisterTitle : t.p_authLoginTitle}</h1>
+        <p style={S.sub}>{t.p_authSub}</p>
 
         {mode === "register" && (
           <>
-            <Field icon={<Store size={15}/>} value={biz} onChange={setBiz} placeholder="Nazwa firmy (np. Beseder Barbershop)"/>
-            <label style={S.lbl}>Kategoria</label>
+            <Field icon={<Store size={15}/>} value={biz} onChange={setBiz} placeholder={t.p_bizNamePh}/>
+            <label style={S.lbl}>{t.p_fieldCategory}</label>
             <div style={S.catGrid}>
               {meta?.categories.map(c => (
                 <button key={c.id} style={{...S.catBtn,...(cat===c.id?S.catBtnOn:{})}} onClick={()=>setCat(c.id)}>
-                  <CategoryIcon id={c.id} size={16} color={cat===c.id?"#7c3aed":"#52525b"}/> {c.pl}
+                  <CategoryIcon id={c.id} size={16} color={cat===c.id?"#7c3aed":"#52525b"}/> {t.catLabels[c.id] ?? c.pl}
                 </button>
               ))}
             </div>
           </>
         )}
-        <Field icon={<User size={15}/>} value={email} onChange={setEmail} placeholder="email@firma.pl" type="email"/>
-        <Field icon={<User size={15}/>} value={pw} onChange={setPw} placeholder="hasło (min. 9 znaków)" type="password"/>
+        <Field icon={<User size={15}/>} value={email} onChange={setEmail} placeholder={t.p_emailPh} type="email"/>
+        <Field icon={<User size={15}/>} value={pw} onChange={setPw} placeholder={t.p_passwordPh} type="password"/>
         {mode === "register" && <PasswordStrength pw={pw}/>}
         {err && <div style={S.err}>{err}</div>}
-        <button style={S.primary} onClick={submit} disabled={busy}>{busy?"…":mode==="register"?"Załóż konto":"Zaloguj"}</button>
-        <div style={S.switch}>{mode==="register"?"Masz już konto?":"Nie masz konta?"}{" "}
+        <button style={S.primary} onClick={submit} disabled={busy}>
+          {busy ? "…" : mode === "register" ? t.p_authRegisterBtn : t.p_authLoginBtn}
+        </button>
+        <div style={S.switch}>
+          {mode === "register" ? t.p_authHaveAccount : t.p_authNoAccount}{" "}
           <span style={S.link} onClick={()=>{setErr("");setMode(mode==="register"?"login":"register");}}>
-            {mode==="register"?"Zaloguj się":"Załóż konto"}</span></div>
+            {mode === "register" ? t.p_authToLogin : t.p_authToRegister}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -161,6 +177,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
 
 /* ========== DASHBOARD ========== */
 function Dashboard({ onLogout }: { onLogout: () => void }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist">("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
@@ -184,7 +201,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <div style={S.logo}>R</div>
           <div>
             <div style={{fontSize:16,fontWeight:800}}>{biz?.name||"Rezerwo"}</div>
-            <div style={{fontSize:11.5,color:"#a8a2b0"}}>Panel właściciela</div>
+            <div style={{fontSize:11.5,color:"#a8a2b0"}}>{t.p_ownerPanel}</div>
           </div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -201,38 +218,35 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
       {emailVerified === false && (
         <div style={{ background: "#fef3c7", borderBottom: "1px solid #fcd34d", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, color: "#92400e", flex: 1 }}>
-            ⚠️ Potwierdź adres email — twój profil nie jest widoczny w wyszukiwarce Rezerwo.
-          </span>
+          <span style={{ fontSize: 13, color: "#92400e", flex: 1 }}>⚠️ {t.p_verifyBanner}</span>
           {resendDone ? (
-            <span style={{ fontSize: 13, color: "#065f46", fontWeight: 600 }}>Wysłano! Sprawdź skrzynkę.</span>
+            <span style={{ fontSize: 13, color: "#065f46", fontWeight: 600 }}>{t.p_verifySent}</span>
           ) : (
             <button
               style={{ background: "#f59e0b", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 0 }}
-              disabled={resendBusy}
-              onClick={handleResend}
+              disabled={resendBusy} onClick={handleResend}
             >
-              {resendBusy ? "…" : "Wyślij link ponownie"}
+              {resendBusy ? "…" : t.p_verifyResend}
             </button>
           )}
         </div>
       )}
 
-      <div style={S.tabs}>
-        <button style={{...S.tab,...(tab==="appointments"?S.tabOn:{})}} onClick={()=>setTab("appointments")}>
-          <Calendar size={15}/> Terminy
+      <div style={S.tabs} className="panel-tabs">
+        <button className="panel-tab" style={{...S.tab,...(tab==="appointments"?S.tabOn:{})}} onClick={()=>setTab("appointments")}>
+          <Calendar size={15}/> {t.p_tabAppointments}
         </button>
-        <button style={{...S.tab,...(tab==="services"?S.tabOn:{})}} onClick={()=>setTab("services")}>
-          <Scissors size={15}/> Usługi
+        <button className="panel-tab" style={{...S.tab,...(tab==="services"?S.tabOn:{})}} onClick={()=>setTab("services")}>
+          <Scissors size={15}/> {t.p_tabServices}
         </button>
-        <button style={{...S.tab,...(tab==="reviews"?S.tabOn:{})}} onClick={()=>setTab("reviews")}>
-          <Star size={15}/> Opinie
+        <button className="panel-tab" style={{...S.tab,...(tab==="reviews"?S.tabOn:{})}} onClick={()=>setTab("reviews")}>
+          <Star size={15}/> {t.p_tabReviews}
         </button>
-        <button style={{...S.tab,...(tab==="waitlist"?S.tabOn:{})}} onClick={()=>setTab("waitlist")}>
-          <BellRing size={15}/> Lista
+        <button className="panel-tab" style={{...S.tab,...(tab==="waitlist"?S.tabOn:{})}} onClick={()=>setTab("waitlist")}>
+          <BellRing size={15}/> {t.p_tabWaitlist}
         </button>
-        <button style={{...S.tab,...(tab==="profile"?S.tabOn:{})}} onClick={()=>setTab("profile")}>
-          <Store size={15}/> Profil
+        <button className="panel-tab" style={{...S.tab,...(tab==="profile"?S.tabOn:{})}} onClick={()=>setTab("profile")}>
+          <Store size={15}/> {t.p_tabProfile}
         </button>
       </div>
 
@@ -249,6 +263,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
 /* ========== APPOINTMENTS TAB ========== */
 function AppointmentsTab({ biz }: { biz: Business }) {
+  const { t } = useTranslation();
+  const ST = statusLabels(t);
   const [filter, setFilter] = useState<"today"|"upcoming"|"all">("today");
   const [date, setDate] = useState(todayStr());
   const [list, setList] = useState<Appointment[]>([]);
@@ -283,42 +299,44 @@ function AppointmentsTab({ biz }: { biz: Business }) {
     setDate(dt.toISOString().slice(0,10));
   };
 
+  const filterLabels: Record<string, string> = {
+    today: t.p_apptToday,
+    upcoming: t.p_apptUpcoming,
+    all: t.p_apptAll,
+  };
+
   return (
     <div className="rise">
       <div style={S.sectionHead}>
-        <div><h2 style={S.h2}>Terminy</h2>
-          <p style={S.muted}>Rezerwacje Twoich klientów.</p></div>
+        <div><h2 style={S.h2}>{t.p_apptTitle}</h2>
+          <p style={S.muted}>{t.p_apptSub}</p></div>
       </div>
 
-      {/* filter tabs */}
       <div style={{display:"flex",gap:6,marginBottom:14}}>
         {(["today","upcoming","all"] as const).map(f => (
           <button key={f} style={{...S.filterBtn,...(filter===f?S.filterBtnOn:{})}} onClick={()=>setFilter(f)}>
-            {f==="today"?"Dzisiaj":f==="upcoming"?"Nadchodzące":"Wszystkie"}
+            {filterLabels[f]}
           </button>
         ))}
       </div>
 
-      {/* date navigation for "today" view */}
       {filter==="today" && (
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14}}>
           <button style={S.iconBtn} onClick={()=>shiftDate(-1)}><ChevronLeft size={16}/></button>
-          <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:15}}>{dateLabel(date)}</div>
+          <div style={{flex:1,textAlign:"center",fontWeight:700,fontSize:15}}>{dateLabel(date, t)}</div>
           <button style={S.iconBtn} onClick={()=>shiftDate(1)}><ChevronRight size={16}/></button>
         </div>
       )}
 
       {loading && <div style={S.empty}>…</div>}
       {!loading && !list.length && (
-        <div style={S.empty}>
-          {filter==="today" ? "Brak terminów na ten dzień." : "Brak terminów."}
-        </div>
+        <div style={S.empty}>{filter==="today" ? t.p_apptEmpty : t.p_apptEmptyAll}</div>
       )}
 
       {!loading && list.length > 0 && (
         <div style={S.card}>
           {list.map(a => {
-            const st = STATUS_LABELS[a.status] || STATUS_LABELS.pending;
+            const st = ST[a.status] || ST.pending;
             return (
               <div key={a.id} style={S.apptRow}>
                 <div style={{minWidth:52,textAlign:"center"}}>
@@ -328,14 +346,14 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{a.clientName}</div>
                   <div style={{fontSize:12.5,color:"#71717a"}}>{a.serviceName||"—"}</div>
-                  {filter !== "today" && <div style={{fontSize:12,color:"#a8a2b0"}}>{dateLabel(a.date)}</div>}
+                  {filter !== "today" && <div style={{fontSize:12,color:"#a8a2b0"}}>{dateLabel(a.date, t)}</div>}
                   {a.comment && <div style={{fontSize:12,color:"#7c3aed",marginTop:2}}>💬 {a.comment}</div>}
                 </div>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
                   <span style={{...S.statusBadge,color:st.color,background:st.bg}}>{st.label}</span>
                   <div style={{display:"flex",gap:4}}>
                     <button style={{...S.miniBtn,color:"#52525b"}}
-                      onClick={()=>setClient(a.clientPhone)} title="Historia klienta">
+                      onClick={()=>setClient(a.clientPhone)} title={t.p_apptClientHistory}>
                       <NotebookPen size={13}/>
                     </button>
                     {a.status==="pending" && <>
@@ -347,15 +365,15 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                       </button>
                     </>}
                     {a.status==="confirmed" && <>
-                      <button style={{...S.miniBtn,color:"#059669"}} onClick={()=>changeStatus(a.id,"done")} title="Gotowe">
+                      <button style={{...S.miniBtn,color:"#059669"}} onClick={()=>changeStatus(a.id,"done")} title={t.p_apptDoneTitle}>
                         <Check size={14}/>
                       </button>
-                      <button style={{...S.miniBtn,color:"#dc2626"}} onClick={()=>changeStatus(a.id,"cancelled")} title="Anuluj">
+                      <button style={{...S.miniBtn,color:"#dc2626"}} onClick={()=>changeStatus(a.id,"cancelled")} title={t.p_apptCancelTitle}>
                         <XCircle size={14}/>
                       </button>
                     </>}
                     {a.status==="confirmed" && (
-                      <button style={{...S.miniBtn,color:"#f59e0b"}} onClick={()=>changeStatus(a.id,"no_show")} title="Nieobecność">
+                      <button style={{...S.miniBtn,color:"#f59e0b"}} onClick={()=>changeStatus(a.id,"no_show")} title={t.p_apptNoShowTitle}>
                         <User size={14}/>
                       </button>
                     )}
@@ -374,6 +392,8 @@ function AppointmentsTab({ biz }: { biz: Business }) {
 
 /* ========== CLIENT MODAL (CRM) ========== */
 function ClientModal({ phone, bizId, onClose }: { phone: string; bizId: number; onClose: () => void }) {
+  const { t } = useTranslation();
+  const ST = statusLabels(t);
   const [history, setHistory] = useState<Appointment[]>([]);
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
@@ -390,30 +410,30 @@ function ClientModal({ phone, bizId, onClose }: { phone: string; bizId: number; 
       <div style={S.modal} className="rise" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
           <div>
-            <div style={{fontWeight:800,fontSize:16}}>Klient</div>
+            <div style={{fontWeight:800,fontSize:16}}>{t.p_client}</div>
             <div style={{fontSize:13,color:"#7c3aed",fontWeight:600}}>{phone}</div>
           </div>
           <button style={S.iconBtn} onClick={onClose}><X size={18}/></button>
         </div>
 
-        <label style={S.lbl}>Prywatna notatka (widzi tylko właściciel)</label>
+        <label style={S.lbl}>{t.p_clientNote}</label>
         <textarea style={{...S.input,minHeight:80,resize:"vertical",fontFamily:font}}
-          value={note} onChange={e=>setNote(e.target.value)} placeholder="Alergie, preferencje, szczegóły…"/>
+          value={note} onChange={e=>setNote(e.target.value)} placeholder={t.p_clientNotePh}/>
         <button style={{...S.primary,marginTop:8}} onClick={saveNote}>
-          {saved?<><Check size={15}/> Zapisano</>:<><Save size={15}/> Zapisz notatkę</>}
+          {saved?<><Check size={15}/> {t.p_clientSaved}</>:<><Save size={15}/> {t.p_clientSaveNote}</>}
         </button>
 
         {history.length > 0 && (
           <>
-            <div style={{...S.lbl,marginTop:16}}>Historia wizyt ({history.length})</div>
+            <div style={{...S.lbl,marginTop:16}}>{t.p_clientHistory(history.length)}</div>
             <div style={{maxHeight:260,overflowY:"auto",display:"flex",flexDirection:"column",gap:6}}>
               {history.map(a => {
-                const st = STATUS_LABELS[a.status]||STATUS_LABELS.pending;
+                const st = ST[a.status]||ST.pending;
                 return (
                   <div key={a.id} style={{background:"#faf8fb",borderRadius:10,padding:"10px 12px",display:"flex",gap:10,alignItems:"center"}}>
                     <div style={{flex:1}}>
                       <div style={{fontSize:13,fontWeight:600}}>{a.serviceName||"—"}</div>
-                      <div style={{fontSize:12,color:"#a8a2b0"}}>{dateLabel(a.date)} {minToTime(a.startMin)}</div>
+                      <div style={{fontSize:12,color:"#a8a2b0"}}>{dateLabel(a.date, t)} {minToTime(a.startMin)}</div>
                     </div>
                     <span style={{...S.statusBadge,color:st.color,background:st.bg,fontSize:11}}>{st.label}</span>
                   </div>
@@ -429,18 +449,17 @@ function ClientModal({ phone, bizId, onClose }: { phone: string; bizId: number; 
 
 /* ========== REVIEWS TAB ========== */
 function ReviewsTab() {
+  const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reportId, setReportId] = useState<number|null>(null);
   const [reason, setReason] = useState("");
   const [reportErr, setReportErr] = useState("");
   const [reportSent, setReportSent] = useState(false);
 
-  useEffect(() => {
-    api.ownerReviews().then(setReviews).catch(()=>{});
-  }, []);
+  useEffect(() => { api.ownerReviews().then(setReviews).catch(()=>{}); }, []);
 
   const sendReport = async () => {
-    if (!reportId || !reason.trim()) { setReportErr("Podaj powód zgłoszenia."); return; }
+    if (!reportId || !reason.trim()) { setReportErr(t.p_reportEmpty); return; }
     setReportErr("");
     try {
       await api.reportReview(reportId, reason.trim());
@@ -454,12 +473,12 @@ function ReviewsTab() {
     <div className="rise">
       <div style={S.sectionHead}>
         <div>
-          <h2 style={S.h2}>Opinie klientów</h2>
-          <p style={S.muted}>{avg ? `Średnia ocena: ${avg} / 5.0 (${reviews.length} opinii)` : "Brak opinii."}</p>
+          <h2 style={S.h2}>{t.p_reviewsTitle}</h2>
+          <p style={S.muted}>{avg ? t.p_reviewsAvg(avg, reviews.length) : t.p_reviewsNone}</p>
         </div>
       </div>
 
-      {!reviews.length && <div style={S.empty}>Brak opinii. Pojawią się tutaj po pierwszych wizytach.</div>}
+      {!reviews.length && <div style={S.empty}>{t.p_reviewsEmpty}</div>}
 
       <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
         {reviews.map(r => (
@@ -470,13 +489,13 @@ function ReviewsTab() {
                 <span style={{display:"inline-flex",gap:1}}>
                   {[1,2,3,4,5].map(i=><span key={i} style={{fontSize:13,color:i<=r.rating?"#f59e0b":"#e5e7eb"}}>★</span>)}
                 </span>
-                {r.hidden && <span style={{fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",padding:"2px 7px",borderRadius:999}}>Ukryta</span>}
+                {r.hidden && <span style={{fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",padding:"2px 7px",borderRadius:999}}>{t.p_reviewHidden}</span>}
               </div>
               {r.text && <p style={{fontSize:13.5,color:"#52525b",margin:"4px 0 0",lineHeight:1.5}}>{r.text}</p>}
               <div style={{fontSize:11.5,color:"#c4bdd0",marginTop:6}}>{String(r.createdAt).slice(0,10)}</div>
             </div>
             {!r.hidden && (
-              <button style={{...S.miniBtn,color:"#dc2626"}} title="Zgłoś opinię" onClick={()=>{ setReportId(r.id); setReportSent(false); setReason(""); }}>
+              <button style={{...S.miniBtn,color:"#dc2626"}} title={t.p_reportTitle} onClick={()=>{ setReportId(r.id); setReportSent(false); setReason(""); }}>
                 <Flag size={14}/>
               </button>
             )}
@@ -484,27 +503,24 @@ function ReviewsTab() {
         ))}
       </div>
 
-      {/* report modal */}
       {reportId !== null && (
         <div style={S.overlay} onClick={()=>setReportId(null)}>
           <div style={S.modal} className="rise" onClick={e=>e.stopPropagation()}>
             <div style={S.modalHead}>
-              <span style={{fontWeight:800,fontSize:16}}>Zgłoś opinię</span>
+              <span style={{fontWeight:800,fontSize:16}}>{t.p_reportTitle}</span>
               <button style={S.iconBtn} onClick={()=>setReportId(null)}><X size={18}/></button>
             </div>
             {reportSent ? (
               <div style={{textAlign:"center" as const,padding:"12px 0",color:"#7c3aed",fontWeight:700}}>
-                ✓ Zgłoszenie zostało wysłane do moderacji.
+                {t.p_reportSent}
               </div>
             ) : (
               <>
-                <p style={{fontSize:13.5,color:"#71717a",margin:"0 0 12px"}}>
-                  Opisz, dlaczego uważasz tę opinię za nieuczciwą lub naruszającą regulamin.
-                </p>
+                <p style={{fontSize:13.5,color:"#71717a",margin:"0 0 12px"}}>{t.p_reportDesc}</p>
                 <textarea style={{...S.input,minHeight:80,resize:"vertical",fontFamily:font}}
-                  value={reason} onChange={e=>setReason(e.target.value)} placeholder="np. Opinia nie dotyczy mojego salonu, zawiera wulgaryzmy…"/>
+                  value={reason} onChange={e=>setReason(e.target.value)} placeholder={t.p_reportPh}/>
                 {reportErr && <div style={S.err}>{reportErr}</div>}
-                <button style={{...S.primary,marginTop:8}} onClick={sendReport}>Wyślij zgłoszenie</button>
+                <button style={{...S.primary,marginTop:8}} onClick={sendReport}>{t.p_reportSend}</button>
               </>
             )}
           </div>
@@ -516,28 +532,24 @@ function ReviewsTab() {
 
 /* ========== WAITLIST TAB ========== */
 function WaitlistTab() {
+  const { t } = useTranslation();
   const [list, setList] = useState<{id:number;clientName:string;clientPhone:string;clientEmail:string;serviceName:string|null;preferredDate:string|null;createdAt:string}[]>([]);
 
-  const load = useCallback(() => {
-    api.waitlist().then(setList).catch(()=>{});
-  }, []);
+  const load = useCallback(() => { api.waitlist().then(setList).catch(()=>{}); }, []);
   useEffect(() => { load(); }, [load]);
 
-  const notify = async (id: number) => {
-    await api.notifyWaitlist(id);
-    load();
-  };
+  const notify = async (id: number) => { await api.notifyWaitlist(id); load(); };
 
   return (
     <div className="rise">
       <div style={S.sectionHead}>
         <div>
-          <h2 style={S.h2}>Lista oczekujących</h2>
-          <p style={S.muted}>Klienci, którzy chcą być powiadomieni o wolnym terminie.</p>
+          <h2 style={S.h2}>{t.p_waitTitle}</h2>
+          <p style={S.muted}>{t.p_waitSub}</p>
         </div>
       </div>
 
-      {!list.length && <div style={S.empty}>Lista jest pusta. Klienci trafią tu, gdy nie znajdą wolnego terminu.</div>}
+      {!list.length && <div style={S.empty}>{t.p_waitEmpty}</div>}
 
       <div style={S.card}>
         {list.map(w => (
@@ -546,9 +558,9 @@ function WaitlistTab() {
               <div style={{fontSize:14,fontWeight:700}}>{w.clientName}</div>
               <div style={{fontSize:12.5,color:"#71717a"}}>{w.clientPhone}{w.clientEmail ? ` · ${w.clientEmail}` : ""}</div>
               {w.serviceName && <div style={{fontSize:12.5,color:ACC,marginTop:2}}>{w.serviceName}</div>}
-              {w.preferredDate && <div style={{fontSize:12,color:"#a8a2b0"}}>Preferowana data: {w.preferredDate}</div>}
+              {w.preferredDate && <div style={{fontSize:12,color:"#a8a2b0"}}>{t.p_waitPreferred(w.preferredDate)}</div>}
             </div>
-            <button style={{...S.miniBtn,color:"#059669"}} title="Oznacz jako powiadomiony" onClick={()=>notify(w.id)}>
+            <button style={{...S.miniBtn,color:"#059669"}} title={t.p_waitNotify} onClick={()=>notify(w.id)}>
               <Check size={14}/>
             </button>
           </div>
@@ -560,6 +572,7 @@ function WaitlistTab() {
 
 /* ========== SERVICES TAB ========== */
 function ServicesTab() {
+  const { t } = useTranslation();
   const [list, setList] = useState<Service[]>([]);
   const [editing, setEditing] = useState<Partial<Service>|null>(null);
   const reload = useCallback(() => { api.services().then(setList).catch(console.error); }, []);
@@ -572,20 +585,20 @@ function ServicesTab() {
   const del = async (id: number) => { await api.deleteService(id); reload(); };
 
   const groups: Record<string, Service[]> = {};
-  list.forEach(s => { (groups[s.grp||"Usługi"] ||= []).push(s); });
+  list.forEach(s => { (groups[s.grp||t.p_tabServices] ||= []).push(s); });
 
   return (
     <div className="rise">
       <div style={S.sectionHead}>
-        <div><h2 style={S.h2}>Twoje usługi</h2>
-          <p style={S.muted}>Klient widzi je w Twoim profilu i wybiera, na co się umówić.</p></div>
+        <div><h2 style={S.h2}>{t.p_svcTitle}</h2>
+          <p style={S.muted}>{t.p_svcSub}</p></div>
         <button style={S.addBtn}
           onClick={()=>setEditing({grp:"",name:"",description:"",duration:30,price:0})}>
-          <Plus size={16}/> Dodaj usługę
+          <Plus size={16}/> {t.p_svcAdd}
         </button>
       </div>
 
-      {!list.length && <div style={S.empty}>Brak usług. Dodaj pierwszą — opis, czas trwania i cenę.</div>}
+      {!list.length && <div style={S.empty}>{t.p_svcEmpty}</div>}
 
       {Object.entries(groups).map(([grp, items]) => (
         <div key={grp} style={{marginBottom:18}}>
@@ -614,6 +627,7 @@ function ServicesTab() {
 
 function ServiceModal({ init, onClose, onSave }:
   { init: Partial<Service>; onClose: ()=>void; onSave: (s: Partial<Service>)=>void }) {
+  const { t } = useTranslation();
   const [s, setS] = useState<Partial<Service>>(init);
   const set = (k: keyof Service, v: string|number) => setS(p => ({...p,[k]:v}));
   const valid = (s.name||"").trim();
@@ -621,24 +635,24 @@ function ServiceModal({ init, onClose, onSave }:
     <div style={S.overlay} onClick={onClose}>
       <div style={S.modal} className="rise" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
-          <span style={{fontWeight:800,fontSize:17}}>{s.id?"Edytuj usługę":"Nowa usługa"}</span>
+          <span style={{fontWeight:800,fontSize:17}}>{s.id ? t.p_svcEditTitle : t.p_svcNewTitle}</span>
           <button style={S.iconBtn} onClick={onClose}><X size={18}/></button>
         </div>
-        <label style={S.lbl}>Grupa (kolumna) — opcjonalnie</label>
-        <input style={S.input} value={s.grp||""} onChange={e=>set("grp",e.target.value)} placeholder="np. Strzyżenie / Broda / Manicure"/>
-        <label style={S.lbl}>Nazwa usługi</label>
-        <input style={S.input} value={s.name||""} onChange={e=>set("name",e.target.value)} placeholder="np. Strzyżenie męskie" autoFocus/>
-        <label style={S.lbl}>Opis</label>
+        <label style={S.lbl}>{t.p_svcGroup}</label>
+        <input style={S.input} value={s.grp||""} onChange={e=>set("grp",e.target.value)} placeholder={t.p_svcGroupPh}/>
+        <label style={S.lbl}>{t.p_svcNameLabel}</label>
+        <input style={S.input} value={s.name||""} onChange={e=>set("name",e.target.value)} placeholder={t.p_svcNamePh} autoFocus/>
+        <label style={S.lbl}>{t.p_svcDescLabel}</label>
         <textarea style={{...S.input,minHeight:64,resize:"vertical",fontFamily:font}}
-          value={s.description||""} onChange={e=>set("description",e.target.value)} placeholder="Krótki opis dla klienta…"/>
+          value={s.description||""} onChange={e=>set("description",e.target.value)} placeholder={t.p_svcDescPh}/>
         <div style={{display:"flex",gap:10}}>
-          <div style={{flex:1}}><label style={S.lbl}>Czas (min)</label>
+          <div style={{flex:1}}><label style={S.lbl}>{t.p_svcDuration}</label>
             <input style={S.input} type="number" value={s.duration??30} onChange={e=>set("duration",Number(e.target.value))}/></div>
-          <div style={{flex:1}}><label style={S.lbl}>Cena (zł)</label>
+          <div style={{flex:1}}><label style={S.lbl}>{t.p_svcPrice}</label>
             <input style={S.input} type="number" value={s.price??0} onChange={e=>set("price",Number(e.target.value))}/></div>
         </div>
         <button style={{...S.primary,marginTop:18,opacity:valid?1:0.5}} disabled={!valid} onClick={()=>onSave(s)}>
-          <Save size={16}/> Zapisz
+          <Save size={16}/> {t.p_save}
         </button>
       </div>
     </div>
@@ -647,6 +661,7 @@ function ServiceModal({ init, onClose, onSave }:
 
 /* ========== PROFILE TAB ========== */
 function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)=>void }) {
+  const { t } = useTranslation();
   const [meta, setMeta] = useState<Meta|null>(null);
   const [form, setForm] = useState<Business|null>(biz);
   const [saved, setSaved] = useState(false);
@@ -678,13 +693,28 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
     set("hours", hours);
   };
 
+  // Build Select options
+  const catOptions: SelectOption[] = meta.categories.map(c => ({
+    value: c.id,
+    label: t.catLabels[c.id] ?? c.pl,
+    icon: <CategoryIcon id={c.id} size={15} color={form.category === c.id ? ACC : "#71717a"}/>,
+  }));
+  const cityOptions: SelectOption[] = [
+    { value: "", label: t.p_pickSelect },
+    ...Object.keys(meta.cities).map(c => ({ value: c, label: c })),
+  ];
+  const districtOptions: SelectOption[] = [
+    { value: "", label: t.p_pickSelect },
+    ...districts.map(d => ({ value: d, label: d })),
+  ];
+
   return (
     <div className="rise">
-      <h2 style={S.h2}>Profil firmy</h2>
-      <p style={S.muted}>To widzą klienci. Wszystko możesz zmienić.</p>
+      <h2 style={S.h2}>{t.p_profileTitle}</h2>
+      <p style={S.muted}>{t.p_profileSub}</p>
 
       <div style={{...S.bannerPrev,background:BANNERS[form.banner]||BANNERS.violet}}>
-        {form.verified && <span style={S.verTag}><BadgeCheck size={13}/> Zweryfikowany</span>}
+        {form.verified && <span style={S.verTag}><BadgeCheck size={13}/> {t.p_verified}</span>}
       </div>
       <div style={S.bannerPick}>
         {Object.keys(BANNERS).map(k => (
@@ -693,64 +723,76 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
         ))}
       </div>
 
-      <label style={S.lbl}>Nazwa</label>
+      <label style={S.lbl}>{t.p_fieldName}</label>
       <input style={S.input} value={form.name} onChange={e=>set("name",e.target.value)}/>
 
-      <label style={S.lbl}>Kategoria</label>
-      <select style={S.input} value={form.category} onChange={e=>set("category",e.target.value)}>
-        {meta.categories.map(c=><option key={c.id} value={c.id}>{c.emoji} {c.pl}</option>)}
-      </select>
+      <label style={S.lbl}>{t.p_fieldCategory}</label>
+      <Select
+        value={form.category}
+        onChange={v => set("category", v)}
+        options={catOptions}
+        placeholder={t.p_pickSelect}
+      />
 
       <div style={{display:"flex",gap:10}}>
-        <div style={{flex:1}}><label style={S.lbl}>Miasto</label>
-          <select style={S.input} value={form.city} onChange={e=>{set("city",e.target.value);set("district","");}}>
-            <option value="">— wybierz —</option>
-            {Object.keys(meta.cities).map(c=><option key={c} value={c}>{c}</option>)}
-          </select></div>
-        <div style={{flex:1}}><label style={S.lbl}>Dzielnica</label>
-          <select style={S.input} value={form.district} onChange={e=>set("district",e.target.value)} disabled={!districts.length}>
-            <option value="">— wybierz —</option>
-            {districts.map(d=><option key={d} value={d}>{d}</option>)}
-          </select></div>
+        <div style={{flex:1}}>
+          <label style={S.lbl}>{t.p_fieldCity}</label>
+          <Select
+            value={form.city}
+            onChange={v => { set("city", v); set("district", ""); }}
+            options={cityOptions}
+            placeholder={t.p_pickSelect}
+            searchable
+          />
+        </div>
+        <div style={{flex:1}}>
+          <label style={S.lbl}>{t.p_fieldDistrict}</label>
+          <Select
+            value={form.district}
+            onChange={v => set("district", v)}
+            options={districtOptions}
+            placeholder={t.p_pickSelect}
+            disabled={!districts.length}
+          />
+        </div>
       </div>
 
-      <label style={S.lbl}>Adres</label>
+      <label style={S.lbl}>{t.p_fieldAddress}</label>
       <Field icon={<MapPin size={15}/>} value={form.address} onChange={v=>set("address",v)} placeholder="ul. Przykładowa 1"/>
-      <label style={S.lbl}>Telefon</label>
+      <label style={S.lbl}>{t.p_fieldPhone}</label>
       <Field icon={<Phone size={15}/>} value={form.phone} onChange={v=>set("phone",v)} placeholder="500 600 700"/>
-      <label style={S.lbl}>Instagram</label>
+      <label style={S.lbl}>{t.p_fieldInstagram}</label>
       <Field icon={<Instagram size={15}/>} value={form.instagram} onChange={v=>set("instagram",v)} placeholder="@twojprofil"/>
 
-      <label style={S.lbl}>O nas</label>
+      <label style={S.lbl}>{t.p_fieldAbout}</label>
       <textarea style={{...S.input,minHeight:70,resize:"vertical",fontFamily:font}}
-        value={form.about} onChange={e=>set("about",e.target.value)} placeholder="Opisz swój salon…"/>
+        value={form.about} onChange={e=>set("about",e.target.value)} placeholder={t.p_aboutPh}/>
 
-      {/* hours editor */}
-      <label style={S.lbl}>Godziny pracy</label>
+      <label style={S.lbl}>{t.p_workHours}</label>
       <div style={S.hoursGrid}>
-        {DAYS.map(([key,pl]) => {
+        {DAY_KEYS.map(key => {
           const on = !!(form.hours?.[key]);
           const vals = (form.hours?.[key] || ["09:00","18:00"]) as [string,string];
+          const dayLabel = (t.days as Record<string, string>)[key] || key;
           return (
             <div key={key} style={S.hoursRow}>
               <button style={{...S.toggle,...(on?S.toggleOn:{})}} onClick={()=>toggleDay(key)}>
                 <span style={{...S.knob,...(on?S.knobOn:{})}}/>
               </button>
-              <span style={{width:28,fontSize:13,fontWeight:600,color:on?"#1b1420":"#a8a2b0"}}>{pl}</span>
+              <span style={{width:28,fontSize:13,fontWeight:600,color:on?"#1b1420":"#a8a2b0"}}>{dayLabel}</span>
               {on ? (
                 <>
                   <input style={S.timeInput} type="time" value={vals[0]} onChange={e=>setHour(key,0,e.target.value)}/>
                   <span style={{color:"#a8a2b0",fontSize:13}}>—</span>
                   <input style={S.timeInput} type="time" value={vals[1]} onChange={e=>setHour(key,1,e.target.value)}/>
                 </>
-              ) : <span style={{fontSize:12,color:"#c4bece"}}>nieczynne</span>}
+              ) : <span style={{fontSize:12,color:"#c4bece"}}>{t.p_closed}</span>}
             </div>
           );
         })}
       </div>
 
-      {/* portfolio */}
-      <label style={S.lbl}>Portfolio (zdjęcia)</label>
+      <label style={S.lbl}>{t.p_portfolio}</label>
       <div style={S.photoRow}>
         {form.photos.map((p,i) => (
           <div key={i} style={S.photoTile}>
@@ -761,25 +803,24 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
         <div style={S.photoAdd}><Image size={18} color="#a8a2b0"/></div>
       </div>
       <div style={{display:"flex",gap:8}}>
-        <input style={{...S.input,marginBottom:0}} value={photoUrl} onChange={e=>setPhotoUrl(e.target.value)} placeholder="Wklej URL zdjęcia…"/>
+        <input style={{...S.input,marginBottom:0}} value={photoUrl} onChange={e=>setPhotoUrl(e.target.value)} placeholder={t.p_photoUrlPh}/>
         <button style={S.addBtn} onClick={()=>{if(photoUrl.trim()){set("photos",[...form.photos,photoUrl.trim()]);setPhotoUrl("");}}}>
           <Plus size={16}/>
         </button>
       </div>
-      <p style={S.hint}>Na start — przez URL. W kolejnym etapie dodamy upload plików (Cloudinary).</p>
+      <p style={S.hint}>{t.p_photoHint}</p>
 
-      {/* booking settings */}
       <div style={S.settingsBox}>
         <div style={S.setRow}>
-          <div><div style={S.setName}>Potwierdzanie rezerwacji</div>
-            <div style={S.setSub}>Ty ręcznie potwierdzasz każdą wizytę</div></div>
+          <div><div style={S.setName}>{t.p_confirmSetting}</div>
+            <div style={S.setSub}>{t.p_confirmSettingSub}</div></div>
           <button style={{...S.toggle,...(form.confirmRequired?S.toggleOn:{})}} onClick={()=>set("confirmRequired",!form.confirmRequired)}>
             <span style={{...S.knob,...(form.confirmRequired?S.knobOn:{})}}/>
           </button>
         </div>
         <div style={{...S.setRow,borderTop:"1px solid #f0ebf5"}}>
-          <div><div style={S.setName}><Bell size={13}/> Przypomnienia (godz. przed wizytą)</div>
-            <div style={S.setSub}>Klient dostanie email/SMS</div></div>
+          <div><div style={S.setName}><Bell size={13}/> {t.p_remindersSetting}</div>
+            <div style={S.setSub}>{t.p_remindersSettingSub}</div></div>
           <div style={{display:"flex",gap:6}}>
             {[24,4,2,1].map(h => (
               <button key={h} style={{...S.remChip,...(form.reminderHours.includes(h)?S.remChipOn:{})}}
@@ -790,7 +831,7 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       </div>
 
       <button style={{...S.primary,marginTop:20}} onClick={save}>
-        {saved?<><Check size={16}/> Zapisano</>:<><Save size={16}/> Zapisz profil</>}
+        {saved?<><Check size={16}/> {t.p_profileSaved}</>:<><Save size={16}/> {t.p_profileSave}</>}
       </button>
     </div>
   );
