@@ -7,6 +7,7 @@ export const ru: T = {
   allDistricts: "Все районы",
   allCategories: "Все",
   search: "Найти",
+  searchByName: "Поиск по названию салона…",
   noResults: "Салонов по вашим критериям не найдено.",
   noResultsSub: "Попробуйте изменить город или категорию.",
   found: (n: number) => `Найдено ${n} ${n === 1 ? "салон" : n < 5 ? "салона" : "салонов"}`,

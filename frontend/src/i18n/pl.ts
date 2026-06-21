@@ -6,6 +6,7 @@ export const pl = {
   allDistricts: "Wszystkie dzielnice",
   allCategories: "Wszystkie",
   search: "Szukaj",
+  searchByName: "Szukaj po nazwie salonu…",
   noResults: "Nie znaleziono salonów pasujących do kryteriów.",
   noResultsSub: "Spróbuj zmienić miasto lub kategorię.",
   found: (n: number) => `Znaleziono ${n} ${n === 1 ? "salon" : "salonów"}`,

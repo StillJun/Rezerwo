@@ -7,6 +7,7 @@ export const ua: T = {
   allDistricts: "Всі райони",
   allCategories: "Всі",
   search: "Знайти",
+  searchByName: "Пошук за назвою салону…",
   noResults: "Салонів за вашими критеріями не знайдено.",
   noResultsSub: "Спробуйте змінити місто або категорію.",
   found: (n: number) => `Знайдено ${n} ${n === 1 ? "салон" : n < 5 ? "салони" : "салонів"}`,

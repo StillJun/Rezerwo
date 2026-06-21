@@ -7,6 +7,7 @@ export const en: T = {
   allDistricts: "All districts",
   allCategories: "All",
   search: "Search",
+  searchByName: "Search by salon name…",
   noResults: "No salons found matching your criteria.",
   noResultsSub: "Try changing the city or category.",
   found: (n: number) => `Found ${n} ${n === 1 ? "salon" : "salons"}`,

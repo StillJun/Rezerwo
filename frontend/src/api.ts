@@ -72,7 +72,7 @@ export const api = {
     req<{ ok: boolean }>(`/clients/${encodeURIComponent(phone)}/note`, { method: "PUT", body: JSON.stringify({ note }) }),
 
   /* public marketplace */
-  publicBusinesses: (params: { city?: string; district?: string; category?: string } = {}) => {
+  publicBusinesses: (params: { city?: string; district?: string; category?: string; q?: string } = {}) => {
     const qs = new URLSearchParams(
       Object.fromEntries(Object.entries(params).filter(([, v]) => v)) as Record<string, string>
     ).toString();

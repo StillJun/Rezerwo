@@ -91,6 +91,22 @@ const CITIES = {
   "Zabrze":         ["Śródmieście", "Biskupice", "Rokitnica", "Makoszowy"],
   "Olsztyn":        ["Śródmieście", "Zatorze", "Pojezierze", "Nagórki", "Gutkowo"],
   "Radom":          ["Śródmieście", "Gołębiów", "Idalin", "Ustronie", "Obozisko"],
+  "Sosnowiec":      ["Śródmieście", "Pogoń", "Milowice", "Zagórze", "Klimontów"],
+  "Tychy":          ["Śródmieście", "Żwaków", "Stare Tychy", "Paprocany", "Wilkowyje"],
+  "Rybnik":         ["Śródmieście", "Niedobczyce", "Boguszowice", "Chwałowice", "Zebrzydowice"],
+  "Bytom":          ["Śródmieście", "Rozbark", "Szombierki", "Łagiewniki", "Bobrek"],
+  "Dąbrowa Górnicza":["Śródmieście", "Ząbkowice", "Strzemieszyce", "Łęknice", "Ujejsce"],
+  "Bielsko-Biała":  ["Śródmieście", "Kamienica", "Wapienica", "Lipnik", "Stare Bielsko"],
+  "Opole":          ["Śródmieście", "Zaodrze", "Półwieś", "Malinka", "Wróblin"],
+  "Zielona Góra":   ["Śródmieście", "Nowe Miasto", "Łężyca", "Ochla", "Przylep"],
+  "Płock":          ["Śródmieście", "Kolegialna", "Łukasiewicza", "Góry", "Podolszyce"],
+  "Elbląg":         ["Śródmieście", "Zatorze", "Zawada", "Dębica", "Jeziorna"],
+  "Kalisz":         ["Śródmieście", "Rajsków", "Ogrody", "Dobrzec", "Tyniec"],
+  "Wałbrzych":      ["Śródmieście", "Sobięcin", "Podgórze", "Biały Kamień", "Nowe Miasto"],
+  "Koszalin":       ["Śródmieście", "Rokosowo", "Jamno", "Morskie", "Lubiatowo"],
+  "Legnica":        ["Śródmieście", "Tarninów", "Piekary", "Złotoryja", "Piątnica"],
+  "Włocławek":      ["Śródmieście", "Południe", "Kazimierz", "Zazamcze", "Wschód"],
+  "Tarnów":         ["Śródmieście", "Mościce", "Rzędzin", "Krzyż", "Grabówka"],
 };
 app.get("/api/meta", (_req, res) => res.json({ categories: CATEGORIES, cities: CITIES }));
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
@@ -388,8 +404,7 @@ app.put("/api/clients/:phone/note", requireAuth, async (req, res) => {
 /* ---------- public marketplace ---------- */
 app.get("/api/public/businesses", async (req, res) => {
   try {
-    const { city, district, category } = req.query;
-    // Only show businesses whose owner verified email + profile is complete (city, address, ≥1 service)
+    const { city, district, category, q: nameQ } = req.query;
     let sql = `SELECT b.* FROM businesses b
       JOIN owners o ON o.id = b.owner_id
       WHERE b.slug IS NOT NULL
@@ -401,6 +416,7 @@ app.get("/api/public/businesses", async (req, res) => {
     if (city) { sql += ` AND b.city=$${params.length+1}`; params.push(city); }
     if (district) { sql += ` AND b.district=$${params.length+1}`; params.push(district); }
     if (category) { sql += ` AND b.category=$${params.length+1}`; params.push(category); }
+    if (nameQ) { sql += ` AND b.name ILIKE $${params.length+1}`; params.push(`%${nameQ.trim()}%`); }
     sql += " ORDER BY b.verified DESC, b.created_at ASC";
     const rows = await q(sql, params);
     res.json(rows.map(publicBizClient));

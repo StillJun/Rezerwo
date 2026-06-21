@@ -28,6 +28,7 @@ export default function MarketplacePage() {
   const [city, setCity] = useState("");
   const [district, setDistrict] = useState("");
   const [category, setCategory] = useState("");
+  const [nameQ, setNameQ] = useState("");
   const [results, setResults] = useState<PublicBusiness[]>([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -37,10 +38,15 @@ export default function MarketplacePage() {
   const search = async () => {
     setLoading(true); setSearched(true);
     try {
-      const data = await api.publicBusinesses({ city: city||undefined, district: district||undefined, category: category||undefined });
+      const data = await api.publicBusinesses({
+        city: city||undefined, district: district||undefined,
+        category: category||undefined, q: nameQ.trim()||undefined,
+      });
       setResults(data);
     } catch { setResults([]); } finally { setLoading(false); }
   };
+
+  const handleKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") search(); };
 
   const districts = city && meta ? (meta.cities[city]||[]) : [];
 
@@ -68,6 +74,23 @@ export default function MarketplacePage() {
 
         {/* search box */}
         <div style={S.searchBox} className="search-box">
+          {/* name search */}
+          <div style={{...S.fieldWrap, marginBottom: 10}} className="search-field">
+            <Search size={15} color="#a8a2b0"/>
+            <input
+              style={S.sel}
+              value={nameQ}
+              onChange={e => setNameQ(e.target.value)}
+              onKeyDown={handleKey}
+              placeholder={t.searchByName}
+            />
+            {nameQ && (
+              <button onClick={() => setNameQ("")}
+                style={{border:"none",background:"none",cursor:"pointer",color:"#a8a2b0",padding:"0 4px",display:"flex"}}>
+                ×
+              </button>
+            )}
+          </div>
           <div style={S.searchRow} className="search-row">
             {(() => {
               const cityOpts: SelectOption[] = [
