@@ -4,8 +4,14 @@ import { CheckCircle2, XCircle, BadgeCheck, BadgeX, Trash2, Store, BarChart2, Me
 import { api } from "./api";
 import { navigate } from "./App";
 
-const ACC = "#7c3aed";
-const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
+const ACC  = "#7c3aed";
+const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
+const font = "'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif";
+const MESH = [
+  "radial-gradient(ellipse 900px 500px at 10% 20%, rgba(124,58,237,.04) 0%, transparent 65%)",
+  "radial-gradient(ellipse 600px 400px at 90% 80%, rgba(224,57,158,.03) 0%, transparent 60%)",
+  "#fbf7f4",
+].join(",");
 
 type BizRow = { id: number; slug: string; name: string; category: string; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string };
 type Stats = { owners: number; businesses: Record<string, number>; appointments7d: number };
@@ -42,8 +48,8 @@ function AdminDashboard() {
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <div style={S.logo}>R</div>
           <div>
-            <div style={{fontWeight:800,fontSize:16}}>Rezerwo Admin</div>
-            <div style={{fontSize:11.5,color:"#a8a2b0"}}>Panel moderacji</div>
+            <div style={{fontWeight:500,fontSize:17,fontFamily:"'Fraunces',Georgia,serif",letterSpacing:"-0.02em",color:"#1a1320"}}>Rezerwo Admin</div>
+            <div style={{fontSize:11.5,color:"#8b8194"}}>Panel moderacji</div>
           </div>
         </div>
         <button style={S.iconBtn} onClick={()=>navigate("/panel")} title="Panel właściciela">
@@ -152,8 +158,8 @@ function StatsView() {
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div style={S.statCard}>
-      <div style={{fontSize:28,fontWeight:900,color:ACC}}>{value}</div>
-      <div style={{fontSize:13,color:"#71717a",marginTop:4}}>{label}</div>
+      <div style={{fontSize:30,fontWeight:500,color:ACC,fontFamily:"'Fraunces',Georgia,serif"}}>{value}</div>
+      <div style={{fontSize:13,color:"#8b8194",marginTop:4}}>{label}</div>
     </div>
   );
 }
@@ -188,20 +194,20 @@ function FeedbackView() {
 }
 
 const S: Record<string, CSSProperties> = {
-  page:   { minHeight:"100vh", background:"#faf8fb", fontFamily:font },
-  header: { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 20px", background:"#fff", borderBottom:"1px solid #ece8f0", position:"sticky", top:0, zIndex:10 },
-  logo:   { width:32,height:32,borderRadius:9,background:`linear-gradient(135deg,${ACC},#ec4899)`,color:"#fff",fontWeight:800,fontSize:18,display:"grid",placeItems:"center" },
-  iconBtn:{ display:"flex",alignItems:"center",justifyContent:"center",width:36,height:36,borderRadius:9,border:"1.5px solid #ece8f0",background:"#fff",cursor:"pointer",color:"#52525b" },
-  tabsRow:{ display:"flex",gap:6,overflowX:"auto",padding:"12px 16px",borderBottom:"1px solid #ece8f0",background:"#fff" },
-  tabBtn: { display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:8,border:"1.5px solid #ece8f0",background:"#fff",fontSize:13,fontWeight:600,color:"#71717a",cursor:"pointer",whiteSpace:"nowrap",fontFamily:font },
-  tabBtnOn:{ background:ACC,color:"#fff",borderColor:ACC },
-  body:   { maxWidth:860,margin:"0 auto",padding:"20px 16px 60px" },
-  card:   { background:"#fff",borderRadius:14,overflow:"hidden",border:"1px solid #ece8f0" },
-  row:    { display:"flex",alignItems:"flex-start",gap:12,padding:"14px 16px",borderBottom:"1px solid #f4f1f7" },
-  actBtn: { display:"flex",alignItems:"center",gap:5,padding:"5px 10px",borderRadius:7,border:"1.5px solid #ece8f0",background:"#fff",fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:font },
-  empty:  { textAlign:"center",color:"#a8a2b0",padding:"40px 0",fontSize:14 },
-  h2:     { fontSize:18,fontWeight:800,margin:"0 0 16px",letterSpacing:-0.3 },
-  statsGrid: { display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))",gap:12 },
-  statCard:  { background:"#fff",borderRadius:12,padding:"16px 18px",border:"1px solid #ece8f0" },
-  kindBadge: { fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:999 },
+  page:     { minHeight:"100vh", background:MESH, fontFamily:font },
+  header:   { display:"flex", justifyContent:"space-between", alignItems:"center", padding:"14px 22px", background:"rgba(251,247,244,.92)", backdropFilter:"blur(12px)", WebkitBackdropFilter:"blur(12px)", borderBottom:"1px solid rgba(239,233,238,.7)", position:"sticky", top:0, zIndex:10 },
+  logo:     { width:32, height:32, borderRadius:9, background:GRAD, color:"#fff", fontWeight:800, fontSize:18, display:"grid", placeItems:"center", boxShadow:"0 3px 14px rgba(124,58,237,.38)", fontFamily:"'Fraunces',Georgia,serif" },
+  iconBtn:  { display:"flex", alignItems:"center", justifyContent:"center", width:36, height:36, borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", cursor:"pointer", color:"#52525b" },
+  tabsRow:  { display:"flex", gap:6, overflowX:"auto" as const, padding:"12px 20px", borderBottom:"1px solid #efe9ee", background:"rgba(255,255,255,.7)", scrollbarWidth:"none" as const },
+  tabBtn:   { display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", fontSize:13, fontWeight:600, color:"#8b8194", cursor:"pointer", whiteSpace:"nowrap" as const, fontFamily:font },
+  tabBtnOn: { background:"#1a1320", color:"#fff", borderColor:"#1a1320" },
+  body:     { maxWidth:900, margin:"0 auto", padding:"22px 18px 60px" },
+  card:     { background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #efe9ee", boxShadow:"0 2px 8px rgba(26,19,32,.05)" },
+  row:      { display:"flex", alignItems:"flex-start", gap:12, padding:"14px 18px", borderBottom:"1px solid #efe9ee" },
+  actBtn:   { display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:font, transition:"border-color .15s" },
+  empty:    { textAlign:"center" as const, color:"#8b8194", padding:"48px 0", fontSize:14, background:"#fff", borderRadius:20, border:"1px solid #efe9ee" },
+  h2:       { fontSize:20, fontWeight:500, margin:"0 0 18px", letterSpacing:"-0.03em", fontFamily:"'Fraunces',Georgia,serif", color:"#1a1320" },
+  statsGrid:{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:14 },
+  statCard: { background:"#fff", borderRadius:18, padding:"18px 20px", border:"1px solid #efe9ee", boxShadow:"0 2px 8px rgba(26,19,32,.05)" },
+  kindBadge:{ fontSize:11, fontWeight:700, padding:"2px 8px", borderRadius:999 },
 };
