@@ -142,6 +142,13 @@ export const en: T = {
   p_tabReviews:        "Reviews",
   p_tabWaitlist:       "Waitlist",
   p_tabProfile:        "Profile",
+  p_tabRequests:       "Requests",
+
+  p_reqTitle:          "Service requests",
+  p_reqSub:            "Clients asking about services not on your list.",
+  p_reqEmpty:          "No requests.",
+  p_reqHandled:        "Handled",
+  p_reqMarkHandled:    "Mark as handled",
 
   p_apptTitle:         "Appointments",
   p_apptSub:           "Your clients' bookings.",

@@ -4,7 +4,7 @@ import {
   Store, LogOut, Scissors, Plus, Trash2, Save, Check, Bell, Clock,
   MapPin, Phone, Instagram, Pencil, X, BadgeCheck, Image, Calendar,
   CheckCircle2, XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
-  ExternalLink, Star, BellRing, Flag,
+  ExternalLink, Star, BellRing, Flag, MessageSquarePlus,
 } from "lucide-react";
 import { api, getToken, setToken, clearToken } from "./api";
 import { navigate } from "./App";
@@ -178,7 +178,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
 /* ========== DASHBOARD ========== */
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist">("appointments");
+  const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist"|"requests">("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resendDone, setResendDone] = useState(false);
@@ -247,6 +247,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <button className="panel-tab" style={{...S.tab,...(tab==="waitlist"?S.tabOn:{})}} onClick={()=>setTab("waitlist")}>
           <BellRing size={15}/> {t.p_tabWaitlist}
         </button>
+        <button className="panel-tab" style={{...S.tab,...(tab==="requests"?S.tabOn:{})}} onClick={()=>setTab("requests")}>
+          <MessageSquarePlus size={15}/> {t.p_tabRequests}
+        </button>
         <button className="panel-tab" style={{...S.tab,...(tab==="profile"?S.tabOn:{})}} onClick={()=>setTab("profile")}>
           <Store size={15}/> {t.p_tabProfile}
         </button>
@@ -257,6 +260,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab==="services"     && <ServicesTab/>}
         {tab==="reviews"      && <ReviewsTab/>}
         {tab==="waitlist"     && biz && <WaitlistTab/>}
+        {tab==="requests"     && <ServiceRequestsTab/>}
         {tab==="profile"      && <ProfileTab biz={biz} setBiz={setBiz}/>}
       </div>
     </div>
@@ -726,6 +730,60 @@ function ServiceModal({ init, onClose, onSave }:
           <Save size={16}/> {t.p_save}
         </button>
       </div>
+    </div>
+  );
+}
+
+/* ========== SERVICE REQUESTS TAB ========== */
+function ServiceRequestsTab() {
+  const { t } = useTranslation();
+  type SvcReq = { id: number; clientPhone: string; text: string; handled: boolean; createdAt: string };
+  const [list, setList] = useState<SvcReq[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try { setList(await api.serviceRequests()); } catch { /**/ } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const markHandled = async (id: number) => {
+    await api.resolveServiceRequest(id);
+    load();
+  };
+
+  return (
+    <div className="rise">
+      <h2 style={S.h2}>{t.p_reqTitle}</h2>
+      <p style={S.muted}>{t.p_reqSub}</p>
+
+      {loading && <div style={S.empty}>…</div>}
+      {!loading && list.length === 0 && <div style={S.empty}>{t.p_reqEmpty}</div>}
+
+      {!loading && list.length > 0 && (
+        <div style={S.card}>
+          {list.map(r => (
+            <div key={r.id} style={{...S.apptRow,opacity:r.handled?.6:1}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13.5,fontWeight:700,color:ACC}}>{r.clientPhone}</div>
+                <div style={{fontSize:13.5,marginTop:3,lineHeight:1.5}}>{r.text}</div>
+                <div style={{fontSize:11.5,color:"#a8a2b0",marginTop:4}}>{new Date(r.createdAt).toLocaleDateString("pl-PL")}</div>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6,flexShrink:0}}>
+                {r.handled ? (
+                  <span style={{...S.statusBadge,color:"#059669",background:"#d1fae5"}}>{t.p_reqHandled}</span>
+                ) : (
+                  <button style={{...S.miniBtn,color:"#059669",borderColor:"#059669",padding:"5px 10px",fontSize:12,fontWeight:600}}
+                    onClick={()=>markHandled(r.id)}>
+                    <Check size={13}/> {t.p_reqMarkHandled}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

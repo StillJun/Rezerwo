@@ -156,6 +156,14 @@ export const pl = {
   p_tabReviews:        "Opinie",
   p_tabWaitlist:       "Lista",
   p_tabProfile:        "Profil",
+  p_tabRequests:       "Zapytania",
+
+  // panel: service requests
+  p_reqTitle:          "Zapytania o usługi",
+  p_reqSub:            "Klienci pytają o usługi spoza Twojej listy.",
+  p_reqEmpty:          "Brak zapytań.",
+  p_reqHandled:        "Obsłużone",
+  p_reqMarkHandled:    "Oznacz jako obsłużone",
 
   // panel: appointments
   p_apptTitle:         "Terminy",

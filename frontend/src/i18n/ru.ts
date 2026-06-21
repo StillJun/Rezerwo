@@ -142,6 +142,13 @@ export const ru: T = {
   p_tabReviews:        "Отзывы",
   p_tabWaitlist:       "Очередь",
   p_tabProfile:        "Профиль",
+  p_tabRequests:       "Запросы",
+
+  p_reqTitle:          "Запросы на услуги",
+  p_reqSub:            "Клиенты интересуются услугами не из вашего списка.",
+  p_reqEmpty:          "Нет запросов.",
+  p_reqHandled:        "Обработан",
+  p_reqMarkHandled:    "Отметить как обработан",
 
   p_apptTitle:         "Записи",
   p_apptSub:           "Записи ваших клиентов.",
