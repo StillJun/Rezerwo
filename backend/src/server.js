@@ -301,9 +301,16 @@ app.put("/api/business", requireAuth, async (req, res) => {
   if (!b) return res.status(404).json({ error: "Brak firmy" });
   const m = { ...bizClient(b), ...req.body };
 
-  // regenerate slug if name changed
+  // slug: use custom if provided and valid, otherwise regenerate on name change
   let slug = b.slug;
-  if (m.name !== b.name || !slug) slug = await generateSlug(m.name, b.id);
+  const customSlug = typeof req.body.slug === "string" ? req.body.slug.trim().toLowerCase() : null;
+  if (customSlug && /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(customSlug)) {
+    const [conflict] = await q("SELECT id FROM businesses WHERE slug=$1 AND id!=$2", [customSlug, b.id]);
+    if (conflict) return res.status(409).json({ error: "Ten adres URL jest już zajęty. Wybierz inny." });
+    slug = customSlug;
+  } else if (m.name !== b.name || !slug) {
+    slug = await generateSlug(m.name, b.id);
+  }
 
   const [row] = await q(`
     UPDATE businesses SET

@@ -870,6 +870,19 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       <label style={S.lbl}>{t.p_fieldName}</label>
       <input style={S.input} value={form.name} onChange={e=>set("name",e.target.value)}/>
 
+      <label style={S.lbl}>URL profilu</label>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+        <span style={{fontSize:13,color:"#a8a2b0",flexShrink:0}}>rezerwo.app/</span>
+        <input style={{...S.input,marginBottom:0,flex:1}} value={form.slug||""} onChange={e=>set("slug",e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,""))}
+          placeholder="twoj-salon"/>
+        {form.slug && (
+          <a href={`/${form.slug}`} target="_blank" rel="noreferrer"
+            style={{...S.iconBtn,textDecoration:"none",color:"#7c3aed",flexShrink:0}} title="Podgląd">
+            <ExternalLink size={15}/>
+          </a>
+        )}
+      </div>
+
       <label style={S.lbl}>{t.p_fieldCategory}</label>
       <Select
         value={form.category}
