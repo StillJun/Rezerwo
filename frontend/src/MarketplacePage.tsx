@@ -9,6 +9,7 @@ import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
 import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
+import { ThemeToggle } from "./components/ThemeToggle";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -52,6 +53,7 @@ export default function MarketplacePage() {
           <span style={{fontSize:20,fontWeight:800,letterSpacing:-0.5}}>Rezerwo</span>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <ThemeToggle/>
           <LangDropdown/>
           <button style={S.panelBtn} onClick={()=>navigate("/panel")}>
             <Store size={14}/> {t.panelOwner.split(" ")[0]}
@@ -65,8 +67,8 @@ export default function MarketplacePage() {
         <p style={S.heroSub}>{t.searchSub}</p>
 
         {/* search box */}
-        <div style={S.searchBox}>
-          <div style={S.searchRow}>
+        <div style={S.searchBox} className="search-box">
+          <div style={S.searchRow} className="search-row">
             {(() => {
               const cityOpts: SelectOption[] = [
                 { value: "", label: t.allCities },
@@ -78,7 +80,7 @@ export default function MarketplacePage() {
               ];
               return (
                 <>
-                  <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ flex: 1, minWidth: 160 }} className="search-field">
                     <Select
                       value={city}
                       onChange={v => { setCity(v); setDistrict(""); }}
@@ -90,7 +92,7 @@ export default function MarketplacePage() {
                     />
                   </div>
                   {city && districts.length > 0 && (
-                    <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ flex: 1, minWidth: 160 }} className="search-field">
                       <Select
                         value={district}
                         onChange={setDistrict}
@@ -107,12 +109,12 @@ export default function MarketplacePage() {
           </div>
 
           {/* category chips */}
-          <div style={S.catRow}>
-            <button style={{...S.catChip,...(!category?S.catChipOn:{})}} onClick={()=>setCategory("")}>
+          <div style={S.catRow} className="cat-row">
+            <button className="cat-chip" style={{...S.catChip,...(!category?S.catChipOn:{})}} onClick={()=>setCategory("")}>
               {t.allCategories}
             </button>
             {meta?.categories.map(c=>(
-              <button key={c.id} style={{...S.catChip,...(category===c.id?S.catChipOn:{})}}
+              <button key={c.id} className="cat-chip" style={{...S.catChip,...(category===c.id?S.catChipOn:{})}}
                 onClick={()=>setCategory(c.id)}>
                 {c.emoji} {t.catLabels[c.id] ?? c.pl}
               </button>
@@ -147,7 +149,7 @@ export default function MarketplacePage() {
         {!loading && results.length>0 && (
           <>
             <div style={S.resultsHeader}>{t.found(results.length)}</div>
-            <div style={S.grid}>
+            <div style={S.grid} className="biz-grid">
               {results.map(b=>(
                 <BusinessCard key={b.id} biz={b}/>
               ))}

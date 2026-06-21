@@ -12,6 +12,7 @@ import type { Business, Service, Meta, Appointment, Review } from "./types";
 import { useTranslation } from "./i18n";
 import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { CategoryIcon } from "./icons/CategoryIcon";
 import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
@@ -195,8 +196,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   };
 
   return (
-    <div style={S.app}>
-      <header style={S.top}>
+    <div style={S.app} className="panel-app">
+      <header style={S.top} className="panel-header">
         <div style={S.logoRow}>
           <div style={S.logo}>R</div>
           <div>
@@ -205,6 +206,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <ThemeToggle/>
           <LangDropdown/>
           {biz?.slug && (
             <a href={`/${biz.slug}`} target="_blank" rel="noreferrer"
@@ -250,7 +252,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </button>
       </div>
 
-      <div style={S.body}>
+      <div style={S.body} className="panel-body">
         {tab==="appointments" && biz && <AppointmentsTab biz={biz}/>}
         {tab==="services"     && <ServicesTab/>}
         {tab==="reviews"      && <ReviewsTab/>}
@@ -307,7 +309,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
 
   return (
     <div className="rise">
-      <div style={S.sectionHead}>
+      <div style={S.sectionHead} className="section-head">
         <div><h2 style={S.h2}>{t.p_apptTitle}</h2>
           <p style={S.muted}>{t.p_apptSub}</p></div>
       </div>
@@ -338,8 +340,8 @@ function AppointmentsTab({ biz }: { biz: Business }) {
           {list.map(a => {
             const st = ST[a.status] || ST.pending;
             return (
-              <div key={a.id} style={S.apptRow}>
-                <div style={{minWidth:52,textAlign:"center"}}>
+              <div key={a.id} className="appt-row" style={S.apptRow}>
+                <div className="appt-time" style={{minWidth:52,textAlign:"center"}}>
                   <div style={{fontSize:15,fontWeight:800,color:ACC}}>{minToTime(a.startMin)}</div>
                   <div style={{fontSize:11,color:"#a8a2b0"}}>{a.duration}min</div>
                 </div>
@@ -349,7 +351,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                   {filter !== "today" && <div style={{fontSize:12,color:"#a8a2b0"}}>{dateLabel(a.date, t)}</div>}
                   {a.comment && <div style={{fontSize:12,color:"#7c3aed",marginTop:2}}>💬 {a.comment}</div>}
                 </div>
-                <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
+                <div className="appt-actions" style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:6}}>
                   <span style={{...S.statusBadge,color:st.color,background:st.bg}}>{st.label}</span>
                   <div style={{display:"flex",gap:4}}>
                     <button style={{...S.miniBtn,color:"#52525b"}}
@@ -406,8 +408,8 @@ function ClientModal({ phone, bizId, onClose }: { phone: string; bizId: number; 
   };
   void bizId;
   return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={S.modal} className="rise" onClick={e=>e.stopPropagation()}>
+    <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
+      <div style={S.modal} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
           <div>
             <div style={{fontWeight:800,fontSize:16}}>{t.p_client}</div>
@@ -471,7 +473,7 @@ function ReviewsTab() {
 
   return (
     <div className="rise">
-      <div style={S.sectionHead}>
+      <div style={S.sectionHead} className="section-head">
         <div>
           <h2 style={S.h2}>{t.p_reviewsTitle}</h2>
           <p style={S.muted}>{avg ? t.p_reviewsAvg(avg, reviews.length) : t.p_reviewsNone}</p>
@@ -542,7 +544,7 @@ function WaitlistTab() {
 
   return (
     <div className="rise">
-      <div style={S.sectionHead}>
+      <div style={S.sectionHead} className="section-head">
         <div>
           <h2 style={S.h2}>{t.p_waitTitle}</h2>
           <p style={S.muted}>{t.p_waitSub}</p>
@@ -589,10 +591,10 @@ function ServicesTab() {
 
   return (
     <div className="rise">
-      <div style={S.sectionHead}>
+      <div style={S.sectionHead} className="section-head">
         <div><h2 style={S.h2}>{t.p_svcTitle}</h2>
           <p style={S.muted}>{t.p_svcSub}</p></div>
-        <button style={S.addBtn}
+        <button className="add-btn" style={S.addBtn}
           onClick={()=>setEditing({grp:"",name:"",description:"",duration:30,price:0})}>
           <Plus size={16}/> {t.p_svcAdd}
         </button>
@@ -632,8 +634,8 @@ function ServiceModal({ init, onClose, onSave }:
   const set = (k: keyof Service, v: string|number) => setS(p => ({...p,[k]:v}));
   const valid = (s.name||"").trim();
   return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={S.modal} className="rise" onClick={e=>e.stopPropagation()}>
+    <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
+      <div style={S.modal} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
           <span style={{fontWeight:800,fontSize:17}}>{s.id ? t.p_svcEditTitle : t.p_svcNewTitle}</span>
           <button style={S.iconBtn} onClick={onClose}><X size={18}/></button>
@@ -804,7 +806,7 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       </div>
       <div style={{display:"flex",gap:8}}>
         <input style={{...S.input,marginBottom:0}} value={photoUrl} onChange={e=>setPhotoUrl(e.target.value)} placeholder={t.p_photoUrlPh}/>
-        <button style={S.addBtn} onClick={()=>{if(photoUrl.trim()){set("photos",[...form.photos,photoUrl.trim()]);setPhotoUrl("");}}}>
+        <button className="add-btn" style={S.addBtn} onClick={()=>{if(photoUrl.trim()){set("photos",[...form.photos,photoUrl.trim()]);setPhotoUrl("");}}}>
           <Plus size={16}/>
         </button>
       </div>

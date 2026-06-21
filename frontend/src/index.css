@@ -1,35 +1,266 @@
-*{box-sizing:border-box}html,body,#root{margin:0;height:100%}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;background:#faf8fb;color:#1b1420}
+/* ═══════════ CSS VARIABLES — light / dark ═══════════ */
+:root {
+  --bg:         #faf8fb;
+  --bg2:        #f4f1f7;
+  --card:       #ffffff;
+  --card2:      #faf8fb;
+  --border:     #ece8f0;
+  --border2:    #f4f1f7;
+  --text:       #1b1420;
+  --text-muted: #71717a;
+  --text-dim:   #a8a2b0;
+  --text-vdim:  #c4bdd0;
+  --acc:        #7c3aed;
+  --shadow:     0 2px 14px #1b142010;
+  --shadow-lg:  0 8px 32px #1b142018;
+  --top-bg:     rgba(250,248,251,.95);
+}
+
+[data-theme="dark"] {
+  --bg:         #0f0d17;
+  --bg2:        #17142200;
+  --card:       #1a1728;
+  --card2:      #131020;
+  --border:     #2e2840;
+  --border2:    #231e30;
+  --text:       #f0ecf8;
+  --text-muted: #9b95aa;
+  --text-dim:   #6b6478;
+  --text-vdim:  #413c50;
+  --shadow:     0 2px 14px #00000030;
+  --shadow-lg:  0 8px 32px #00000044;
+  --top-bg:     rgba(15,13,23,.95);
+}
+
+/* ═══════════ BASE ═══════════ */
+*{box-sizing:border-box}
+html,body,#root{margin:0;min-height:100%;height:auto}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s}
 input::placeholder,textarea::placeholder{color:#b8b2c0}
 .rise{animation:rise .3s ease both}@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 button:disabled{opacity:.5;cursor:not-allowed}
-
-/* ---- Mobile: prevent horizontal overflow ---- */
 img,video{max-width:100%}
-select,input,textarea,button{max-width:100%}
 
-/* ---- Mobile: slots grid — 3 cols on narrow screens ---- */
-@media(max-width:400px){
-  .slot-grid{grid-template-columns:repeat(3,1fr)!important}
+/* ═══════════ DARK MODE OVERRIDES ═══════════ */
+[data-theme="dark"] body { background: var(--bg) !important; color: var(--text) !important; }
+
+/* page backgrounds */
+[data-theme="dark"] .panel-app,
+[data-theme="dark"] [style*="background:#faf8fb"],
+[data-theme="dark"] [style*="background: #faf8fb"] { background: var(--bg) !important; }
+
+/* sticky headers */
+[data-theme="dark"] .panel-header { background: var(--top-bg) !important; border-bottom: 1px solid var(--border); }
+
+/* cards — white → dark */
+[data-theme="dark"] [style*="background:#fff"],
+[data-theme="dark"] [style*="background: #fff"],
+[data-theme="dark"] [style*="background:\"#fff\""] { background: var(--card) !important; }
+
+/* inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] [style*="background:#faf8fb"] { background: var(--card2) !important; color: var(--text) !important; border-color: var(--border) !important; }
+
+/* borders */
+[data-theme="dark"] [style*="border:\"1.5px solid #ece8f0\""],
+[data-theme="dark"] [style*="borderBottom:\"1px solid #f4f1f7\""],
+[data-theme="dark"] [style*="border-bottom:1px solid #f4f1f7"] { border-color: var(--border2) !important; }
+
+/* text colors */
+[data-theme="dark"] [style*="color:#1b1420"] { color: var(--text) !important; }
+[data-theme="dark"] [style*="color:#52525b"] { color: var(--text-muted) !important; }
+[data-theme="dark"] [style*="color:#71717a"] { color: var(--text-muted) !important; }
+[data-theme="dark"] [style*="color:#a8a2b0"] { color: var(--text-dim) !important; }
+[data-theme="dark"] [style*="color:#c4bdd0"],
+[data-theme="dark"] [style*="color:#c4bece"] { color: var(--text-vdim) !important; }
+[data-theme="dark"] [style*="color:#b8b2c0"] { color: var(--text-dim) !important; }
+
+/* hover backgrounds */
+[data-theme="dark"] [style*="background:#f4f1f7"] { background: var(--border2) !important; }
+
+/* searchbox / auth gradients — keep but darken overlay */
+[data-theme="dark"] .search-box { background: var(--card) !important; }
+[data-theme="dark"] .auth-card   { background: var(--card) !important; }
+
+/* nav bar in BusinessPage */
+[data-theme="dark"] [style*="rgba(250,248,251"] { background: var(--top-bg) !important; }
+
+/* hours box, settings box, hours grid */
+[data-theme="dark"] [style*="background:\"#fff\""],
+[data-theme="dark"] [style*="background: #fff"] { background: var(--card) !important; }
+
+/* filter buttons */
+[data-theme="dark"] .panel-tabs { background: var(--bg) !important; }
+
+/* Select dropdown */
+[data-theme="dark"] [role="listbox"] { background: var(--card) !important; border-color: var(--border) !important; }
+[data-theme="dark"] [role="option"]:hover,
+[data-theme="dark"] [role="option"][aria-selected="true"] { background: var(--border2) !important; }
+
+/* yellow verify banner stays visible */
+[data-theme="dark"] [style*="background: #fef3c7"] { background: #3a2e00 !important; border-color: #5a4500 !important; }
+[data-theme="dark"] [style*="color: #92400e"] { color: #fbbf24 !important; }
+
+/* error banner */
+[data-theme="dark"] [style*="background:#fef2f2"] { background: #2d1010 !important; }
+[data-theme="dark"] [style*="color:#dc2626"] { color: #f87171 !important; }
+
+/* green done badge */
+[data-theme="dark"] [style*="background:#d1fae5"] { background: #0a2a1e !important; }
+[data-theme="dark"] [style*="color:#065f46"]  { color: #34d399 !important; }
+
+/* pending yellow badge */
+[data-theme="dark"] [style*="background:#fef3c7"] { background: #2d2200 !important; }
+[data-theme="dark"] [style*="color:#92400e"]  { color: #fbbf24 !important; }
+
+/* no-show orange */
+[data-theme="dark"] [style*="background:#ffedd5"] { background: #2a1500 !important; }
+[data-theme="dark"] [style*="color:#7c2d12"]  { color: #fb923c !important; }
+
+/* "hidden" review badge */
+[data-theme="dark"] [style*="background:#fee2e2"] { background: #2d1010 !important; }
+
+/* business cards in marketplace */
+[data-theme="dark"] .biz-card,
+[data-theme="dark"] [style*="background:#fff"][style*="borderRadius:18px"] { background: var(--card) !important; }
+
+/* ───── Panel tabs ───── */
+.panel-tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:8px;padding:0 20px 8px}
+.panel-tabs::-webkit-scrollbar{display:none}
+.panel-tab{white-space:nowrap;flex-shrink:0}
+
+/* ───── Slot grid ───── */
+.slot-grid{display:grid;gap:8px}
+
+/* ───── Business card hover ───── */
+@media(hover:hover){
+  .biz-card:hover{transform:translateY(-3px);box-shadow:0 8px 32px #1b142020}
 }
 
-/* ---- Mobile: marketplace search box ---- */
+/* ═══════════ MOBILE ≤ 480px ═══════════ */
 @media(max-width:480px){
-  .search-row{flex-direction:column}
-  .cat-row{gap:4px}
-  .cat-chip{padding:6px 10px;font-size:12px}
+
+  /* Marketplace hero */
+  .hero-title{font-size:26px!important}
+  .search-box{border-radius:16px!important;padding:16px!important}
+  .search-row{flex-direction:column!important;gap:6px!important}
+  .search-field{min-width:unset!important;width:100%!important}
+  .cat-row{gap:4px!important;padding-bottom:4px;overflow-x:auto;flex-wrap:nowrap!important;scrollbar-width:none}
+  .cat-row::-webkit-scrollbar{display:none}
+  .cat-chip{white-space:nowrap;flex-shrink:0;padding:6px 10px!important;font-size:12px!important}
+
+  /* Panel */
+  .panel-app{max-width:100%!important}
+  .panel-header{padding:12px 14px!important}
+  .panel-body{padding:8px 12px 40px!important}
+  .panel-tab{padding:9px 12px!important;font-size:13px!important;gap:5px!important}
+
+  /* Appointment rows */
+  .appt-row{padding:12px!important;gap:8px!important}
+  .appt-time{min-width:44px!important}
+  .appt-actions{flex-direction:column!important;align-items:flex-end!important;gap:4px!important}
+
+  /* Profile hours grid */
+  .hours-grid{padding:8px 10px!important}
+  .hours-row{gap:6px!important}
+  .time-input{width:70px!important;padding:5px 6px!important;font-size:12px!important}
+
+  /* Service rows */
+  .svc-row{padding:12px!important;gap:8px!important}
+
+  /* Modals — sheet at bottom */
+  .modal-sheet{
+    border-bottom-left-radius:0!important;
+    border-bottom-right-radius:0!important;
+    max-width:100%!important;
+    width:100%!important;
+    margin:0!important;
+    padding:18px 16px 32px!important;
+    max-height:90vh!important;
+  }
+  .overlay-sheet{align-items:flex-end!important;padding:0!important}
+
+  /* Booking wizard */
+  .wizard-sheet{
+    border-bottom-left-radius:0!important;
+    border-bottom-right-radius:0!important;
+    max-width:100%!important;
+    width:100%!important;
+    max-height:90vh!important;
+    padding:16px 16px 32px!important;
+  }
+
+  /* Date chips — horizontal scroll */
+  .date-picker{
+    flex-wrap:nowrap!important;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding-bottom:4px;
+    gap:6px!important;
+  }
+  .date-picker::-webkit-scrollbar{display:none}
+  .date-chip{flex-shrink:0!important;min-width:48px!important}
+
+  /* Slot grid — 3 cols */
+  .slot-grid{grid-template-columns:repeat(3,1fr)!important}
+  .slot-btn{min-height:44px!important;font-size:13px!important}
+
+  /* Business page banner */
+  .biz-banner{height:180px!important}
+  .biz-body{padding:16px!important}
+
+  /* Business page services */
+  .svc-option{flex-direction:column!important;align-items:flex-start!important;gap:6px!important}
+  .svc-option-price{align-self:flex-end!important}
+
+  /* Auth card */
+  .auth-card{padding:22px 16px!important;border-radius:18px!important}
+  .cat-grid{grid-template-columns:1fr 1fr!important}
+
+  /* Section headers */
+  .section-head{flex-direction:column!important;align-items:flex-start!important;gap:8px!important}
+  .section-head .add-btn{width:100%!important;justify-content:center!important}
+
+  /* Waitlist/review rows */
+  .waitlist-row{flex-wrap:wrap!important}
+  .review-row{flex-direction:column!important;gap:8px!important}
+
+  /* Footer */
+  .page-footer{font-size:11.5px!important;padding:14px 12px!important}
+  .page-footer span{display:block;margin:2px 0!important}
 }
 
-/* ---- Mobile: panel tabs scroll ---- */
-@media(max-width:520px){
-  .panel-tabs{overflow-x:auto;gap:4px;padding-bottom:4px;scrollbar-width:none}
-  .panel-tabs::-webkit-scrollbar{display:none}
-  .panel-tab{white-space:nowrap;padding:8px 12px;font-size:13px}
+/* ═══════════ MOBILE ≤ 640px ═══════════ */
+@media(max-width:640px){
+
+  /* Panel header logo row */
+  .panel-logo-name{font-size:14px!important}
+
+  /* Business grid → single col */
+  .biz-grid{grid-template-columns:1fr!important}
+
+  /* Profile photo row */
+  .photo-tile{width:60px!important;height:60px!important}
+  .photo-add{width:60px!important;height:60px!important}
+
+  /* Settings box */
+  .set-row{flex-direction:column!important;align-items:flex-start!important;gap:10px!important}
+  .set-row .rem-chips{flex-wrap:wrap!important}
+
+  /* Banner swatches */
+  .banner-swatch{width:36px!important;height:26px!important}
+
+  /* Service modal */
+  .svc-duration-row{flex-direction:column!important}
 }
 
-/* ---- Touch targets ---- */
-@media(max-width:768px){
-  button,a,[role="button"]{min-height:44px}
-  .slot-btn{min-height:44px}
-  .lang-trigger{min-height:36px}
+/* ═══════════ Touch targets ═══════════ */
+@media(hover:none){
+  .mini-btn{min-width:36px!important;min-height:36px!important}
+  .icon-btn{min-width:40px!important;min-height:40px!important}
+  .primary-btn{min-height:50px!important}
+  .slot-btn{min-height:48px!important}
+  .date-chip{min-height:58px!important}
 }

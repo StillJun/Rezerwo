@@ -9,6 +9,7 @@ import { navigate } from "./App";
 import type { PublicBusiness, PublicService, BookingResult, Review } from "./types";
 import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
+import { ThemeToggle } from "./components/ThemeToggle";
 import { CategoryIcon } from "./icons/CategoryIcon";
 
 const ACC = "#7c3aed";
@@ -105,8 +106,8 @@ function BookingWizard({ biz, initService, onClose }: {
   const totalSteps = 4;
 
   return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={S.wizard} className="rise" onClick={e=>e.stopPropagation()}>
+    <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
+      <div style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         {/* wizard header */}
         <div style={S.wizHead}>
           {step!=="done" && stepNum>1 && (
@@ -142,7 +143,7 @@ function BookingWizard({ biz, initService, onClose }: {
                 {grp && Object.keys(groups).length>1 && <div style={S.grpLabel}>{grp}</div>}
                 <div style={S.svcList}>
                   {items.map(s=>(
-                    <button key={s.id} style={S.svcOption}
+                    <button key={s.id} className="svc-option" style={S.svcOption}
                       onClick={()=>{ set("service",s); set("slot",null); setStep("date"); }}>
                       <div style={{flex:1,textAlign:"left"}}>
                         <div style={{fontSize:14,fontWeight:700}}>{s.name}</div>
@@ -172,7 +173,7 @@ function BookingWizard({ biz, initService, onClose }: {
               <span style={{color:"#a8a2b0"}}> · {state.service.duration} min · {state.service.price} zł</span>
             </div>
 
-            <div style={S.datePicker}>
+            <div style={S.datePicker} className="date-picker">
               {Array.from({length:14},(_,i)=>{
                 const d = addDays(isoToday(),i);
                 const dt = new Date(d+"T00:00:00");
@@ -180,7 +181,7 @@ function BookingWizard({ biz, initService, onClose }: {
                 const months  = t.months.slice(1);
                 const selected = state.date===d;
                 return (
-                  <button key={d} style={{...S.dateChip,...(selected?S.dateChipOn:{})}}
+                  <button key={d} className="date-chip" style={{...S.dateChip,...(selected?S.dateChipOn:{})}}
                     onClick={()=>{ set("date",d); setStep("slots"); }}>
                     <span style={{fontSize:11,opacity:0.7}}>{dayNames[dt.getDay()]}</span>
                     <span style={{fontSize:17,fontWeight:800,lineHeight:1}}>{dt.getDate()}</span>
@@ -211,9 +212,9 @@ function BookingWizard({ biz, initService, onClose }: {
               </div>
             )}
             {!slotsLoading && slots.mins.length>0 && (
-              <div style={S.slotGrid}>
+              <div style={S.slotGrid} className="slot-grid">
                 {slots.mins.map((m,i)=>(
-                  <button key={m} style={{...S.slotBtn,...(state.slot===m?S.slotBtnOn:{})}}
+                  <button key={m} className="slot-btn" style={{...S.slotBtn,...(state.slot===m?S.slotBtnOn:{})}}
                     onClick={()=>{ set("slot",m); setStep("details"); }}>
                     {slots.times[i]}
                   </button>
@@ -305,8 +306,8 @@ function ServiceRequestModal({ biz, onClose }: { biz: PublicBusiness; onClose: (
   };
 
   return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={S.wizard} className="rise" onClick={e=>e.stopPropagation()}>
+    <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
+      <div style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.wizHead}>
           <div style={{flex:1,fontWeight:800,fontSize:16}}>{t.askTitle}</div>
           <button style={S.closeBtn} onClick={onClose}><X size={18}/></button>
@@ -461,8 +462,8 @@ function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service
   };
 
   return (
-    <div style={S.overlay} onClick={onClose}>
-      <div style={S.wizard} className="rise" onClick={e=>e.stopPropagation()}>
+    <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
+      <div style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.wizHead}>
           <div style={{flex:1,fontWeight:800,fontSize:16}}>{t.waitlistTitle}</div>
           <button style={S.closeBtn} onClick={onClose}><X size={18}/></button>
@@ -535,11 +536,14 @@ export default function BusinessPage({ slug }: { slug: string }) {
         <button style={S.navBack} onClick={()=>navigate("/")}>
           <ArrowLeft size={16}/> {t.back}
         </button>
-        <LangDropdown/>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <ThemeToggle/>
+          <LangDropdown/>
+        </div>
       </div>
 
       {/* banner */}
-      <div style={{...S.banner,background:BANNERS[biz.banner]||BANNERS.violet}}>
+      <div className="biz-banner" style={{...S.banner,background:BANNERS[biz.banner]||BANNERS.violet}}>
         {biz.photos && biz.photos.length>0 && (
           <img src={biz.photos[photoIdx]} alt="" style={S.bannerPhoto}
             onError={e=>(e.currentTarget.style.display="none")}/>
