@@ -5,6 +5,7 @@ export interface Business {
   address: string; phone: string; instagram: string; about: string; banner: string;
   hours: Record<string, [string, string]>; photos: string[];
   confirmRequired: boolean; reminderHours: number[]; verified: boolean;
+  status: "pending" | "approved" | "rejected";
 }
 
 export interface Service {

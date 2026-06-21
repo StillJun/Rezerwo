@@ -269,6 +269,21 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
 /* ========== PROFILE COMPLETENESS ========== */
 function ProfileCompleteness({ biz, onGo }: { biz: Business; onGo: () => void }) {
+  if (biz.status === "rejected") {
+    return (
+      <div style={{ background: "#fee2e2", borderBottom: "1px solid #fca5a5", padding: "10px 16px", fontSize: 13, color: "#dc2626" }}>
+        ❌ Twój profil został odrzucony przez administratora. Skontaktuj się z pomocą techniczną.
+      </div>
+    );
+  }
+  if (biz.status === "pending") {
+    return (
+      <div style={{ background: "#fef3c7", borderBottom: "1px solid #fcd34d", padding: "10px 16px", fontSize: 13, color: "#92400e" }}>
+        ⏳ Twój profil oczekuje na zatwierdzenie przez administratora — nie jest jeszcze widoczny w wyszukiwarce.
+      </div>
+    );
+  }
+
   const missing: string[] = [];
   if (!biz.city)    missing.push("miasto");
   if (!biz.address) missing.push("adres");

@@ -11,6 +11,9 @@ import { startReminderScheduler, notifyOwnerNewBooking, sendVerificationEmail } 
 
 const app = express();
 
+// Trust proxy (Render/Vercel)
+app.set("trust proxy", 1);
+
 // Security headers
 app.use(helmet({ contentSecurityPolicy: false }));
 
@@ -41,6 +44,12 @@ app.use("/api/", limiter);
 // Stricter limit for auth endpoints (prevent brute-force)
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 app.use("/api/auth/", authLimiter);
+
+// Register: 5 per hour per IP
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele prób rejestracji. Spróbuj za godzinę." } });
+
+// Booking: 10 per hour per IP
+const bookLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele rezerwacji z tego adresu IP. Spróbuj za godzinę." } });
 
 /* ---------- reference data ---------- */
 const CATEGORIES = [
@@ -168,6 +177,7 @@ const bizClient = (b) => ({
   instagram: b.instagram, about: b.about, banner: b.banner,
   hours: b.hours, photos: b.photos, confirmRequired: b.confirm_required,
   reminderHours: b.reminder_hours, verified: b.verified,
+  status: b.status || "approved",
 });
 const publicBizClient = (b) => ({
   id: Number(b.id), slug: b.slug, name: b.name, category: b.category,
@@ -197,11 +207,14 @@ const apptClient = (a) => ({
 });
 
 /* ---------- auth ---------- */
-app.post("/api/auth/register", async (req, res) => {
+app.post("/api/auth/register", registerLimiter, async (req, res) => {
   try {
     const { email, password, businessName, category = "barber" } = req.body || {};
+    if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return res.status(400).json({ error: "Podaj prawidłowy email" });
+    if (!businessName || typeof businessName !== "string" || businessName.trim().length < 2 || businessName.length > 100)
+      return res.status(400).json({ error: "Nazwa firmy musi mieć 2-100 znaków" });
     const pwErr = validatePassword(password);
-    if (!email || !businessName) return res.status(400).json({ error: "Email i nazwa firmy są wymagane" });
     if (pwErr) return res.status(400).json({ error: pwErr });
     const [exists] = await q("SELECT id FROM owners WHERE email=$1", [email]);
     if (exists) return res.status(409).json({ error: "Ten email jest już zarejestrowany" });
@@ -454,11 +467,18 @@ app.get("/api/public/businesses/:slug/slots", async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
-app.post("/api/public/businesses/:slug/book", async (req, res) => {
+app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
   try {
     const { service_id, client_name, client_phone, client_email = "", comment = "", date, start_min } = req.body || {};
     if (!service_id || !client_name || !client_phone || !date || start_min == null)
       return res.status(400).json({ error: "Wypełnij wszystkie wymagane pola" });
+    if (typeof client_name !== "string" || client_name.trim().length < 2 || client_name.length > 100)
+      return res.status(400).json({ error: "Podaj imię i nazwisko (2-100 znaków)" });
+    const phone = String(client_phone).replace(/\s/g, "");
+    if (!/^\+?[\d]{7,15}$/.test(phone))
+      return res.status(400).json({ error: "Podaj prawidłowy numer telefonu" });
+    if (comment && comment.length > 500)
+      return res.status(400).json({ error: "Komentarz zbyt długi (max 500 znaków)" });
     const [b] = await q("SELECT * FROM businesses WHERE slug=$1", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
