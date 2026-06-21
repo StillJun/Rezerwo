@@ -260,6 +260,19 @@ export const pl = {
   p_profileSaved:      "Zapisano",
   p_profileSave:       "Zapisz profil",
   p_pickSelect:        "— wybierz —",
+  p_copyLink:          "Kopiuj link",
+  p_copied:            "Skopiowano!",
+  p_urlLabel:          "Twój link do profilu",
+  // widget
+  w_title:             "Twój link / widget",
+  w_sub:               "Udostępnij link do rezerwacji lub dodaj przycisk na swoją stronę.",
+  w_yourLink:          "Link do profilu",
+  w_copyLink:          "Kopiuj link",
+  w_btnCode:           "Kod przycisku",
+  w_copyCode:          "Kopiuj kod",
+  w_howTitle:          "Jak użyć?",
+  w_howInstagram:      "Instagram bio: wklej link w pole 'Strona' w ustawieniach profilu.",
+  w_howSite:           "Własna strona: wklej kod HTML w dowolne miejsce na stronie.",
 
   // marketplace: benefits
   benefit1:    "Rezerwacja online 24/7",

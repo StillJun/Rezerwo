@@ -824,6 +824,7 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const [meta, setMeta] = useState<Meta|null>(null);
   const [form, setForm] = useState<Business|null>(biz);
   const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
   useEffect(() => { setForm(biz); }, [biz]);
@@ -833,6 +834,11 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const save = async () => {
     const b = await api.saveBusiness(form);
     setBiz(b); setSaved(true); setTimeout(()=>setSaved(false),1800);
+  };
+  const profileUrl = form.slug ? `${window.location.origin}/${form.slug}` : "";
+  const copyLink = () => {
+    if (!profileUrl) return;
+    navigator.clipboard.writeText(profileUrl).then(() => { setCopied(true); setTimeout(()=>setCopied(false),2000); });
   };
   const districts = meta.cities[form.city]||[];
   const toggleReminder = (h: number) =>
@@ -887,17 +893,23 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       <label style={S.lbl}>{t.p_fieldName}</label>
       <input style={S.input} value={form.name} onChange={e=>set("name",e.target.value)}/>
 
-      <label style={S.lbl}>URL profilu</label>
+      <label style={S.lbl}>{t.p_urlLabel}</label>
+      {profileUrl && (
+        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,background:"#f3eefe",borderRadius:12,padding:"10px 14px"}}>
+          <span style={{flex:1,fontSize:13,color:"#7c3aed",fontWeight:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" as const}}>{profileUrl}</span>
+          <button onClick={copyLink} style={{flexShrink:0,border:"none",background:"transparent",cursor:"pointer",color:"#7c3aed",fontSize:12,fontWeight:700,fontFamily:font,padding:"2px 0"}}>
+            {copied ? t.p_copied : t.p_copyLink}
+          </button>
+          <a href={`/${form.slug}`} target="_blank" rel="noreferrer"
+            style={{flexShrink:0,color:"#7c3aed",display:"flex"}} title="Podgląd">
+            <ExternalLink size={14}/>
+          </a>
+        </div>
+      )}
       <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
-        <span style={{fontSize:13,color:"#a8a2b0",flexShrink:0}}>rezerwo.app/</span>
+        <span style={{fontSize:13,color:"#a8a2b0",flexShrink:0}}>{window.location.origin}/</span>
         <input style={{...S.input,marginBottom:0,flex:1}} value={form.slug||""} onChange={e=>set("slug",e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,""))}
           placeholder="twoj-salon"/>
-        {form.slug && (
-          <a href={`/${form.slug}`} target="_blank" rel="noreferrer"
-            style={{...S.iconBtn,textDecoration:"none",color:"#7c3aed",flexShrink:0}} title="Podgląd">
-            <ExternalLink size={15}/>
-          </a>
-        )}
       </div>
 
       <label style={S.lbl}>{t.p_fieldCategory}</label>
