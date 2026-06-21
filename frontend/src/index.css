@@ -1,4 +1,4 @@
-/* ═══════════ CSS VARIABLES — light / dark ═══════════ */
+/* ═══════════ CSS VARIABLES ═══════════ */
 :root {
   --bg:         #faf8fb;
   --bg2:        #f4f1f7;
@@ -16,22 +16,6 @@
   --top-bg:     rgba(250,248,251,.95);
 }
 
-[data-theme="dark"] {
-  --bg:         #0f0d17;
-  --bg2:        #17142200;
-  --card:       #1a1728;
-  --card2:      #131020;
-  --border:     #2e2840;
-  --border2:    #231e30;
-  --text:       #f0ecf8;
-  --text-muted: #9b95aa;
-  --text-dim:   #6b6478;
-  --text-vdim:  #413c50;
-  --shadow:     0 2px 14px #00000030;
-  --shadow-lg:  0 8px 32px #00000044;
-  --top-bg:     rgba(15,13,23,.95);
-}
-
 /* ═══════════ BASE ═══════════ */
 *{box-sizing:border-box}
 html,body,#root{margin:0;min-height:100%;height:auto}
@@ -40,90 +24,6 @@ input::placeholder,textarea::placeholder{color:#b8b2c0}
 .rise{animation:rise .3s ease both}@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 button:disabled{opacity:.5;cursor:not-allowed}
 img,video{max-width:100%}
-
-/* ═══════════ DARK MODE OVERRIDES ═══════════ */
-[data-theme="dark"] body { background: var(--bg) !important; color: var(--text) !important; }
-
-/* page backgrounds */
-[data-theme="dark"] .panel-app,
-[data-theme="dark"] [style*="background:#faf8fb"],
-[data-theme="dark"] [style*="background: #faf8fb"] { background: var(--bg) !important; }
-
-/* sticky headers */
-[data-theme="dark"] .panel-header { background: var(--top-bg) !important; border-bottom: 1px solid var(--border); }
-
-/* cards — white → dark */
-[data-theme="dark"] [style*="background:#fff"],
-[data-theme="dark"] [style*="background: #fff"],
-[data-theme="dark"] [style*="background:\"#fff\""] { background: var(--card) !important; }
-
-/* inputs */
-[data-theme="dark"] input,
-[data-theme="dark"] textarea,
-[data-theme="dark"] [style*="background:#faf8fb"] { background: var(--card2) !important; color: var(--text) !important; border-color: var(--border) !important; }
-
-/* borders */
-[data-theme="dark"] [style*="border:\"1.5px solid #ece8f0\""],
-[data-theme="dark"] [style*="borderBottom:\"1px solid #f4f1f7\""],
-[data-theme="dark"] [style*="border-bottom:1px solid #f4f1f7"] { border-color: var(--border2) !important; }
-
-/* text colors */
-[data-theme="dark"] [style*="color:#1b1420"] { color: var(--text) !important; }
-[data-theme="dark"] [style*="color:#52525b"] { color: var(--text-muted) !important; }
-[data-theme="dark"] [style*="color:#71717a"] { color: var(--text-muted) !important; }
-[data-theme="dark"] [style*="color:#a8a2b0"] { color: var(--text-dim) !important; }
-[data-theme="dark"] [style*="color:#c4bdd0"],
-[data-theme="dark"] [style*="color:#c4bece"] { color: var(--text-vdim) !important; }
-[data-theme="dark"] [style*="color:#b8b2c0"] { color: var(--text-dim) !important; }
-
-/* hover backgrounds */
-[data-theme="dark"] [style*="background:#f4f1f7"] { background: var(--border2) !important; }
-
-/* searchbox / auth gradients — keep but darken overlay */
-[data-theme="dark"] .search-box { background: var(--card) !important; }
-[data-theme="dark"] .auth-card   { background: var(--card) !important; }
-
-/* nav bar in BusinessPage */
-[data-theme="dark"] [style*="rgba(250,248,251"] { background: var(--top-bg) !important; }
-
-/* hours box, settings box, hours grid */
-[data-theme="dark"] [style*="background:\"#fff\""],
-[data-theme="dark"] [style*="background: #fff"] { background: var(--card) !important; }
-
-/* filter buttons */
-[data-theme="dark"] .panel-tabs { background: var(--bg) !important; }
-
-/* Select dropdown */
-[data-theme="dark"] [role="listbox"] { background: var(--card) !important; border-color: var(--border) !important; }
-[data-theme="dark"] [role="option"]:hover,
-[data-theme="dark"] [role="option"][aria-selected="true"] { background: var(--border2) !important; }
-
-/* yellow verify banner stays visible */
-[data-theme="dark"] [style*="background: #fef3c7"] { background: #3a2e00 !important; border-color: #5a4500 !important; }
-[data-theme="dark"] [style*="color: #92400e"] { color: #fbbf24 !important; }
-
-/* error banner */
-[data-theme="dark"] [style*="background:#fef2f2"] { background: #2d1010 !important; }
-[data-theme="dark"] [style*="color:#dc2626"] { color: #f87171 !important; }
-
-/* green done badge */
-[data-theme="dark"] [style*="background:#d1fae5"] { background: #0a2a1e !important; }
-[data-theme="dark"] [style*="color:#065f46"]  { color: #34d399 !important; }
-
-/* pending yellow badge */
-[data-theme="dark"] [style*="background:#fef3c7"] { background: #2d2200 !important; }
-[data-theme="dark"] [style*="color:#92400e"]  { color: #fbbf24 !important; }
-
-/* no-show orange */
-[data-theme="dark"] [style*="background:#ffedd5"] { background: #2a1500 !important; }
-[data-theme="dark"] [style*="color:#7c2d12"]  { color: #fb923c !important; }
-
-/* "hidden" review badge */
-[data-theme="dark"] [style*="background:#fee2e2"] { background: #2d1010 !important; }
-
-/* business cards in marketplace */
-[data-theme="dark"] .biz-card,
-[data-theme="dark"] [style*="background:#fff"][style*="borderRadius:18px"] { background: var(--card) !important; }
 
 /* ───── Panel tabs ───── */
 .panel-tabs{display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:8px;padding:0 20px 8px}

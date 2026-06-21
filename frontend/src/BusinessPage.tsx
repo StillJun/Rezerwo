@@ -9,7 +9,6 @@ import { navigate } from "./App";
 import type { PublicBusiness, PublicService, BookingResult, Review } from "./types";
 import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { CategoryIcon } from "./icons/CategoryIcon";
 
 const ACC = "#7c3aed";
@@ -537,7 +536,6 @@ export default function BusinessPage({ slug }: { slug: string }) {
           <ArrowLeft size={16}/> {t.back}
         </button>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <ThemeToggle/>
           <LangDropdown/>
         </div>
       </div>

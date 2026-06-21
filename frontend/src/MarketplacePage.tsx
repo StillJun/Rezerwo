@@ -9,7 +9,6 @@ import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
 import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
-import { ThemeToggle } from "./components/ThemeToggle";
 
 const ACC = "#7c3aed";
 const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
@@ -59,7 +58,6 @@ export default function MarketplacePage() {
           <span style={{fontSize:20,fontWeight:800,letterSpacing:-0.5}}>Rezerwo</span>
         </div>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          <ThemeToggle/>
           <LangDropdown/>
           <button style={S.panelBtn} onClick={()=>navigate("/panel")}>
             <Store size={14}/> {t.panelOwner.split(" ")[0]}

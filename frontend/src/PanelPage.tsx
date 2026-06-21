@@ -12,7 +12,6 @@ import type { Business, Service, Meta, Appointment, Review } from "./types";
 import { useTranslation } from "./i18n";
 import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
-import { ThemeToggle } from "./components/ThemeToggle";
 import { CategoryIcon } from "./icons/CategoryIcon";
 import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
@@ -206,7 +205,6 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <ThemeToggle/>
           <LangDropdown/>
           {biz?.slug && (
             <a href={`/${biz.slug}`} target="_blank" rel="noreferrer"
