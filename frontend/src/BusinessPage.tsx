@@ -11,8 +11,14 @@ import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
 
-const ACC = "#7c3aed";
-const font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,system-ui,sans-serif";
+const ACC  = "#7c3aed";
+const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
+const font = "'Inter',-apple-system,BlinkMacSystemFont,system-ui,sans-serif";
+const MESH = [
+  "radial-gradient(ellipse 900px 600px at 12% 35%, rgba(124,58,237,.045) 0%, transparent 65%)",
+  "radial-gradient(ellipse 700px 500px at 88% 72%, rgba(224,57,158,.032) 0%, transparent 60%)",
+  "#fbf7f4",
+].join(",");
 const BANNERS: Record<string, string> = {
   violet: "linear-gradient(135deg,#a18cd1,#fbc2eb)",
   rose:   "linear-gradient(135deg,#ff9a9e,#fecfef)",
