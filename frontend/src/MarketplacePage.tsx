@@ -208,7 +208,7 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
   const catLabel = t.catLabels[cat] ?? cat;
 
   return (
-    <div style={S.card} onClick={()=>navigate(`/${biz.slug}`)}>
+    <div className="biz-card" style={S.card} onClick={()=>navigate(`/${biz.slug}`)}>
       <div style={{...S.cardBanner,background:BANNERS[biz.banner]||BANNERS.violet}}/>
       <div style={S.cardBody}>
         <div style={S.cardTop}>
@@ -227,6 +227,12 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
           <p style={S.cardAbout}>{biz.about.length>90?biz.about.slice(0,88)+"…":biz.about}</p>
         )}
         <div style={S.cardFooter}>
+          {biz.avgRating && (
+            <span style={S.ratingBadge}>
+              ★ {biz.avgRating.toFixed(1)}
+              {(biz.reviewCount ?? 0) > 0 && <span style={{opacity:.7,fontSize:11}}> ({biz.reviewCount})</span>}
+            </span>
+          )}
           <span style={S.bookBtn}>{t.book} <ChevronRight size={14}/></span>
         </div>
       </div>
@@ -267,7 +273,8 @@ const S: Record<string, CSSProperties> = {
   cardMeta: {fontSize:12.5,color:"#71717a"},
   verBadge: {color:ACC,display:"flex",marginTop:2},
   cardAbout:{fontSize:13,color:"#71717a",margin:"6px 0",lineHeight:1.5},
-  cardFooter:{marginTop:10,display:"flex",justifyContent:"flex-end"},
+  cardFooter:{marginTop:10,display:"flex",justifyContent:"space-between",alignItems:"center"},
+  ratingBadge:{display:"flex",alignItems:"center",gap:3,fontSize:13,fontWeight:700,color:"#f59e0b"},
   bookBtn:  {display:"flex",alignItems:"center",gap:4,color:ACC,fontWeight:700,fontSize:13.5},
 
   footer:   {textAlign:"center" as const,padding:"20px",fontSize:12.5,color:"#a8a2b0"},

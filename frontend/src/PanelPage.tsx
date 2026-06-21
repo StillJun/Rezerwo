@@ -234,6 +234,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       )}
 
+      {biz && emailVerified !== false && <ProfileCompleteness biz={biz} onGo={() => setTab("profile")}/>}
+
       <div style={S.tabs} className="panel-tabs">
         <button className="panel-tab" style={{...S.tab,...(tab==="appointments"?S.tabOn:{})}} onClick={()=>setTab("appointments")}>
           <Calendar size={15}/> {t.p_tabAppointments}
@@ -259,6 +261,32 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         {tab==="waitlist"     && biz && <WaitlistTab/>}
         {tab==="profile"      && <ProfileTab biz={biz} setBiz={setBiz}/>}
       </div>
+    </div>
+  );
+}
+
+/* ========== PROFILE COMPLETENESS ========== */
+function ProfileCompleteness({ biz, onGo }: { biz: Business; onGo: () => void }) {
+  const missing: string[] = [];
+  if (!biz.city)    missing.push("miasto");
+  if (!biz.address) missing.push("adres");
+  if (!biz.phone)   missing.push("telefon");
+  if (!biz.about)   missing.push("opis");
+  if (!biz.hours || !Object.keys(biz.hours).length) missing.push("godziny pracy");
+
+  if (!missing.length) return null;
+
+  return (
+    <div style={{ background: "#ede9fe", borderBottom: "1px solid #ddd6fe", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const }}>
+      <span style={{ fontSize: 13, color: "#5b21b6", flex: 1 }}>
+        📋 Uzupełnij profil, aby być widocznym: <strong>{missing.join(", ")}</strong>
+      </span>
+      <button
+        onClick={onGo}
+        style={{ background: "#7c3aed", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+      >
+        Uzupełnij →
+      </button>
     </div>
   );
 }

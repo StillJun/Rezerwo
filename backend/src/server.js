@@ -405,8 +405,12 @@ app.put("/api/clients/:phone/note", requireAuth, async (req, res) => {
 app.get("/api/public/businesses", async (req, res) => {
   try {
     const { city, district, category, q: nameQ } = req.query;
-    let sql = `SELECT b.* FROM businesses b
+    let sql = `SELECT b.*,
+        ROUND(AVG(r.rating)::numeric, 1) AS avg_rating,
+        COUNT(r.id)::int AS review_count
+      FROM businesses b
       JOIN owners o ON o.id = b.owner_id
+      LEFT JOIN reviews r ON r.business_id = b.id AND r.hidden = FALSE
       WHERE b.slug IS NOT NULL
         AND o.email_verified = TRUE
         AND b.city != ''
@@ -417,9 +421,9 @@ app.get("/api/public/businesses", async (req, res) => {
     if (district) { sql += ` AND b.district=$${params.length+1}`; params.push(district); }
     if (category) { sql += ` AND b.category=$${params.length+1}`; params.push(category); }
     if (nameQ) { sql += ` AND b.name ILIKE $${params.length+1}`; params.push(`%${nameQ.trim()}%`); }
-    sql += " ORDER BY b.verified DESC, b.created_at ASC";
+    sql += " GROUP BY b.id ORDER BY b.verified DESC, avg_rating DESC NULLS LAST, b.created_at ASC";
     const rows = await q(sql, params);
-    res.json(rows.map(publicBizClient));
+    res.json(rows.map(r => ({ ...publicBizClient(r), avgRating: r.avg_rating ? Number(r.avg_rating) : null, reviewCount: Number(r.review_count) || 0 })));
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 

@@ -23,6 +23,7 @@ export interface PublicBusiness {
   instagram: string; about: string; banner: string;
   hours: Record<string, [string, string]>; photos: string[];
   verified: boolean; services?: PublicService[];
+  avgRating?: number | null; reviewCount?: number;
 }
 
 export interface PublicService {
