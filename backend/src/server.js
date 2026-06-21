@@ -239,9 +239,9 @@ app.post("/api/auth/logout", (_req, res) => { clearAuthCookie(res); res.json({ o
 
 app.get("/api/auth/me", requireAuth, async (req, res) => {
   try {
-    const [owner] = await q("SELECT id, email, email_verified FROM owners WHERE id=$1", [req.user.id]);
+    const [owner] = await q("SELECT id, email, email_verified, role FROM owners WHERE id=$1", [req.user.id]);
     if (!owner) return res.status(401).json({ error: "Sesja wygasła" });
-    res.json({ user: { id: Number(owner.id), email: owner.email, emailVerified: owner.email_verified } });
+    res.json({ user: { id: Number(owner.id), email: owner.email, emailVerified: owner.email_verified, role: owner.role || "owner" } });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
@@ -413,6 +413,7 @@ app.get("/api/public/businesses", async (req, res) => {
       LEFT JOIN reviews r ON r.business_id = b.id AND r.hidden = FALSE
       WHERE b.slug IS NOT NULL
         AND o.email_verified = TRUE
+        AND b.status = 'approved'
         AND b.city != ''
         AND b.address != ''
         AND EXISTS (SELECT 1 FROM services s WHERE s.business_id = b.id)`;
@@ -595,6 +596,74 @@ app.post("/api/public/businesses/:slug/service-request", async (req, res) => {
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     await q("INSERT INTO service_requests (business_id, client_phone, text) VALUES ($1,$2,$3)", [b.id, client_phone.trim(), text.trim()]);
     res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+/* ── Admin middleware ── */
+async function requireAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ error: "Nieautoryzowany" });
+  const [owner] = await q("SELECT role FROM owners WHERE id=$1", [req.user.id]);
+  if (!owner || owner.role !== "admin") return res.status(403).json({ error: "Brak uprawnień" });
+  next();
+}
+
+/* ── Admin routes ── */
+app.get("/api/admin/businesses", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.query;
+    let sql = `SELECT b.*, o.email AS owner_email FROM businesses b JOIN owners o ON o.id=b.owner_id`;
+    const params = [];
+    if (status) { sql += ` WHERE b.status=$1`; params.push(status); }
+    sql += " ORDER BY b.created_at DESC";
+    const rows = await q(sql, params);
+    res.json(rows.map(r => ({
+      id: Number(r.id), slug: r.slug, name: r.name, category: r.category,
+      city: r.city, status: r.status, verified: r.verified, ownerEmail: r.owner_email,
+      createdAt: r.created_at,
+    })));
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+app.post("/api/admin/businesses/:id/approve", requireAuth, requireAdmin, async (req, res) => {
+  await q("UPDATE businesses SET status='approved' WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+app.post("/api/admin/businesses/:id/reject", requireAuth, requireAdmin, async (req, res) => {
+  await q("UPDATE businesses SET status='rejected' WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+app.post("/api/admin/businesses/:id/verify", requireAuth, requireAdmin, async (req, res) => {
+  await q("UPDATE businesses SET verified=TRUE WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+app.post("/api/admin/businesses/:id/unverify", requireAuth, requireAdmin, async (req, res) => {
+  await q("UPDATE businesses SET verified=FALSE WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, async (req, res) => {
+  await q("DELETE FROM businesses WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+});
+
+app.get("/api/admin/stats", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const [oc] = await q("SELECT COUNT(*) AS cnt FROM owners");
+    const statuses = await q("SELECT status, COUNT(*) AS cnt FROM businesses GROUP BY status");
+    const [appts7] = await q(
+      "SELECT COUNT(*) AS cnt FROM appointments WHERE created_at >= now() - interval '7 days'"
+    );
+    res.json({
+      owners: Number(oc.cnt),
+      businesses: Object.fromEntries(statuses.map(r => [r.status, Number(r.cnt)])),
+      appointments7d: Number(appts7.cnt),
+    });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+app.get("/api/admin/feedback", requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const rows = await q("SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200");
+    res.json(rows.map(r => ({ id: Number(r.id), kind: r.kind, message: r.message, email: r.email, page: r.page, createdAt: r.created_at })));
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 

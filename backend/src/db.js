@@ -156,7 +156,12 @@ export async function initDb() {
   await pool.query(`ALTER TABLE owners ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
   await pool.query(`ALTER TABLE owners ADD COLUMN IF NOT EXISTS verification_token TEXT`).catch(() => {});
   // grandfather existing owners (created before email verification feature) as already verified
-  await pool.query(`UPDATE owners SET email_verified = TRUE WHERE verification_token IS NULL AND email_verified = FALSE`).catch(() => {});;
+  await pool.query(`UPDATE owners SET email_verified = TRUE WHERE verification_token IS NULL AND email_verified = FALSE`).catch(() => {});
+  // role + business status
+  await pool.query(`ALTER TABLE owners ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'owner'`).catch(() => {});
+  await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'approved'`).catch(() => {});
+  // grandfather existing businesses as approved
+  await pool.query(`UPDATE businesses SET status='approved' WHERE status IS NULL OR status=''`).catch(() => {});
 
   console.log("Database ready (tables checked/created)");
 }

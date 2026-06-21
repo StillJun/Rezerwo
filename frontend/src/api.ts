@@ -118,4 +118,17 @@ export const api = {
   /* feedback */
   submitFeedback: (data: { kind: string; message: string; email?: string; page?: string }) =>
     req<{ ok: boolean }>("/feedback", { method: "POST", body: JSON.stringify(data) }),
+
+  /* admin */
+  adminBusinesses: (status?: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    return req<{ id: number; slug: string; name: string; category: string; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string }[]>(`/admin/businesses${qs}`);
+  },
+  adminApprove:  (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/approve`,  { method: "POST" }),
+  adminReject:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/reject`,   { method: "POST" }),
+  adminVerify:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/verify`,   { method: "POST" }),
+  adminUnverify: (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/unverify`, { method: "POST" }),
+  adminDelete:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}`, { method: "DELETE" }),
+  adminStats:    () => req<{ owners: number; businesses: Record<string, number>; appointments7d: number }>("/admin/stats"),
+  adminFeedback: () => req<{ id: number; kind: string; message: string; email: string; page: string; createdAt: string }[]>("/admin/feedback"),
 };

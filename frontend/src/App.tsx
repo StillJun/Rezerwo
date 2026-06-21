@@ -4,6 +4,7 @@ import { FeedbackWidget } from "./components/FeedbackWidget";
 const PanelPage       = lazy(() => import("./PanelPage"));
 const MarketplacePage = lazy(() => import("./MarketplacePage"));
 const BusinessPage    = lazy(() => import("./BusinessPage"));
+const AdminPage       = lazy(() => import("./AdminPage"));
 const TermsPage       = lazy(() => import("./TermsPage"));
 const PrivacyPage     = lazy(() => import("./PrivacyPage"));
 const SupportPage     = lazy(() => import("./SupportPage"));
@@ -28,6 +29,7 @@ export default function App() {
     <>
       <Suspense fallback={<div style={{minHeight:"100vh",display:"grid",placeItems:"center",color:"#a8a2b0",fontFamily:"sans-serif"}}>…</div>}>
         {path === "/panel"        ? <PanelPage /> :
+         path === "/admin"       ? <AdminPage /> :
          path === "/"            ? <MarketplacePage /> :
          path === "/verify-email"? <VerifyEmailPage /> :
          path === "/regulamin"   ? <TermsPage /> :

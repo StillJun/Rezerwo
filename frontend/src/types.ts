@@ -1,4 +1,4 @@
-export interface User { id: number; email: string; emailVerified?: boolean; }
+export interface User { id: number; email: string; emailVerified?: boolean; role?: "owner" | "admin"; }
 
 export interface Business {
   id: number; slug: string; name: string; category: string; city: string; district: string;
