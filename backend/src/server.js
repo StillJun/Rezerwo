@@ -247,7 +247,7 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
       [email, hash, verToken]
     );
     const slug = await generateSlug(businessName);
-    await q("INSERT INTO businesses (owner_id, name, category, categories, slug) VALUES ($1,$2,$3,$4,$5)",
+    await q("INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved')",
       [owner.id, businessName, cats[0], cats, slug]);
     const safe = { id: Number(owner.id), email: owner.email };
     const token = signToken(safe);
@@ -339,7 +339,7 @@ app.post("/api/business", requireAuth, ah(async (req, res) => {
   if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
   const slug = await generateSlug(name.trim());
   const [row] = await q(
-    "INSERT INTO businesses (owner_id, name, category, categories, slug) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+    "INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *",
     [req.user.id, name.trim(), cats[0], cats, slug]
   );
   res.json(bizClient(row));
@@ -491,12 +491,14 @@ app.get("/api/public/businesses", async (req, res) => {
         AND b.status = 'approved'
         AND b.is_visible = TRUE
         AND b.city != ''
-        AND b.address != ''
         AND EXISTS (SELECT 1 FROM services s WHERE s.business_id = b.id)`;
     const params = [];
-    if (city) { sql += ` AND b.city=$${params.length+1}`; params.push(city); }
+    if (city) { sql += ` AND b.city ILIKE $${params.length+1}`; params.push(city); }
     if (district) { sql += ` AND b.district=$${params.length+1}`; params.push(district); }
-    if (category) { sql += ` AND $${params.length+1} = ANY(b.categories)`; params.push(category); }
+    if (category) {
+      sql += ` AND ($${params.length+1} = ANY(b.categories) OR (COALESCE(array_length(b.categories,1),0)=0 AND b.category=$${params.length+2}))`;
+      params.push(category, category);
+    }
     if (nameQ) { sql += ` AND b.name ILIKE $${params.length+1}`; params.push(`%${nameQ.trim()}%`); }
     sql += " GROUP BY b.id ORDER BY b.verified DESC, avg_rating DESC NULLS LAST, b.created_at ASC";
     const rows = await q(sql, params);
