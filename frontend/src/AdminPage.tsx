@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import type { CSSProperties } from "react";
-import { CheckCircle2, XCircle, BadgeCheck, BadgeX, Trash2, Store, BarChart2, MessageSquare, LogOut } from "lucide-react";
+import { CheckCircle2, XCircle, BadgeCheck, BadgeX, Trash2, Store, BarChart2, MessageSquare, LogOut, Eye, EyeOff } from "lucide-react";
 import { api } from "./api";
 import { navigate } from "./App";
 
@@ -13,7 +13,7 @@ const MESH = [
   "#fbf7f4",
 ].join(",");
 
-type BizRow = { id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string };
+type BizRow = { id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; isVisible: boolean; ownerEmail: string; createdAt: string };
 type Stats = { owners: number; businesses: Record<string, number>; appointments7d: number };
 type FbRow = { id: number; kind: string; message: string; email: string; page: string; createdAt: string };
 
@@ -126,6 +126,14 @@ function BizList({ status }: { status: "pending"|"approved"|"rejected" }) {
                 <XCircle size={13}/> Odrzuć
               </button>
             )}
+            {b.isVisible !== false
+              ? <button style={{...S.actBtn,color:"#71717a"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminHide(b.id))}>
+                  <EyeOff size={13}/> Ukryj w marketplace
+                </button>
+              : <button style={{...S.actBtn,color:"#059669"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminShow(b.id))}>
+                  <Eye size={13}/> Pokaż w marketplace
+                </button>
+            }
             <button style={{...S.actBtn,color:"#dc2626",borderColor:"#dc2626"}} disabled={busy===b.id}
               onClick={()=>{ if(confirm(`Usunąć "${b.name}"?`)) act(b.id,()=>api.adminDelete(b.id)); }}>
               <Trash2 size={13}/> Usuń

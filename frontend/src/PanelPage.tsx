@@ -190,6 +190,86 @@ function Auth({ onAuth }: { onAuth: () => void }) {
   );
 }
 
+/* ========== ONBOARDING ========== */
+function Onboarding({ onCreated, onLogout }: { onCreated: (b: Business) => void; onLogout: () => void }) {
+  const [name, setName] = useState("");
+  const [cats, setCats] = useState<string[]>([]);
+  const [metaCats, setMetaCats] = useState<Meta["categories"]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  useEffect(() => {
+    api.meta().then(m => { if (m?.categories) setMetaCats(m.categories); }).catch(() => {});
+  }, []);
+
+  const toggle = (id: string) =>
+    setCats(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]);
+
+  const submit = async () => {
+    if (name.trim().length < 2) { setErr("Nazwa musi mieć minimum 2 znaki."); return; }
+    if (cats.length === 0) { setErr("Wybierz co najmniej jedną kategorię."); return; }
+    setBusy(true); setErr("");
+    try {
+      const b = await api.createBusiness(name.trim(), cats);
+      onCreated(b);
+    } catch (e) {
+      setErr((e as Error).message);
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{minHeight:"100vh",display:"grid",placeItems:"center",background:MESH,fontFamily:font}}>
+      <div style={{width:"100%",maxWidth:440,margin:"0 auto",padding:"32px 20px"}}>
+        <div style={{background:"#fff",borderRadius:20,padding:"32px 28px",boxShadow:"0 4px 24px rgba(0,0,0,.07)"}}>
+          <div style={{textAlign:"center" as const,marginBottom:24}}>
+            <div style={{fontSize:40,marginBottom:8}}>✂️</div>
+            <div style={{fontSize:20,fontWeight:800,color:"#1a1320",marginBottom:6}}>Stwórz profil swojego salonu</div>
+            <div style={{fontSize:13.5,color:"#71717a",lineHeight:1.6}}>Uzupełnij kilka danych, aby zacząć przyjmować rezerwacje.</div>
+          </div>
+          <div style={{marginBottom:16}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:"#52525b",marginBottom:6,letterSpacing:".04em"}}>NAZWA SALONU</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="np. Barber Kings"
+              style={{width:"100%",boxSizing:"border-box" as const,padding:"12px 14px",borderRadius:10,border:"1.5px solid #efe9ee",fontSize:15,fontFamily:font,outline:"none"}}
+              onKeyDown={e => e.key === "Enter" && submit()}
+            />
+          </div>
+          <div style={{marginBottom:24}}>
+            <label style={{display:"block",fontSize:12,fontWeight:700,color:"#52525b",marginBottom:8,letterSpacing:".04em"}}>KATEGORIE</label>
+            <div style={{display:"flex",flexWrap:"wrap" as const,gap:8}}>
+              {metaCats.map(cat => {
+                const sel = cats.includes(cat.id);
+                return (
+                  <button key={cat.id} onClick={() => toggle(cat.id)}
+                    style={{padding:"8px 14px",borderRadius:999,fontSize:13,fontWeight:600,cursor:"pointer",border:"1.5px solid",
+                      borderColor: sel ? ACC : "#efe9ee",
+                      background: sel ? "#f3eeff" : "#fff",
+                      color: sel ? ACC : "#52525b",
+                    }}>
+                    {cat.emoji} {cat.pl}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+          {err && <div style={{color:"#e0399e",fontSize:13,marginBottom:12}}>{err}</div>}
+          <button onClick={submit} disabled={busy}
+            style={{width:"100%",padding:"13px",borderRadius:12,border:"none",background:GRAD,color:"#fff",fontSize:15,fontWeight:700,cursor:busy?"not-allowed":"pointer",opacity:busy?0.6:1}}>
+            {busy ? "Tworzenie…" : "Stwórz profil"}
+          </button>
+          <button onClick={onLogout}
+            style={{width:"100%",marginTop:10,padding:"11px",borderRadius:12,border:"1.5px solid #efe9ee",background:"#fff",color:"#52525b",fontSize:14,fontWeight:600,cursor:"pointer"}}>
+            Wyloguj się
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ========== DASHBOARD ========== */
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { t } = useTranslation();
@@ -197,6 +277,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [biz, setBiz] = useState<Business|null>(null);
   const [bizLoading, setBizLoading] = useState(true);
   const [bizErr, setBizErr] = useState<string|null>(null);
+  const [role, setRole] = useState<string | null>(null);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resendDone, setResendDone] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
@@ -207,7 +288,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       .catch(e => { setBizErr((e as Error).message); setBizLoading(false); });
   }, []);
   useEffect(() => {
-    api.me().then(r => setEmailVerified(r.user.emailVerified ?? true)).catch(() => {});
+    api.me()
+      .then(r => { setEmailVerified(r.user.emailVerified ?? true); setRole(r.user.role ?? "owner"); })
+      .catch(() => { setRole("owner"); });
   }, []);
 
   const handleResend = async () => {
@@ -225,14 +308,45 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     </div>
   );
 
+  if (bizErr === "Brak firmy" && role === null) return (
+    <div style={S.center}><div style={{textAlign:"center" as const,color:"#a8a2b0"}}><div style={{fontSize:28,marginBottom:12}}>⏳</div></div></div>
+  );
+
+  if (bizErr === "Brak firmy" && role === "admin") return (
+    <div style={S.center}>
+      <div style={{textAlign:"center" as const,maxWidth:380,padding:"0 20px"}}>
+        <div style={{fontSize:40,marginBottom:16}}>🛡️</div>
+        <div style={{fontSize:18,fontWeight:700,color:"#1a1320",marginBottom:8}}>Panel administratora</div>
+        <div style={{fontSize:13.5,color:"#71717a",marginBottom:24,lineHeight:1.6}}>
+          To konto ma uprawnienia administratora i nie posiada profilu salonu.<br/>
+          Przejdź do panelu admina, aby zarządzać platformą.
+        </div>
+        <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap" as const}}>
+          <button style={{border:"none",borderRadius:999,padding:"11px 24px",fontSize:14,fontWeight:700,cursor:"pointer",background:GRAD,color:"#fff"}}
+            onClick={() => navigate("/admin")}>
+            Otwórz panel admina
+          </button>
+          <button style={{border:"1.5px solid #efe9ee",borderRadius:999,padding:"11px 24px",fontSize:14,fontWeight:700,cursor:"pointer",background:"#fff",color:"#52525b"}}
+            onClick={onLogout}>
+            Wyloguj się
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (bizErr === "Brak firmy") return (
+    <Onboarding onCreated={(b) => { setBiz(b); setBizErr(null); }} onLogout={onLogout} />
+  );
+
   if (bizErr) return (
     <div style={S.center}>
-      <div style={{textAlign:"center",maxWidth:360,padding:"0 20px"}}>
+      <div style={{textAlign:"center" as const,maxWidth:360,padding:"0 20px"}}>
         <div style={{fontSize:36,marginBottom:16}}>⚠️</div>
         <div style={{fontSize:17,fontWeight:700,color:"#1a1320",marginBottom:8}}>Nie można załadować profilu</div>
         <div style={{fontSize:13,color:"#71717a",marginBottom:20,lineHeight:1.5}}>{bizErr}</div>
         <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap" as const}}>
-          <button className="btn-primary" style={{border:"none",borderRadius:999,padding:"11px 22px",fontSize:14,fontWeight:700,cursor:"pointer",background:GRAD,color:"#fff"}}
+          <button style={{border:"none",borderRadius:999,padding:"11px 22px",fontSize:14,fontWeight:700,cursor:"pointer",background:GRAD,color:"#fff"}}
             onClick={() => { setBizErr(null); setBizLoading(true); api.business().then(b=>{setBiz(b);setBizLoading(false);}).catch(e=>{setBizErr((e as Error).message);setBizLoading(false);}); }}>
             Spróbuj ponownie
           </button>
