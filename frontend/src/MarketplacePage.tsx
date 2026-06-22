@@ -242,7 +242,7 @@ export default function MarketplacePage() {
 
       {/* ══ FOOTER ══ */}
       <footer style={S.footer} className="page-footer">
-        © 2025 Rezerwo · {t.footer}
+        © {new Date().getFullYear()} Rezerwo · {t.footer}
         <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
         <span style={S.footLink} onClick={() => navigate("/panel")}>{t.panelOwner}</span>
         <span style={{ margin:"0 8px", opacity:.35 }}>·</span>

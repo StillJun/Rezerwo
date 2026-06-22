@@ -187,7 +187,7 @@ function BookingWizard({ biz, initService, onClose }: {
                 const selected = state.date===d;
                 return (
                   <button key={d} className="date-chip" style={{...S.dateChip,...(selected?S.dateChipOn:{})}}
-                    onClick={()=>{ set("date",d); setStep("slots"); }}>
+                    onClick={()=>{ set("date",d); set("slot",null); setStep("slots"); }}>
                     <span style={{fontSize:11,opacity:0.7}}>{dayNames[dt.getDay()]}</span>
                     <span style={{fontSize:17,fontWeight:800,lineHeight:1}}>{dt.getDate()}</span>
                     <span style={{fontSize:11,opacity:0.7}}>{months[dt.getMonth()]}</span>
@@ -724,8 +724,8 @@ const S: Record<string, CSSProperties> = {
   ctaMain:     { padding:"15px", borderRadius:999, border:"none", background:GRAD, color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 24px rgba(124,58,237,.38)" },
   ctaSecondary:{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, padding:"13px 20px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", color:"#52525b", fontSize:14, fontWeight:600, cursor:"pointer", fontFamily:font, transition:"box-shadow .2s,transform .2s" },
 
-  overlay:  { position:"fixed" as const, inset:0, background:"rgba(26,19,32,.55)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"grid", placeItems:"center", padding:16, zIndex:60 },
-  wizard:   { background:"#fff", borderRadius:24, width:"100%", maxWidth:460, padding:"20px 22px 26px", boxShadow:"0 24px 80px rgba(0,0,0,.25)", maxHeight:"95vh", overflowY:"auto" as const },
+  overlay:  { position:"fixed" as const, inset:0, background:"rgba(26,19,32,.55)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto" as const, padding:"20px 16px", zIndex:60 },
+  wizard:   { background:"#fff", borderRadius:24, width:"100%", maxWidth:460, padding:"20px 22px 26px", boxShadow:"0 24px 80px rgba(0,0,0,.25)", flexShrink:0 as const, margin:"auto 0" },
   wizHead:  { display:"flex", alignItems:"center", gap:10, marginBottom:14 },
   backBtn:  { width:34, height:34, borderRadius:10, border:"none", background:"#f4f0f8", color:"#52525b", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
   closeBtn: { width:34, height:34, borderRadius:10, border:"none", background:"#f4f0f8", color:"#52525b", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
