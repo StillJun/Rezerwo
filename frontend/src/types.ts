@@ -6,6 +6,7 @@ export interface Business {
   hours: Record<string, [string, string]>; photos: string[];
   confirmRequired: boolean; reminderHours: number[]; verified: boolean;
   status: "pending" | "approved" | "rejected";
+  isVisible: boolean;
 }
 
 export interface Service {

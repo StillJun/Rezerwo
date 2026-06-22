@@ -56,6 +56,8 @@ export const api = {
 
   /* owner: business */
   business: () => req<Business>("/business"),
+  createBusiness: (name: string, categories: string[]) =>
+    req<Business>("/business", { method: "POST", body: JSON.stringify({ name, categories }) }),
   saveBusiness: (b: Partial<Business>) =>
     req<Business>("/business", { method: "PUT", body: JSON.stringify(b) }),
 
@@ -139,12 +141,14 @@ export const api = {
   /* admin */
   adminBusinesses: (status?: string) => {
     const qs = status ? `?status=${encodeURIComponent(status)}` : "";
-    return req<{ id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; ownerEmail: string; createdAt: string }[]>(`/admin/businesses${qs}`);
+    return req<{ id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; isVisible: boolean; ownerEmail: string; createdAt: string }[]>(`/admin/businesses${qs}`);
   },
   adminApprove:  (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/approve`,  { method: "POST" }),
   adminReject:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/reject`,   { method: "POST" }),
   adminVerify:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/verify`,   { method: "POST" }),
   adminUnverify: (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/unverify`, { method: "POST" }),
+  adminShow:     (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/show`,     { method: "POST" }),
+  adminHide:     (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}/hide`,     { method: "POST" }),
   adminDelete:   (id: number) => req<{ ok: boolean }>(`/admin/businesses/${id}`, { method: "DELETE" }),
   adminStats:    () => req<{ owners: number; businesses: Record<string, number>; appointments7d: number }>("/admin/stats"),
   adminFeedback: () => req<{ id: number; kind: string; message: string; email: string; page: string; createdAt: string }[]>("/admin/feedback"),

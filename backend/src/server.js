@@ -192,6 +192,7 @@ const bizClient = (b) => ({
   hours: b.hours, photos: b.photos, confirmRequired: b.confirm_required,
   reminderHours: b.reminder_hours, verified: b.verified,
   status: b.status || "approved",
+  isVisible: b.is_visible !== false,
 });
 const publicBizClient = (b) => ({
   id: Number(b.id), slug: b.slug, name: b.name, category: b.category,
@@ -325,6 +326,23 @@ app.get("/api/business", requireAuth, ah(async (req, res) => {
   const b = await myBusiness(req.user.id);
   if (!b) return res.status(404).json({ error: "Brak firmy" });
   res.json(bizClient(b));
+}));
+
+app.post("/api/business", requireAuth, ah(async (req, res) => {
+  const existing = await myBusiness(req.user.id);
+  if (existing) return res.status(409).json({ error: "Firma już istnieje" });
+  const { name, categories, category = "barber" } = req.body || {};
+  if (!name || typeof name !== "string" || name.trim().length < 2 || name.length > 100)
+    return res.status(400).json({ error: "Nazwa firmy musi mieć 2-100 znaków" });
+  const rawCats = Array.isArray(categories) && categories.length > 0 ? categories : [category];
+  const cats = rawCats.filter(c => typeof c === "string" && VALID_CAT_IDS.has(c));
+  if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
+  const slug = await generateSlug(name.trim());
+  const [row] = await q(
+    "INSERT INTO businesses (owner_id, name, category, categories, slug) VALUES ($1,$2,$3,$4,$5) RETURNING *",
+    [req.user.id, name.trim(), cats[0], cats, slug]
+  );
+  res.json(bizClient(row));
 }));
 
 app.put("/api/business", requireAuth, ah(async (req, res) => {
@@ -471,6 +489,7 @@ app.get("/api/public/businesses", async (req, res) => {
       WHERE b.slug IS NOT NULL
         AND o.email_verified = TRUE
         AND b.status = 'approved'
+        AND b.is_visible = TRUE
         AND b.city != ''
         AND b.address != ''
         AND EXISTS (SELECT 1 FROM services s WHERE s.business_id = b.id)`;
@@ -683,8 +702,8 @@ app.get("/api/admin/businesses", requireAuth, requireAdmin, async (req, res) => 
     res.json(rows.map(r => ({
       id: Number(r.id), slug: r.slug, name: r.name, category: r.category,
       categories: toCategories(r),
-      city: r.city, status: r.status, verified: r.verified, ownerEmail: r.owner_email,
-      createdAt: r.created_at,
+      city: r.city, status: r.status, verified: r.verified, isVisible: r.is_visible !== false,
+      ownerEmail: r.owner_email, createdAt: r.created_at,
     })));
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
@@ -703,6 +722,14 @@ app.post("/api/admin/businesses/:id/verify", requireAuth, requireAdmin, ah(async
 }));
 app.post("/api/admin/businesses/:id/unverify", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("UPDATE businesses SET verified=FALSE WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+}));
+app.post("/api/admin/businesses/:id/show", requireAuth, requireAdmin, ah(async (req, res) => {
+  await q("UPDATE businesses SET is_visible=TRUE WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+}));
+app.post("/api/admin/businesses/:id/hide", requireAuth, requireAdmin, ah(async (req, res) => {
+  await q("UPDATE businesses SET is_visible=FALSE WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
 }));
 app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, ah(async (req, res) => {

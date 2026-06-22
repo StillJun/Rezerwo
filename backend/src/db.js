@@ -166,6 +166,8 @@ export async function initDb() {
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS categories text[] DEFAULT '{}'`).catch(() => {});
   await pool.query(`UPDATE businesses SET categories = ARRAY[category] WHERE (categories IS NULL OR array_length(categories, 1) IS NULL) AND category IS NOT NULL AND category != ''`).catch(() => {});
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_biz_categories ON businesses USING GIN(categories)`).catch(() => {});
+  // visibility flag: hide from marketplace without deleting
+  await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT TRUE`).catch(() => {});
 
   console.log("Database ready (tables checked/created)");
 }
