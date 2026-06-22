@@ -10,9 +10,8 @@ export default defineConfig({
       manifest: false,
       workbox: {
         globPatterns: ["**/*.{js,css,html,svg,png,ico,woff,woff2}"],
-        navigateFallback: "/",
+        navigateFallback: "index.html",
         navigateFallbackDenylist: [/^\/api\//],
-        runtimeCaching: [],
       },
     }),
   ],

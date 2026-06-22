@@ -11,6 +11,10 @@ import { startReminderScheduler, notifyOwnerNewBooking, sendVerificationEmail } 
 
 const app = express();
 
+// Prevent silent crashes from unhandled promise rejections
+process.on("unhandledRejection", err => console.error("unhandledRejection", err));
+process.on("uncaughtException",  err => console.error("uncaughtException",  err));
+
 // Trust proxy (Render/Vercel)
 app.set("trust proxy", 1);
 
@@ -301,14 +305,24 @@ async function myBusiness(ownerId) {
   return b;
 }
 
+// Wraps async route handlers so thrown errors reach the global error middleware
+const ah = fn => (req, res, next) => fn(req, res, next).catch(next);
+
+// Fetches the owner's business; sends 404 and returns null when not found
+async function requireBusiness(req, res) {
+  const b = await myBusiness(req.user.id);
+  if (!b) { res.status(404).json({ error: "Brak firmy" }); return null; }
+  return b;
+}
+
 /* ---------- business profile (owner) ---------- */
-app.get("/api/business", requireAuth, async (req, res) => {
+app.get("/api/business", requireAuth, ah(async (req, res) => {
   const b = await myBusiness(req.user.id);
   if (!b) return res.status(404).json({ error: "Brak firmy" });
   res.json(bizClient(b));
-});
+}));
 
-app.put("/api/business", requireAuth, async (req, res) => {
+app.put("/api/business", requireAuth, ah(async (req, res) => {
   const b = await myBusiness(req.user.id);
   if (!b) return res.status(404).json({ error: "Brak firmy" });
   const m = { ...bizClient(b), ...req.body };
@@ -339,17 +353,17 @@ app.put("/api/business", requireAuth, async (req, res) => {
      JSON.stringify(m.hours || {}), JSON.stringify(m.photos || []),
      m.confirmRequired, JSON.stringify(m.reminderHours || [24,4]), cats, req.user.id]);
   res.json(bizClient(row));
-});
+}));
 
 /* ---------- services (owner) ---------- */
-app.get("/api/services", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.get("/api/services", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const rows = await q("SELECT * FROM services WHERE business_id=$1 ORDER BY grp, sort, id", [b.id]);
   res.json(rows.map(svcClient));
-});
+}));
 
-app.post("/api/services", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.post("/api/services", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const { grp = "", name, description = "", duration = 30, price = 0, sort = 0 } = req.body || {};
   if (!name) return res.status(400).json({ error: "Nazwa usługi jest wymagana" });
   const [row] = await q(`
@@ -357,10 +371,10 @@ app.post("/api/services", requireAuth, async (req, res) => {
     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
     [b.id, grp, name, description, duration, price, sort]);
   res.json(svcClient(row));
-});
+}));
 
-app.put("/api/services/:id", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.put("/api/services/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const [cur] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
   const m = { ...svcClient(cur), ...req.body };
@@ -369,17 +383,17 @@ app.put("/api/services/:id", requireAuth, async (req, res) => {
     WHERE id=$7 AND business_id=$8 RETURNING *`,
     [m.grp, m.name, m.description, m.duration, m.price, m.sort, cur.id, b.id]);
   res.json(svcClient(row));
-});
+}));
 
-app.delete("/api/services/:id", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.delete("/api/services/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   await q("DELETE FROM services WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   res.json({ ok: true });
-});
+}));
 
 /* ---------- appointments (owner) ---------- */
-app.get("/api/appointments", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.get("/api/appointments", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const { date, status } = req.query;
   let sql = `SELECT a.*, s.name as service_name, s.price as service_price
     FROM appointments a LEFT JOIN services s ON s.id = a.service_id
@@ -390,10 +404,10 @@ app.get("/api/appointments", requireAuth, async (req, res) => {
   sql += " ORDER BY a.date, a.start_min";
   const rows = await q(sql, params);
   res.json(rows.map(apptClient));
-});
+}));
 
-app.put("/api/appointments/:id", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.put("/api/appointments/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const [a] = await q("SELECT * FROM appointments WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   if (!a) return res.status(404).json({ error: "Nie znaleziono" });
   const { status } = req.body;
@@ -402,24 +416,24 @@ app.put("/api/appointments/:id", requireAuth, async (req, res) => {
   const [row] = await q("UPDATE appointments SET status=$1 WHERE id=$2 RETURNING *", [status, a.id]);
   const [svc] = row.service_id ? await q("SELECT name, price FROM services WHERE id=$1", [row.service_id]) : [null];
   res.json(apptClient({ ...row, service_name: svc?.name || null, service_price: svc?.price || null }));
-});
+}));
 
 /* ---------- service requests (owner) ---------- */
-app.get("/api/service-requests", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.get("/api/service-requests", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const rows = await q("SELECT * FROM service_requests WHERE business_id=$1 ORDER BY created_at DESC", [b.id]);
   res.json(rows.map(r => ({ id: Number(r.id), clientPhone: r.client_phone, text: r.text, handled: r.handled, createdAt: r.created_at })));
-});
+}));
 
-app.put("/api/service-requests/:id", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.put("/api/service-requests/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   await q("UPDATE service_requests SET handled=TRUE WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   res.json({ ok: true });
-});
+}));
 
 /* ---------- CRM: client history + notes (owner) ---------- */
-app.get("/api/clients/:phone", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.get("/api/clients/:phone", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const phone = req.params.phone;
   const history = await q(`
     SELECT a.*, s.name as service_name, s.price as service_price
@@ -428,16 +442,16 @@ app.get("/api/clients/:phone", requireAuth, async (req, res) => {
     [b.id, phone]);
   const [note] = await q("SELECT note FROM client_notes WHERE business_id=$1 AND client_phone=$2", [b.id, phone]);
   res.json({ history: history.map(apptClient), note: note?.note || "" });
-});
+}));
 
-app.put("/api/clients/:phone/note", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.put("/api/clients/:phone/note", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const { note = "" } = req.body || {};
   await q(`INSERT INTO client_notes (business_id, client_phone, note, updated_at) VALUES ($1,$2,$3,now())
     ON CONFLICT (business_id, client_phone) DO UPDATE SET note=$3, updated_at=now()`,
     [b.id, req.params.phone, note]);
   res.json({ ok: true });
-});
+}));
 
 /* ---------- public marketplace ---------- */
 app.get("/api/public/businesses", async (req, res) => {
@@ -556,17 +570,17 @@ app.post("/api/public/businesses/:slug/reviews", async (req, res) => {
 });
 
 /* ---------- owner: reviews + reports ---------- */
-app.get("/api/reviews", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.get("/api/reviews", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const rows = await q(
     "SELECT * FROM reviews WHERE business_id=$1 ORDER BY created_at DESC",
     [b.id]
   );
   res.json(rows.map(r => ({ id: Number(r.id), clientName: r.client_name, rating: r.rating, text: r.text, hidden: r.hidden, createdAt: r.created_at })));
-});
+}));
 
-app.post("/api/reviews/:id/report", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.post("/api/reviews/:id/report", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const [review] = await q("SELECT id FROM reviews WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   if (!review) return res.status(404).json({ error: "Nie znaleziono" });
   const { reason } = req.body || {};
@@ -575,7 +589,7 @@ app.post("/api/reviews/:id/report", requireAuth, async (req, res) => {
   if (existing) return res.status(409).json({ error: "Już zgłoszono tę opinię" });
   await q("INSERT INTO reports (review_id, owner_id, reason) VALUES ($1,$2,$3)", [review.id, req.user.id, reason.trim()]);
   res.json({ ok: true });
-});
+}));
 
 /* ---------- public: support ticket ---------- */
 app.post("/api/support", async (req, res) => {
@@ -602,21 +616,21 @@ app.post("/api/public/businesses/:slug/waitlist", async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
-app.get("/api/waitlist", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.get("/api/waitlist", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   const rows = await q(
     `SELECT w.*, s.name AS service_name FROM waitlist w LEFT JOIN services s ON s.id = w.service_id
      WHERE w.business_id=$1 AND w.notified=FALSE ORDER BY w.created_at DESC`,
     [b.id]
   );
   res.json(rows.map(r => ({ id: Number(r.id), clientName: r.client_name, clientPhone: r.client_phone, clientEmail: r.client_email, serviceName: r.service_name, preferredDate: r.preferred_date ? String(r.preferred_date).slice(0,10) : null, createdAt: r.created_at })));
-});
+}));
 
-app.put("/api/waitlist/:id/notify", requireAuth, async (req, res) => {
-  const b = await myBusiness(req.user.id);
+app.put("/api/waitlist/:id/notify", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
   await q("UPDATE waitlist SET notified=TRUE WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   res.json({ ok: true });
-});
+}));
 
 /* ---------- public: feedback ---------- */
 app.post("/api/feedback", async (req, res) => {
@@ -670,26 +684,26 @@ app.get("/api/admin/businesses", requireAuth, requireAdmin, async (req, res) => 
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
-app.post("/api/admin/businesses/:id/approve", requireAuth, requireAdmin, async (req, res) => {
+app.post("/api/admin/businesses/:id/approve", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("UPDATE businesses SET status='approved' WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
-});
-app.post("/api/admin/businesses/:id/reject", requireAuth, requireAdmin, async (req, res) => {
+}));
+app.post("/api/admin/businesses/:id/reject", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("UPDATE businesses SET status='rejected' WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
-});
-app.post("/api/admin/businesses/:id/verify", requireAuth, requireAdmin, async (req, res) => {
+}));
+app.post("/api/admin/businesses/:id/verify", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("UPDATE businesses SET verified=TRUE WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
-});
-app.post("/api/admin/businesses/:id/unverify", requireAuth, requireAdmin, async (req, res) => {
+}));
+app.post("/api/admin/businesses/:id/unverify", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("UPDATE businesses SET verified=FALSE WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
-});
-app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, async (req, res) => {
+}));
+app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("DELETE FROM businesses WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
-});
+}));
 
 app.get("/api/admin/stats", requireAuth, requireAdmin, async (req, res) => {
   try {
@@ -711,6 +725,15 @@ app.get("/api/admin/feedback", requireAuth, requireAdmin, async (req, res) => {
     const rows = await q("SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200");
     res.json(rows.map(r => ({ id: Number(r.id), kind: r.kind, message: r.message, email: r.email, page: r.page, createdAt: r.created_at })));
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+// Global Express error handler — catches everything forwarded via next(err)
+// MUST be the last middleware registered
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, _next) => {
+  console.error("Express error:", err);
+  if (res.headersSent) return;
+  res.status(500).json({ error: "Błąd serwera" });
 });
 
 const PORT = process.env.PORT || 4000;
