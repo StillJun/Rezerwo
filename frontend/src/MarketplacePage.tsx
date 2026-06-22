@@ -38,7 +38,11 @@ export default function MarketplacePage() {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading]   = useState(false);
 
-  useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
+  useEffect(() => {
+    api.meta()
+      .then(m => { if (m?.cities && m?.categories) setMeta(m); })
+      .catch(() => {});
+  }, []);
 
   const search = async () => {
     setLoading(true); setSearched(true);
@@ -52,7 +56,7 @@ export default function MarketplacePage() {
   };
 
   const handleKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") search(); };
-  const districts = city && meta ? (meta.cities[city]||[]) : [];
+  const districts = city && meta?.cities ? (meta.cities[city] ?? []) : [];
 
   // Split title: last word gets gradient treatment
   const words = t.searchTitle.split(" ");
@@ -109,7 +113,7 @@ export default function MarketplacePage() {
             {(() => {
               const cityOpts: SelectOption[] = [
                 { value: "", label: t.allCities },
-                ...(meta ? Object.keys(meta.cities).map(c => ({ value: c, label: c })) : []),
+                ...(meta?.cities ? Object.keys(meta.cities).map(c => ({ value: c, label: c })) : []),
               ];
               const distOpts: SelectOption[] = [
                 { value: "", label: t.allDistricts },
