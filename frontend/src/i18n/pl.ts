@@ -274,6 +274,9 @@ export const pl = {
   w_howTitle:          "Jak użyć?",
   w_howInstagram:      "Instagram bio: wklej link w pole 'Strona' w ustawieniach profilu.",
   w_howSite:           "Własna strona: wklej kod HTML w dowolne miejsce na stronie.",
+  w_noSlug:            "Uzupełnij profil i URL salonu, aby korzystać z widgetu.",
+  w_preview:           "Podgląd",
+  w_btnPreview:        "Podgląd przycisku:",
 
   // marketplace: benefits
   benefit1:    "Rezerwacja online 24/7",

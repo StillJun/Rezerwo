@@ -195,11 +195,17 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist"|"requests"|"widget">("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
+  const [bizLoading, setBizLoading] = useState(true);
+  const [bizErr, setBizErr] = useState<string|null>(null);
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resendDone, setResendDone] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
 
-  useEffect(() => { api.business().then(setBiz).catch(console.error); }, []);
+  useEffect(() => {
+    api.business()
+      .then(b => { setBiz(b); setBizLoading(false); })
+      .catch(e => { setBizErr((e as Error).message); setBizLoading(false); });
+  }, []);
   useEffect(() => {
     api.me().then(r => setEmailVerified(r.user.emailVerified ?? true)).catch(() => {});
   }, []);
@@ -208,6 +214,36 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     setResendBusy(true);
     try { await api.resendVerification(); setResendDone(true); } catch { /* ignore */ } finally { setResendBusy(false); }
   };
+
+  if (bizLoading) return (
+    <div style={S.center}>
+      <div style={{textAlign:"center",color:"#a8a2b0"}}>
+        <div style={{fontSize:28,marginBottom:12}}>⏳</div>
+        <div style={{fontSize:15,fontWeight:600,color:"#52525b",marginBottom:6}}>Ładowanie panelu…</div>
+        <div style={{fontSize:12,color:"#b8b2c0"}}>Pierwsze uruchomienie może potrwać do 60 sekund.</div>
+      </div>
+    </div>
+  );
+
+  if (bizErr) return (
+    <div style={S.center}>
+      <div style={{textAlign:"center",maxWidth:360,padding:"0 20px"}}>
+        <div style={{fontSize:36,marginBottom:16}}>⚠️</div>
+        <div style={{fontSize:17,fontWeight:700,color:"#1a1320",marginBottom:8}}>Nie można załadować profilu</div>
+        <div style={{fontSize:13,color:"#71717a",marginBottom:20,lineHeight:1.5}}>{bizErr}</div>
+        <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap" as const}}>
+          <button className="btn-primary" style={{border:"none",borderRadius:999,padding:"11px 22px",fontSize:14,fontWeight:700,cursor:"pointer",background:GRAD,color:"#fff"}}
+            onClick={() => { setBizErr(null); setBizLoading(true); api.business().then(b=>{setBiz(b);setBizLoading(false);}).catch(e=>{setBizErr((e as Error).message);setBizLoading(false);}); }}>
+            Spróbuj ponownie
+          </button>
+          <button style={{border:"1.5px solid #efe9ee",borderRadius:999,padding:"11px 22px",fontSize:14,fontWeight:700,cursor:"pointer",background:"#fff",color:"#52525b"}}
+            onClick={onLogout}>
+            Wyloguj się
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={S.app} className="panel-app">
@@ -494,13 +530,13 @@ function AppointmentsTab({ biz }: { biz: Business }) {
         </div>
       )}
 
-      {client && <ClientModal phone={client} bizId={biz.id} onClose={()=>setClient(null)}/>}
+      {client && <ClientModal phone={client} onClose={()=>setClient(null)}/>}
     </div>
   );
 }
 
 /* ========== CLIENT MODAL (CRM) ========== */
-function ClientModal({ phone, bizId, onClose }: { phone: string; bizId: number; onClose: () => void }) {
+function ClientModal({ phone, onClose }: { phone: string; onClose: () => void }) {
   const { t } = useTranslation();
   const ST = statusLabels(t);
   const [history, setHistory] = useState<Appointment[]>([]);
@@ -513,7 +549,6 @@ function ClientModal({ phone, bizId, onClose }: { phone: string; bizId: number; 
     await api.saveClientNote(phone, note);
     setSaved(true); setTimeout(()=>setSaved(false),1500);
   };
-  void bizId;
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
       <div style={S.modal} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
@@ -842,7 +877,9 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const profileUrl = form.slug ? `${window.location.origin}/${form.slug}` : "";
   const copyLink = () => {
     if (!profileUrl) return;
-    navigator.clipboard.writeText(profileUrl).then(() => { setCopied(true); setTimeout(()=>setCopied(false),2000); });
+    navigator.clipboard.writeText(profileUrl)
+      .then(() => { setCopied(true); setTimeout(()=>setCopied(false),2000); })
+      .catch(() => { alert(profileUrl); });
   };
   const districts = meta.cities[form.city]||[];
   const toggleReminder = (h: number) =>
@@ -1138,12 +1175,14 @@ function WidgetTab({ biz }: { biz: Business }) {
     : "";
 
   const copy = (text: string, setCopied: (v: boolean) => void) => {
-    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); });
+    navigator.clipboard.writeText(text)
+      .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
+      .catch(() => { alert(text); });
   };
 
   if (!profileUrl) return (
     <div style={WS.empty}>
-      Uzupełnij profil i URL salonu, aby korzystać z widgetu.
+      {t.w_noSlug}
     </div>
   );
 
@@ -1164,7 +1203,7 @@ function WidgetTab({ biz }: { biz: Business }) {
             {copiedLink ? "✓ " + t.p_copied : t.w_copyLink}
           </button>
           <a href={profileUrl} target="_blank" rel="noreferrer" style={WS.previewLink}>
-            <ExternalLink size={14}/> Podgląd
+            <ExternalLink size={14}/> {t.w_preview}
           </a>
         </div>
       </div>
@@ -1184,7 +1223,7 @@ function WidgetTab({ biz }: { biz: Business }) {
 
         {/* Preview */}
         <div style={{marginTop:18, paddingTop:16, borderTop:"1px solid #efe9ee"}}>
-          <div style={{fontSize:12, color:"#8b8194", marginBottom:10, fontWeight:600}}>Podgląd przycisku:</div>
+          <div style={{fontSize:12, color:"#8b8194", marginBottom:10, fontWeight:600}}>{t.w_btnPreview}</div>
           <a href={profileUrl} target="_blank" rel="noreferrer"
             style={{display:"inline-block", padding:"12px 24px", background:GRAD, color:"#fff", fontFamily:"Inter,sans-serif", fontSize:15, fontWeight:700, borderRadius:999, textDecoration:"none"}}>
             📅 Zarezerwuj w Rezerwo

@@ -6,19 +6,36 @@ export const getToken = () => localStorage.getItem(TOKEN);
 export const setToken = (t: string) => localStorage.setItem(TOKEN, t);
 export const clearToken = () => localStorage.removeItem(TOKEN);
 
-async function req<T>(path: string, opt: RequestInit = {}): Promise<T> {
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+async function req<T>(path: string, opt: RequestInit = {}, _retries = 3): Promise<T> {
+  const isRead = !opt.method || opt.method === "GET";
   const token = getToken();
-  const res = await fetch(`${BASE}${path}`, {
-    ...opt, credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(opt.headers || {}),
-    },
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error || `Error ${res.status}`);
-  return data as T;
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      ...opt, credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(opt.headers || {}),
+      },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (isRead && (res.status === 502 || res.status === 503) && _retries > 0) {
+        await sleep(2500);
+        return req<T>(path, opt, _retries - 1);
+      }
+      throw new Error((data as { error?: string }).error || `Error ${res.status}`);
+    }
+    return data as T;
+  } catch (e) {
+    if (isRead && e instanceof TypeError && _retries > 0) {
+      await sleep(2500);
+      return req<T>(path, opt, _retries - 1);
+    }
+    throw e;
+  }
 }
 
 type AuthOk = { user: User; token: string };

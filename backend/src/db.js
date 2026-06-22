@@ -162,9 +162,10 @@ export async function initDb() {
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'approved'`).catch(() => {});
   // grandfather existing businesses as approved
   await pool.query(`UPDATE businesses SET status='approved' WHERE status IS NULL OR status=''`).catch(() => {});
-  // multi-categories: new column, migrate existing single category
+  // multi-categories: new column, migrate existing single category, GIN index for ANY() filter
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS categories text[] DEFAULT '{}'`).catch(() => {});
   await pool.query(`UPDATE businesses SET categories = ARRAY[category] WHERE (categories IS NULL OR array_length(categories, 1) IS NULL) AND category IS NOT NULL AND category != ''`).catch(() => {});
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_biz_categories ON businesses USING GIN(categories)`).catch(() => {});
 
   console.log("Database ready (tables checked/created)");
 }

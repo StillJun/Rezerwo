@@ -251,6 +251,9 @@ export const en: T = {
   w_howTitle:          "How to use?",
   w_howInstagram:      "Instagram bio: paste the link in the \"Website\" field in profile settings.",
   w_howSite:           "Your website: paste the HTML code anywhere on the page.",
+  w_noSlug:            "Complete your profile and set your salon URL to use the widget.",
+  w_preview:           "Preview",
+  w_btnPreview:        "Button preview:",
 
   benefit1:    "Online booking 24/7",
   benefit1Sub: "Book anytime — the salon is always available",

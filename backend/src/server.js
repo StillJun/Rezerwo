@@ -69,6 +69,7 @@ const CATEGORIES = [
   { id: "aesthetic",  pl: "Medycyna estetyczna",    emoji: "⚕️" },
   { id: "podology",   pl: "Podolog",                emoji: "🦶" },
 ];
+const VALID_CAT_IDS = new Set(CATEGORIES.map(c => c.id));
 
 /* ---------- password validation ---------- */
 function validatePassword(pw) {
@@ -224,9 +225,10 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
     const [exists] = await q("SELECT id FROM owners WHERE email=$1", [email]);
     if (exists) return res.status(409).json({ error: "Ten email jest już zarejestrowany" });
 
-    const cats = Array.isArray(categories) && categories.length > 0 ? categories : [category];
-    if (cats.some(c => typeof c !== "string" || c.length > 50))
-      return res.status(400).json({ error: "Nieprawidłowa kategoria" });
+    const rawCats = Array.isArray(categories) && categories.length > 0 ? categories : [category];
+    const cats = rawCats.filter(c => typeof c === "string" && VALID_CAT_IDS.has(c));
+    if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
+    if (cats.length > 10) return res.status(400).json({ error: "Maksymalnie 10 kategorii." });
 
     const hash = await hashPassword(password);
     const verToken = randomBytes(32).toString("hex");
@@ -314,7 +316,9 @@ app.put("/api/business", requireAuth, async (req, res) => {
   // slug: use custom if provided and valid, otherwise regenerate on name change
   let slug = b.slug;
   const customSlug = typeof req.body.slug === "string" ? req.body.slug.trim().toLowerCase() : null;
-  if (customSlug && /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(customSlug)) {
+  if (customSlug) {
+    if (!/^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/.test(customSlug))
+      return res.status(400).json({ error: "Adres URL musi mieć 3-50 znaków (litery a-z, cyfry, myślniki; bez spacji i znaków specjalnych)." });
     const [conflict] = await q("SELECT id FROM businesses WHERE slug=$1 AND id!=$2", [customSlug, b.id]);
     if (conflict) return res.status(409).json({ error: "Ten adres URL jest już zajęty. Wybierz inny." });
     slug = customSlug;
@@ -322,7 +326,10 @@ app.put("/api/business", requireAuth, async (req, res) => {
     slug = await generateSlug(m.name, b.id);
   }
 
-  const cats = Array.isArray(m.categories) && m.categories.length > 0 ? m.categories : [m.category].filter(Boolean);
+  const rawCats = Array.isArray(m.categories) && m.categories.length > 0 ? m.categories : [m.category].filter(Boolean);
+  const cats = rawCats.filter(c => typeof c === "string" && c.trim().length > 0 && VALID_CAT_IDS.has(c));
+  if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
+  if (cats.length > 10) return res.status(400).json({ error: "Maksymalnie 10 kategorii." });
   const [row] = await q(`
     UPDATE businesses SET
       slug=$1, name=$2, category=$3, city=$4, district=$5, address=$6, phone=$7, instagram=$8,
