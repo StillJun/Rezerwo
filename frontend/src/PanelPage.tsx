@@ -561,16 +561,16 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                   <div style={{fontSize:12,color:"#92400e"}}>{dateLabel(a.date, t)} {minToTime(a.startMin)}</div>
                   {a.comment && <div style={{fontSize:12,color:"#7c3aed",marginTop:2}}>💬 {a.comment}</div>}
                 </div>
-                <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
-                  <button style={{...S.miniBtn,background:"#059669",color:"#fff",borderColor:"#059669",fontWeight:700,padding:"6px 12px",fontSize:12,borderRadius:8,gap:4}}
+                <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"stretch",flexShrink:0}}>
+                  <button style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"7px 14px",fontSize:12.5,fontWeight:700,borderRadius:8,border:"1.5px solid #059669",background:"#059669",color:"#fff",cursor:"pointer",whiteSpace:"nowrap" as const}}
                     onClick={()=>changeStatus(a.id,"confirmed")}>
                     <Check size={13}/> {t.p_btnConfirm}
                   </button>
-                  <button style={{...S.miniBtn,background:"#fff",color:"#dc2626",borderColor:"#dc2626",fontWeight:700,padding:"6px 12px",fontSize:12,borderRadius:8,gap:4}}
+                  <button style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,padding:"7px 14px",fontSize:12.5,fontWeight:700,borderRadius:8,border:"1.5px solid #dc2626",background:"#fff",color:"#dc2626",cursor:"pointer",whiteSpace:"nowrap" as const}}
                     onClick={()=>changeStatus(a.id,"cancelled")}>
                     <X size={13}/> {t.p_btnReject}
                   </button>
-                  <button style={{...S.miniBtn,color:"#52525b"}}
+                  <button style={{...S.miniBtn,color:"#52525b",alignSelf:"flex-end" as const}}
                     onClick={()=>setClient(a.clientPhone)} title={t.p_apptClientHistory}>
                     <NotebookPen size={13}/>
                   </button>
@@ -1229,8 +1229,8 @@ const S: Record<string, CSSProperties> = {
   svcPrice:{ fontSize:15, fontWeight:700, color:ACC, flexShrink:0 },
   miniBtn: { width:32, height:32, borderRadius:8, border:"none", background:"#f4f0f8", color:"#8b8194", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
 
-  overlay: { position:"fixed" as const, inset:0, background:"rgba(26,19,32,.52)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"grid", placeItems:"center", padding:18, zIndex:60 },
-  modal:   { background:"#fff", borderRadius:22, width:"100%", maxWidth:440, padding:"20px 22px 26px", boxShadow:"0 24px 70px rgba(0,0,0,.22)", maxHeight:"92vh", overflowY:"auto" as const },
+  overlay: { position:"fixed" as const, inset:0, background:"rgba(26,19,32,.52)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto" as const, padding:"20px 16px", zIndex:60 },
+  modal:   { background:"#fff", borderRadius:22, width:"100%", maxWidth:440, padding:"20px 22px 26px", boxShadow:"0 24px 70px rgba(0,0,0,.22)", flexShrink:0 as const, margin:"auto 0" },
   modalHead:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 },
 
   bannerPrev:  { height:110, borderRadius:20, position:"relative" as const, marginBottom:10, overflow:"hidden" },
