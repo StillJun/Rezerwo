@@ -21,19 +21,24 @@ app.set("trust proxy", 1);
 // Security headers
 app.use(helmet({ contentSecurityPolicy: false }));
 
-// CORS — allow prod domain + localhost dev
-const ALLOWED_ORIGINS = [
-  process.env.CLIENT_URL || "http://localhost:5173",
+// CORS — allow all known prod domains + any *.vercel.app preview + localhost
+const ALLOWED_ORIGINS = new Set([
+  "https://getrezerwo.pl",
+  "https://www.getrezerwo.pl",
+  "https://rezerwo.vercel.app",
   "http://localhost:5173",
+  "http://localhost:3000",
   "http://localhost:4173",
-].filter(Boolean);
+  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
+]);
 app.use(cors({
   origin(origin, cb) {
-    // allow requests with no origin (curl, mobile apps, server-to-server)
+    // no origin = curl / mobile / server-to-server
     if (!origin) return cb(null, true);
-    // allow Vercel preview URLs
-    if (/\.vercel\.app$/.test(origin) || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    cb(new Error("CORS: not allowed"));
+    // exact match OR any *.vercel.app preview deploy
+    if (ALLOWED_ORIGINS.has(origin) || /\.vercel\.app$/.test(origin)) return cb(null, true);
+    console.warn("[CORS] rejected origin:", origin);
+    cb(null, false); // soft-reject: no CORS headers, but don't throw (avoids error-handler spam)
   },
   credentials: true,
 }));
