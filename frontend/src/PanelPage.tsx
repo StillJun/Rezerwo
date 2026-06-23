@@ -130,6 +130,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
   const [biz, setBiz] = useState(""); const [cats, setCats] = useState<string[]>(["barber"]);
   const [meta, setMeta] = useState<Meta|null>(null);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
 
   const submit = async () => {
@@ -175,8 +176,24 @@ function Auth({ onAuth }: { onAuth: () => void }) {
         <Field icon={<User size={15}/>} value={email} onChange={setEmail} placeholder={t.p_emailPh} type="email"/>
         <Field icon={<User size={15}/>} value={pw} onChange={setPw} placeholder={t.p_passwordPh} type="password"/>
         {mode === "register" && <PasswordStrength pw={pw}/>}
+        {mode === "register" && (
+          <label style={{ display:"flex", alignItems:"flex-start", gap:10, margin:"12px 0 4px", cursor:"pointer" }}>
+            <input
+              type="checkbox"
+              checked={termsAccepted}
+              onChange={e => setTermsAccepted(e.target.checked)}
+              style={{ marginTop:3, accentColor:"#7c3aed", flexShrink:0, width:16, height:16 }}
+            />
+            <span style={{ fontSize:13, color:"#52525b", lineHeight:1.6 }}>
+              Akceptuję{" "}
+              <a href="/regulamin" target="_blank" rel="noopener noreferrer" style={{ color:"#7c3aed", fontWeight:600 }}>Regulamin</a>
+              {" "}oraz potwierdzam zapoznanie się z{" "}
+              <a href="/polityka-prywatnosci" target="_blank" rel="noopener noreferrer" style={{ color:"#7c3aed", fontWeight:600 }}>Polityką prywatności</a>.
+            </span>
+          </label>
+        )}
         {err && <div style={S.err}>{err}</div>}
-        <button className="btn-primary" style={S.primary} onClick={submit} disabled={busy}>
+        <button className="btn-primary" style={S.primary} onClick={submit} disabled={busy || (mode === "register" && !termsAccepted)}>
           {busy ? "…" : mode === "register" ? t.p_authRegisterBtn : t.p_authLoginBtn}
         </button>
         <div style={S.switch}>

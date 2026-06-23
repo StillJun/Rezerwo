@@ -71,6 +71,7 @@ function BookingWizard({ biz, initService, onClose }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [result, setResult] = useState<BookingResult|null>(null);
+  const [bookingTerms, setBookingTerms] = useState(false);
 
   const set = (k: keyof WizardState, v: unknown) => setState(p=>({...p,[k]:v}));
 
@@ -258,9 +259,25 @@ function BookingWizard({ biz, initService, onClose }: {
               value={state.comment} onChange={e=>set("comment",e.target.value)}
               placeholder={t.commentSalonPlaceholder}/>
 
+            <label style={{ display:"flex", alignItems:"flex-start", gap:10, margin:"12px 0 8px", cursor:"pointer" }}>
+              <input
+                type="checkbox"
+                checked={bookingTerms}
+                onChange={e => setBookingTerms(e.target.checked)}
+                style={{ marginTop:3, accentColor:"#7c3aed", flexShrink:0, width:16, height:16 }}
+              />
+              <span style={{ fontSize:12.5, color:"#52525b", lineHeight:1.6 }}>
+                Akceptuję{" "}
+                <a href="/regulamin" target="_blank" rel="noopener noreferrer" style={{ color:"#7c3aed", fontWeight:600 }}>Regulamin</a>
+                {" "}i{" "}
+                <a href="/polityka-prywatnosci" target="_blank" rel="noopener noreferrer" style={{ color:"#7c3aed", fontWeight:600 }}>Politykę prywatności</a>.
+                {" "}Przyjmuję do wiadomości, że moje dane (imię, numer telefonu i szczegóły rezerwacji) zostaną przekazane wybranemu usługodawcy w celu realizacji wizyty.
+              </span>
+            </label>
+
             {err && <div style={S.err}>{err}</div>}
 
-            <button className="btn-primary" style={S.primary} onClick={book} disabled={busy}>
+            <button className="btn-primary" style={S.primary} onClick={book} disabled={busy || !bookingTerms}>
               {busy?"…":t.confirmBooking}
             </button>
             <p style={S.hint}>{t.bookingHint}</p>
