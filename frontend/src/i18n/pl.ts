@@ -149,6 +149,7 @@ export const pl = {
   p_verifyBanner:      "Potwierdź adres email — twój profil nie jest widoczny w wyszukiwarce Rezerwo.",
   p_verifySent:        "Wysłano! Sprawdź skrzynkę.",
   p_verifyResend:      "Wyślij link ponownie",
+  p_verifyErr:         "Błąd wysyłki — spróbuj ponownie.",
 
   // panel: tabs
   p_tabAppointments:   "Terminy",

@@ -136,6 +136,7 @@ export const ua: T = {
   p_verifyBanner:      "Підтвердіть email — ваш профіль не видно у пошуку Rezerwo.",
   p_verifySent:        "Надіслано! Перевірте пошту.",
   p_verifyResend:      "Надіслати ще раз",
+  p_verifyErr:         "Помилка надсилання — спробуйте ще раз.",
 
   p_tabAppointments:   "Записи",
   p_tabServices:       "Послуги",

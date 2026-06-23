@@ -284,8 +284,9 @@ app.get("/api/auth/verify-email/:token", async (req, res) => {
   try {
     const token = String(req.params.token).replace(/[^a-f0-9]/gi, "").slice(0, 64);
     if (!token) return res.status(400).json({ error: "Nieprawidłowy token" });
+    // Token stays in DB after verification so re-clicking the same link works
     const [owner] = await q(
-      "UPDATE owners SET email_verified=TRUE, verification_token=NULL WHERE verification_token=$1 AND email_verified=FALSE RETURNING id",
+      "UPDATE owners SET email_verified=TRUE WHERE verification_token=$1 RETURNING id",
       [token]
     );
     if (!owner) return res.status(400).json({ error: "Link weryfikacyjny jest nieprawidłowy lub już wykorzystany." });
@@ -295,12 +296,22 @@ app.get("/api/auth/verify-email/:token", async (req, res) => {
 
 app.post("/api/auth/resend-verification", requireAuth, async (req, res) => {
   try {
-    const [owner] = await q("SELECT id, email, email_verified FROM owners WHERE id=$1", [req.user.id]);
+    const [owner] = await q("SELECT id, email, email_verified, verification_token FROM owners WHERE id=$1", [req.user.id]);
     if (!owner) return res.status(401).json({ error: "Nie znaleziono konta" });
     if (owner.email_verified) return res.json({ ok: true });
-    const token = randomBytes(32).toString("hex");
-    await q("UPDATE owners SET verification_token=$1 WHERE id=$2", [token, owner.id]);
-    sendVerificationEmail(owner.email, token).catch(() => {});
+    // Reuse existing token so old email links stay valid; generate only if missing
+    let token = owner.verification_token;
+    if (!token) {
+      token = randomBytes(32).toString("hex");
+      await q("UPDATE owners SET verification_token=$1 WHERE id=$2", [token, owner.id]);
+    }
+    try {
+      await sendVerificationEmail(owner.email, token);
+      console.log(`[email] verification email sent to ${owner.email}`);
+    } catch (err) {
+      console.error("[email] resend-verification failed:", err?.message || err);
+      return res.status(500).json({ error: "Nie udało się wysłać emaila. Spróbuj ponownie później." });
+    }
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });

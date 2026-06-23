@@ -136,6 +136,7 @@ export const ru: T = {
   p_verifyBanner:      "Подтвердите email — ваш профиль не виден в поиске Rezerwo.",
   p_verifySent:        "Отправлено! Проверьте почту.",
   p_verifyResend:      "Отправить ещё раз",
+  p_verifyErr:         "Ошибка отправки — попробуйте ещё раз.",
 
   p_tabAppointments:   "Записи",
   p_tabServices:       "Услуги",

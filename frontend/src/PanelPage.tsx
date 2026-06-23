@@ -281,6 +281,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null);
   const [resendDone, setResendDone] = useState(false);
   const [resendBusy, setResendBusy] = useState(false);
+  const [resendErr, setResendErr] = useState(false);
 
   useEffect(() => {
     api.business()
@@ -295,7 +296,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   const handleResend = async () => {
     setResendBusy(true);
-    try { await api.resendVerification(); setResendDone(true); } catch { /* ignore */ } finally { setResendBusy(false); }
+    setResendErr(false);
+    try { await api.resendVerification(); setResendDone(true); }
+    catch { setResendErr(true); }
+    finally { setResendBusy(false); }
   };
 
   if (bizLoading) return (
@@ -386,6 +390,8 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           <span style={{ fontSize: 13, color: "#92400e", flex: 1 }}>⚠️ {t.p_verifyBanner}</span>
           {resendDone ? (
             <span style={{ fontSize: 13, color: "#065f46", fontWeight: 600 }}>{t.p_verifySent}</span>
+          ) : resendErr ? (
+            <span style={{ fontSize: 13, color: "#dc2626", fontWeight: 600 }}>{t.p_verifyErr}</span>
           ) : (
             <button
               style={{ background: "#f59e0b", color: "#fff", border: "none", borderRadius: 6, padding: "6px 14px", fontSize: 13, fontWeight: 600, cursor: "pointer", minHeight: 0 }}

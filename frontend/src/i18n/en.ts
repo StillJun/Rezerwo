@@ -136,6 +136,7 @@ export const en: T = {
   p_verifyBanner:      "Confirm your email — your profile is not visible in the Rezerwo marketplace.",
   p_verifySent:        "Sent! Check your inbox.",
   p_verifyResend:      "Resend link",
+  p_verifyErr:         "Send failed — please try again.",
 
   p_tabAppointments:   "Appointments",
   p_tabServices:       "Services",
