@@ -23,14 +23,16 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { err: Error | nu
   }
 }
 
-const PanelPage       = lazy(() => import("./PanelPage"));
-const MarketplacePage = lazy(() => import("./MarketplacePage"));
-const BusinessPage    = lazy(() => import("./BusinessPage"));
-const AdminPage       = lazy(() => import("./AdminPage"));
-const TermsPage       = lazy(() => import("./TermsPage"));
-const PrivacyPage     = lazy(() => import("./PrivacyPage"));
-const SupportPage     = lazy(() => import("./SupportPage"));
-const VerifyEmailPage = lazy(() => import("./VerifyEmailPage"));
+const PanelPage                 = lazy(() => import("./PanelPage"));
+const MarketplacePage           = lazy(() => import("./MarketplacePage"));
+const BusinessPage              = lazy(() => import("./BusinessPage"));
+const AdminPage                 = lazy(() => import("./AdminPage"));
+const TermsPage                 = lazy(() => import("./TermsPage"));
+const PrivacyPage               = lazy(() => import("./PrivacyPage"));
+const SupportPage               = lazy(() => import("./SupportPage"));
+const VerifyEmailPage           = lazy(() => import("./VerifyEmailPage"));
+const RegulaminPage             = lazy(() => import("./RegulaminPage"));
+const PolitykaPrywatnosciPage   = lazy(() => import("./PolitykaPrywatnosciPage"));
 
 export function navigate(to: string) {
   history.pushState(null, "", to);
@@ -50,13 +52,14 @@ export default function App() {
   return (
     <ErrorBoundary>
       <Suspense fallback={<div style={{minHeight:"100vh",display:"grid",placeItems:"center",color:"#a8a2b0",fontFamily:"sans-serif"}}>…</div>}>
-        {path === "/panel"        ? <PanelPage /> :
-         path === "/admin"       ? <AdminPage /> :
-         path === "/"            ? <MarketplacePage /> :
-         path === "/verify-email"? <VerifyEmailPage /> :
-         path === "/regulamin"   ? <TermsPage /> :
-         path === "/prywatnosc"  ? <PrivacyPage /> :
-         path === "/pomoc"       ? <SupportPage /> :
+        {path === "/panel"                    ? <PanelPage /> :
+         path === "/admin"                   ? <AdminPage /> :
+         path === "/"                        ? <MarketplacePage /> :
+         path === "/verify-email"            ? <VerifyEmailPage /> :
+         path === "/regulamin"               ? <RegulaminPage /> :
+         path === "/polityka-prywatnosci"    ? <PolitykaPrywatnosciPage /> :
+         path === "/prywatnosc"              ? <PrivacyPage /> :
+         path === "/pomoc"                   ? <SupportPage /> :
          (() => {
            const slug = path.slice(1);
            return slug && !slug.includes("/") ? <BusinessPage slug={slug} /> : <MarketplacePage />;

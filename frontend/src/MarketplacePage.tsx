@@ -248,7 +248,7 @@ export default function MarketplacePage() {
         <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
         <span style={S.footLink} onClick={() => navigate("/regulamin")}>{t.terms}</span>
         <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
-        <span style={S.footLink} onClick={() => navigate("/prywatnosc")}>{t.privacy}</span>
+        <span style={S.footLink} onClick={() => navigate("/polityka-prywatnosci")}>{t.privacy}</span>
         <span style={{ margin:"0 8px", opacity:.35 }}>·</span>
         <span style={S.footLink} onClick={() => navigate("/pomoc")}>{t.help}</span>
       </footer>
