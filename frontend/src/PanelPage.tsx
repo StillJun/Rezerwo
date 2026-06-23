@@ -4,7 +4,7 @@ import {
   Store, LogOut, Scissors, Plus, Trash2, Save, Check, Bell, Clock,
   MapPin, Phone, Instagram, Pencil, X, BadgeCheck, Image, Calendar,
   XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
-  ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link,
+  ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
@@ -879,7 +879,54 @@ function ServicesTab() {
         </button>
       </div>
 
-      {!list.length && <div style={S.empty}>{t.p_svcEmpty}</div>}
+      {!list.length && (
+        <div style={{
+          background: "linear-gradient(135deg,#f5f3ff 0%,#fdf4ff 100%)",
+          border: "1.5px dashed #c4b5fd",
+          borderRadius: 20,
+          padding: "44px 24px 40px",
+          textAlign: "center" as const,
+          marginBottom: 8,
+        }}>
+          <div style={{
+            width: 68, height: 68,
+            borderRadius: "50%",
+            background: "linear-gradient(135deg,#ede9fe,#fce7f3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 20px",
+            boxShadow: "0 6px 20px rgba(124,58,237,.18)",
+          }}>
+            <EyeOff size={30} color="#7c3aed"/>
+          </div>
+          <h3 style={{
+            fontSize: 18, fontWeight: 800, color: "#1a1320",
+            margin: "0 0 10px", fontFamily: "'Fraunces',Georgia,serif", letterSpacing:"-0.02em",
+          }}>
+            {t.p_svcNoVisTitle}
+          </h3>
+          <p style={{
+            fontSize: 14, color: "#71717a", lineHeight: 1.7,
+            maxWidth: 380, margin: "0 auto 24px",
+          }}>
+            {t.p_svcNoVisDesc}
+          </p>
+          <button
+            style={{
+              background: GRAD, color: "#fff", border: "none",
+              borderRadius: 999, padding: "13px 26px",
+              fontSize: 14, fontWeight: 700, cursor: "pointer", fontFamily: font,
+              boxShadow: "0 4px 16px rgba(124,58,237,.35)",
+              display: "inline-flex", alignItems: "center", gap: 8,
+            }}
+            onClick={() => setEditing({grp:"",name:"",description:"",duration:30,price:0})}
+          >
+            <Plus size={16}/> {t.p_svcNoVisCta}
+          </button>
+          <p style={{ fontSize: 12, color: "#a8a2b0", margin: "14px 0 0" }}>
+            {t.p_svcNoVisHint}
+          </p>
+        </div>
+      )}
 
       {Object.entries(groups).map(([grp, items]) => (
         <div key={grp} style={{marginBottom:18}}>
