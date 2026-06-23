@@ -150,6 +150,21 @@ export async function initDb() {
     );
   `);
 
+  // ── masters table (stage 1/5: multi-master support) ─────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS masters (
+      id          BIGSERIAL PRIMARY KEY,
+      business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      name        TEXT NOT NULL,
+      photo       TEXT,
+      bio         TEXT,
+      is_active   BOOLEAN NOT NULL DEFAULT TRUE,
+      sort        INT NOT NULL DEFAULT 0,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `).catch(() => {});
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_masters_biz ON masters(business_id)`).catch(() => {});
+
   // migrations for existing installations
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS slug TEXT`).catch(() => {});
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_businesses_slug ON businesses(slug) WHERE slug IS NOT NULL`).catch(() => {});
@@ -168,6 +183,43 @@ export async function initDb() {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_biz_categories ON businesses USING GIN(categories)`).catch(() => {});
   // visibility flag: hide from marketplace without deleting
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS is_visible BOOLEAN NOT NULL DEFAULT TRUE`).catch(() => {});
+
+  // ── masters stage 1: default master per existing business (idempotent) ──────
+  // For every business that has no master yet, insert one named after the business
+  await pool.query(`
+    INSERT INTO masters (business_id, name, is_active, sort)
+    SELECT b.id, b.name, TRUE, 0
+    FROM businesses b
+    WHERE NOT EXISTS (
+      SELECT 1 FROM masters m WHERE m.business_id = b.id
+    )
+  `).catch(() => {});
+
+  // Add master_id to services (nullable — NULL = available to all masters)
+  await pool.query(`ALTER TABLE services ADD COLUMN IF NOT EXISTS master_id BIGINT REFERENCES masters(id) ON DELETE SET NULL`).catch(() => {});
+  // Assign existing services to their business default master
+  await pool.query(`
+    UPDATE services s
+    SET master_id = (
+      SELECT m.id FROM masters m
+      WHERE m.business_id = s.business_id
+      ORDER BY m.id ASC LIMIT 1
+    )
+    WHERE s.master_id IS NULL
+  `).catch(() => {});
+
+  // Add master_id to appointments (nullable — NULL = any available master)
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS master_id BIGINT REFERENCES masters(id) ON DELETE SET NULL`).catch(() => {});
+  // Assign existing appointments to their business default master
+  await pool.query(`
+    UPDATE appointments a
+    SET master_id = (
+      SELECT m.id FROM masters m
+      WHERE m.business_id = a.business_id
+      ORDER BY m.id ASC LIMIT 1
+    )
+    WHERE a.master_id IS NULL
+  `).catch(() => {});
 
   console.log("Database ready (tables checked/created)");
 }

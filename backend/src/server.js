@@ -425,6 +425,75 @@ app.delete("/api/services/:id", requireAuth, ah(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* ---------- masters (public + owner) ---------- */
+const masterClient = (m) => ({
+  id: Number(m.id), businessId: Number(m.business_id),
+  name: m.name, photo: m.photo || null, bio: m.bio || null,
+  isActive: m.is_active, sort: m.sort,
+});
+
+// Public: list active masters for a business (by slug or id)
+app.get("/api/p/:slug/masters", ah(async (req, res) => {
+  const [biz] = await q(
+    "SELECT id FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE",
+    [req.params.slug]
+  );
+  if (!biz) return res.status(404).json({ error: "Nie znaleziono" });
+  const rows = await q(
+    "SELECT * FROM masters WHERE business_id=$1 AND is_active=TRUE ORDER BY sort, id",
+    [biz.id]
+  );
+  res.json(rows.map(masterClient));
+}));
+
+// Owner: list all masters (including inactive)
+app.get("/api/masters", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const rows = await q("SELECT * FROM masters WHERE business_id=$1 ORDER BY sort, id", [b.id]);
+  res.json(rows.map(masterClient));
+}));
+
+// Owner: add master
+app.post("/api/masters", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { name, photo = null, bio = null, sort = 0 } = req.body || {};
+  if (!name || !String(name).trim()) return res.status(400).json({ error: "Imię jest wymagane" });
+  const [row] = await q(
+    `INSERT INTO masters (business_id, name, photo, bio, sort, is_active)
+     VALUES ($1,$2,$3,$4,$5,TRUE) RETURNING *`,
+    [b.id, String(name).trim(), photo, bio, sort]
+  );
+  res.json(masterClient(row));
+}));
+
+// Owner: update master
+app.put("/api/masters/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const [cur] = await q("SELECT * FROM masters WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
+  if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
+  const name     = req.body.name     !== undefined ? String(req.body.name).trim() : cur.name;
+  const photo    = req.body.photo    !== undefined ? req.body.photo    : cur.photo;
+  const bio      = req.body.bio      !== undefined ? req.body.bio      : cur.bio;
+  const sort     = req.body.sort     !== undefined ? Number(req.body.sort) : cur.sort;
+  const isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : cur.is_active;
+  if (!name) return res.status(400).json({ error: "Imię jest wymagane" });
+  const [row] = await q(
+    `UPDATE masters SET name=$1, photo=$2, bio=$3, sort=$4, is_active=$5
+     WHERE id=$6 AND business_id=$7 RETURNING *`,
+    [name, photo, bio, sort, isActive, cur.id, b.id]
+  );
+  res.json(masterClient(row));
+}));
+
+// Owner: deactivate master (soft-delete via is_active=false)
+app.delete("/api/masters/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const [cur] = await q("SELECT * FROM masters WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
+  if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
+  await q("UPDATE masters SET is_active=FALSE WHERE id=$1", [cur.id]);
+  res.json({ ok: true });
+}));
+
 /* ---------- appointments (owner) ---------- */
 app.get("/api/appointments", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
