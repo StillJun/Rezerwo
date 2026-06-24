@@ -503,7 +503,9 @@ app.put("/api/masters/:id", requireAuth, ah(async (req, res) => {
   const photo    = req.body.photo    !== undefined ? req.body.photo    : cur.photo;
   const bio      = req.body.bio      !== undefined ? req.body.bio      : cur.bio;
   const sort     = req.body.sort     !== undefined ? Number(req.body.sort) : cur.sort;
-  const isActive = req.body.isActive !== undefined ? Boolean(req.body.isActive) : cur.is_active;
+  // frontend sends is_active (snake_case); accept both forms for robustness
+  const rawActive = req.body.is_active !== undefined ? req.body.is_active : req.body.isActive;
+  const isActive  = rawActive !== undefined ? Boolean(rawActive) : cur.is_active;
   if (!name) return res.status(400).json({ error: "Imię jest wymagane" });
   const [row] = await q(
     `UPDATE masters SET name=$1, photo=$2, bio=$3, sort=$4, is_active=$5
