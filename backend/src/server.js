@@ -180,6 +180,19 @@ function calcSlots(hours, bookedAppts, serviceMin, dateStr) {
   return slots;
 }
 
+// Efficient single-slot check used at booking time
+function isSlotFree(hours, bookedAppts, serviceMin, dateStr, slotMin) {
+  const DAY_KEYS = ["sun","mon","tue","wed","thu","fri","sat"];
+  const dayHours = hours?.[DAY_KEYS[new Date(dateStr + "T00:00:00").getDay()]];
+  if (!dayHours || !dayHours[0] || !dayHours[1]) return false;
+  const [openH, openM] = dayHours[0].split(":").map(Number);
+  const [closeH, closeM] = dayHours[1].split(":").map(Number);
+  if (slotMin < openH * 60 + openM || slotMin + serviceMin > closeH * 60 + closeM) return false;
+  const now = new Date();
+  if (dateStr === now.toISOString().slice(0, 10) && slotMin <= now.getHours() * 60 + now.getMinutes() + 15) return false;
+  return !bookedAppts.some(a => slotMin < a.start_min + a.duration && a.start_min < slotMin + serviceMin);
+}
+
 /* ---------- row → client mappers ---------- */
 const toCategories = (b) =>
   (b.categories && b.categories.length > 0) ? b.categories : [b.category].filter(Boolean);
@@ -651,24 +664,50 @@ app.get("/api/public/businesses/:slug", async (req, res) => {
 
 app.get("/api/public/businesses/:slug/slots", async (req, res) => {
   try {
-    const { date, service_id } = req.query;
+    const { date, service_id, master_id } = req.query;
     if (!date || !service_id) return res.status(400).json({ error: "date i service_id są wymagane" });
     const [b] = await q("SELECT * FROM businesses WHERE slug=$1", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
     if (!svc) return res.status(404).json({ error: "Usługa nie znaleziona" });
-    const appts = await q(
-      "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')",
-      [b.id, date]
-    );
-    const slots = calcSlots(b.hours, appts, svc.duration, date);
+
+    // Get capable masters (who can perform this service and are active)
+    const masters = master_id
+      ? await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
+                 WHERE m.id=$1 AND m.business_id=$2 AND m.is_active=TRUE AND ms.service_id=$3`,
+                [master_id, b.id, service_id])
+      : await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
+                 WHERE m.business_id=$1 AND m.is_active=TRUE AND ms.service_id=$2
+                 ORDER BY m.sort, m.id`,
+                [b.id, service_id]);
+
+    if (!masters.length) {
+      // Fallback: no master_services data → legacy business-level calculation
+      const appts = await q(
+        "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')",
+        [b.id, date]
+      );
+      const slots = calcSlots(b.hours, appts, svc.duration, date);
+      return res.json({ slots, duration: svc.duration, slotTimes: slots.map(minToTime) });
+    }
+
+    // Per-master slot calculation → union (slot available if ANY capable master is free)
+    const slotSet = new Set();
+    await Promise.all(masters.map(async (master) => {
+      const appts = await q(
+        "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')",
+        [b.id, date, master.id]
+      );
+      calcSlots(master.working_hours, appts, svc.duration, date).forEach(s => slotSet.add(s));
+    }));
+    const slots = Array.from(slotSet).sort((a, b) => a - b);
     res.json({ slots, duration: svc.duration, slotTimes: slots.map(minToTime) });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
 app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
   try {
-    const { service_id, client_name, client_phone, client_email = "", comment = "", date, start_min } = req.body || {};
+    const { service_id, client_name, client_phone, client_email = "", comment = "", date, start_min, master_id: requestedMasterId } = req.body || {};
     if (!service_id || !client_name || !client_phone || !date || start_min == null)
       return res.status(400).json({ error: "Wypełnij wszystkie wymagane pola" });
     if (typeof client_name !== "string" || client_name.trim().length < 2 || client_name.length > 100)
@@ -683,18 +722,45 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
     const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
     if (!svc) return res.status(404).json({ error: "Usługa nie znaleziona" });
 
-    const appts = await q(
-      "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')",
-      [b.id, date]
-    );
-    const overlaps = appts.some(a => start_min < a.start_min + a.duration && a.start_min < start_min + svc.duration);
-    if (overlaps) return res.status(409).json({ error: "Ten termin jest już zajęty. Wybierz inny." });
+    // Get capable masters — use requested master if specified, otherwise all capable
+    const masters = requestedMasterId
+      ? await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
+                 WHERE m.id=$1 AND m.business_id=$2 AND m.is_active=TRUE AND ms.service_id=$3`,
+                [requestedMasterId, b.id, service_id])
+      : await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
+                 WHERE m.business_id=$1 AND m.is_active=TRUE AND ms.service_id=$2
+                 ORDER BY m.sort, m.id`,
+                [b.id, service_id]);
+
+    let assignedMasterId = null;
+    if (!masters.length) {
+      // Fallback: no master_services data → legacy business-level overlap check
+      const appts = await q(
+        "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')",
+        [b.id, date]
+      );
+      if (appts.some(a => start_min < a.start_min + a.duration && a.start_min < start_min + svc.duration))
+        return res.status(409).json({ error: "Ten termin jest już zajęty. Wybierz inny." });
+    } else {
+      // Find first capable master who is free at the requested slot
+      for (const master of masters) {
+        const appts = await q(
+          "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')",
+          [b.id, date, master.id]
+        );
+        if (isSlotFree(master.working_hours, appts, svc.duration, date, start_min)) {
+          assignedMasterId = master.id;
+          break;
+        }
+      }
+      if (!assignedMasterId) return res.status(409).json({ error: "Ten termin jest już zajęty. Wybierz inny." });
+    }
 
     const status = b.confirm_required ? "pending" : "confirmed";
     const [appt] = await q(`
-      INSERT INTO appointments (business_id, service_id, client_name, client_phone, client_email, comment, date, start_min, duration, status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id, status`,
-      [b.id, service_id, client_name.trim(), client_phone.trim(), client_email.trim(), comment.trim(), date, start_min, svc.duration, status]);
+      INSERT INTO appointments (business_id, service_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, master_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, status`,
+      [b.id, service_id, client_name.trim(), client_phone.trim(), client_email.trim(), comment.trim(), date, start_min, svc.duration, status, assignedMasterId]);
     notifyOwnerNewBooking(appt.id).catch(() => {});
     res.json({ id: Number(appt.id), status: appt.status, confirmRequired: b.confirm_required, businessName: b.name });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
