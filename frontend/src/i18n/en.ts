@@ -56,6 +56,9 @@ export const en: T = {
   confirmedMsg: (name: string, date: string, time: string) => `Visit at ${name} confirmed! See you on ${date} at ${time}.`,
   backToProfile: "Back to profile",
   step: (n: number, t: number) => `Step ${n} of ${t}`,
+  chooseMaster:  "Choose a specialist",
+  anyMaster:     "Any available specialist",
+  anyMasterSub:  "System will assign an available specialist at booking",
 
   waitlistTitle: "Waiting list",
   waitlistSub: (svc?: string) => svc ? `No free slots for ${svc}? Leave your details and we'll notify you.` : "Salon is busy? Leave your details and we'll notify you.",

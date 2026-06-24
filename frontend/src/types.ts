@@ -33,6 +33,13 @@ export interface PublicService {
   duration: number; price: number; sort: number;
 }
 
+export interface PublicMaster {
+  id: number; businessId: number; name: string; photo: string | null; bio: string | null;
+  isActive: boolean; sort: number;
+  workingHours: Record<string, [string, string]>;
+  serviceIds: number[];
+}
+
 export interface Appointment {
   id: number; businessId: number;
   serviceId: number | null; serviceName: string | null; servicePrice: number | null;

@@ -56,6 +56,9 @@ export const ua: T = {
   confirmedMsg: (name: string, date: string, time: string) => `Візит у ${name} підтверджено! До зустрічі ${date} о ${time}.`,
   backToProfile: "Повернутися до профілю",
   step: (n: number, t: number) => `Крок ${n} з ${t}`,
+  chooseMaster:  "Виберіть спеціаліста",
+  anyMaster:     "Будь-який вільний спеціаліст",
+  anyMasterSub:  "Система призначить доступного спеціаліста при бронюванні",
 
   waitlistTitle: "Список очікування",
   waitlistSub: (svc?: string) => svc ? `Немає вільного часу для ${svc}? Залиште дані — ми повідомимо вас.` : "Салон зайнятий? Залиште дані — ми повідомимо вас.",

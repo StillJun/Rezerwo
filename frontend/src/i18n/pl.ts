@@ -57,6 +57,9 @@ export const pl = {
   confirmedMsg: (name: string, date: string, time: string) => `Wizyta w ${name} potwierdzona! Do zobaczenia ${date} o ${time}.`,
   backToProfile: "Wróć do profilu",
   step: (n: number, t: number) => `Krok ${n} z ${t}`,
+  chooseMaster:  "Wybierz specjalistę",
+  anyMaster:     "Dowolny wolny specjalista",
+  anyMasterSub:  "System przypisze dostępnego specjalistę w momencie rezerwacji",
 
   // waitlist
   waitlistTitle: "Lista oczekujących",

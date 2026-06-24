@@ -56,6 +56,9 @@ export const ru: T = {
   confirmedMsg: (name: string, date: string, time: string) => `Визит в ${name} подтверждён! До встречи ${date} в ${time}.`,
   backToProfile: "Вернуться к профилю",
   step: (n: number, t: number) => `Шаг ${n} из ${t}`,
+  chooseMaster:  "Выберите специалиста",
+  anyMaster:     "Любой свободный специалист",
+  anyMasterSub:  "Система назначит доступного специалиста при бронировании",
 
   waitlistTitle: "Лист ожидания",
   waitlistSub: (svc?: string) => svc ? `Нет свободного времени на ${svc}? Оставьте данные — мы уведомим вас.` : "Салон занят? Оставьте данные — мы уведомим вас.",

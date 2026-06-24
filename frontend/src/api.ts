@@ -1,4 +1,4 @@
-import type { Business, Service, Meta, User, PublicBusiness, Appointment, BookingResult, Review } from "./types";
+import type { Business, Service, Meta, User, PublicBusiness, PublicMaster, Appointment, BookingResult, Review } from "./types";
 
 const BASE = (import.meta.env.VITE_API_URL || "") + "/api";
 const TOKEN = "rz_token";
@@ -99,13 +99,16 @@ export const api = {
   },
   publicBusiness: (slug: string) =>
     req<PublicBusiness & { services: PublicBusiness["services"] }>(`/public/businesses/${slug}`),
-  slots: (slug: string, date: string, serviceId: number) =>
-    req<{ slots: number[]; slotTimes: string[]; duration: number }>(
-      `/public/businesses/${slug}/slots?date=${date}&service_id=${serviceId}`
-    ),
+  publicMasters: (slug: string) =>
+    req<PublicMaster[]>(`/p/${slug}/masters`),
+  slots: (slug: string, date: string, serviceId: number, masterId?: number) => {
+    let url = `/public/businesses/${slug}/slots?date=${date}&service_id=${serviceId}`;
+    if (masterId) url += `&master_id=${masterId}`;
+    return req<{ slots: number[]; slotTimes: string[]; duration: number }>(url);
+  },
   book: (slug: string, data: {
     service_id: number; client_name: string; client_phone: string;
-    client_email?: string; comment?: string; date: string; start_min: number;
+    client_email?: string; comment?: string; date: string; start_min: number; master_id?: number;
   }) => req<BookingResult>(`/public/businesses/${slug}/book`, { method: "POST", body: JSON.stringify(data) }),
   serviceRequest: (slug: string, data: { client_phone: string; text: string }) =>
     req<{ ok: boolean }>(`/public/businesses/${slug}/service-request`, { method: "POST", body: JSON.stringify(data) }),
