@@ -99,6 +99,19 @@ export const api = {
   },
   publicBusiness: (slug: string) =>
     req<PublicBusiness & { services: PublicBusiness["services"] }>(`/public/businesses/${slug}`),
+  /* owner: masters */
+  masters: () => req<PublicMaster[]>("/masters"),
+  addMaster: (data: { name: string; photo?: string|null; bio?: string|null; sort?: number }) =>
+    req<PublicMaster>("/masters", { method: "POST", body: JSON.stringify(data) }),
+  updateMaster: (id: number, data: { name?: string; photo?: string|null; bio?: string|null; isActive?: boolean; sort?: number }) =>
+    req<PublicMaster>(`/masters/${id}`, { method: "PUT", body: JSON.stringify({ name: data.name, photo: data.photo, bio: data.bio, is_active: data.isActive, sort: data.sort }) }),
+  deleteMaster: (id: number) => req<{ ok: boolean }>(`/masters/${id}`, { method: "DELETE" }),
+  updateMasterHours: (id: number, hours: Record<string, [string,string]>) =>
+    req<PublicMaster>(`/masters/${id}/hours`, { method: "PUT", body: JSON.stringify({ hours }) }),
+  updateMasterServices: (id: number, serviceIds: number[]) =>
+    req<{ ok: boolean; serviceIds: number[] }>(`/masters/${id}/services`, { method: "PUT", body: JSON.stringify({ serviceIds }) }),
+
+  /* public: masters */
   publicMasters: (slug: string) =>
     req<PublicMaster[]>(`/p/${slug}/masters`),
   slots: (slug: string, date: string, serviceId: number, masterId?: number) => {

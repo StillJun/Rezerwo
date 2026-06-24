@@ -4,11 +4,11 @@ import {
   Store, LogOut, Scissors, Plus, Trash2, Save, Check, Bell, Clock,
   MapPin, Phone, Instagram, Pencil, X, BadgeCheck, Image, Calendar,
   XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
-  ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff,
+  ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff, Users,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
-import type { Business, Service, Meta, Appointment, Review } from "./types";
+import type { Business, Service, Meta, Appointment, Review, PublicMaster } from "./types";
 import { useTranslation } from "./i18n";
 import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
@@ -290,7 +290,7 @@ function Onboarding({ onCreated, onLogout }: { onCreated: (b: Business) => void;
 /* ========== DASHBOARD ========== */
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<"appointments"|"services"|"profile"|"reviews"|"waitlist"|"requests"|"widget">("appointments");
+  const [tab, setTab] = useState<"appointments"|"services"|"masters"|"profile"|"reviews"|"waitlist"|"requests"|"widget">("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
   const [bizLoading, setBizLoading] = useState(true);
   const [bizErr, setBizErr] = useState<string|null>(null);
@@ -429,6 +429,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         <button className="panel-tab" style={{...S.tab,...(tab==="services"?S.tabOn:{})}} onClick={()=>setTab("services")}>
           <Scissors size={15}/> {t.p_tabServices}
         </button>
+        <button className="panel-tab" style={{...S.tab,...(tab==="masters"?S.tabOn:{})}} onClick={()=>setTab("masters")}>
+          <Users size={15}/> {t.p_tabMasters}
+        </button>
         <button className="panel-tab" style={{...S.tab,...(tab==="reviews"?S.tabOn:{})}} onClick={()=>setTab("reviews")}>
           <Star size={15}/> {t.p_tabReviews}
         </button>
@@ -449,6 +452,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       <div style={S.body} className="panel-body">
         {tab==="appointments" && biz && <AppointmentsTab biz={biz}/>}
         {tab==="services"     && <ServicesTab/>}
+        {tab==="masters"      && <MastersTab/>}
         {tab==="reviews"      && <ReviewsTab/>}
         {tab==="waitlist"     && biz && <WaitlistTab/>}
         {tab==="requests"     && <ServiceRequestsTab/>}
@@ -581,6 +585,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                   <div style={{fontSize:14,fontWeight:700}}>{a.clientName}</div>
                   <div style={{fontSize:12.5,color:"#7c3aed",fontWeight:600}}>{a.clientPhone}</div>
                   <div style={{fontSize:12.5,color:"#71717a"}}>{a.serviceName||"—"}</div>
+                  {a.masterName && <div style={{fontSize:12,color:"#a8a2b0"}}><Users size={11} style={{display:"inline",verticalAlign:"middle",marginRight:3}}/>{a.masterName}</div>}
                   <div style={{fontSize:12,color:"#92400e"}}>{dateLabel(a.date, t)} {minToTime(a.startMin)}</div>
                   {a.comment && <div style={{fontSize:12,color:"#7c3aed",marginTop:2}}>💬 {a.comment}</div>}
                 </div>
@@ -638,6 +643,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{a.clientName}</div>
                   <div style={{fontSize:12.5,color:"#71717a"}}>{a.serviceName||"—"}</div>
+                  {a.masterName && <div style={{fontSize:12,color:"#a8a2b0"}}><Users size={11} style={{display:"inline",verticalAlign:"middle",marginRight:3}}/>{a.masterName}</div>}
                   {filter !== "today" && <div style={{fontSize:12,color:"#a8a2b0"}}>{dateLabel(a.date, t)}</div>}
                   {a.comment && <div style={{fontSize:12,color:"#7c3aed",marginTop:2}}>💬 {a.comment}</div>}
                 </div>
@@ -1426,6 +1432,241 @@ function WidgetTab({ biz }: { biz: Business }) {
           <span style={WS.howIcon}>🌐</span>
           <span>{t.w_howSite}</span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ========== MASTERS TAB ========== */
+function masterInitials(name: string) {
+  return name.split(" ").slice(0,2).map(w=>w[0]?.toUpperCase()||"").join("");
+}
+
+function MastersTab() {
+  const { t } = useTranslation();
+  const [masters, setMasters] = useState<PublicMaster[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [editing, setEditing] = useState<PublicMaster|null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const load = useCallback(async () => {
+    const [ms, svcs] = await Promise.all([api.masters(), api.services()]);
+    setMasters(ms);
+    setServices(svcs);
+  }, []);
+
+  useEffect(() => { load().catch(()=>{}); }, [load]);
+
+  const openEdit = (m: PublicMaster) => { setEditing(m); setCreating(false); };
+  const openNew  = () => { setEditing(null); setCreating(true); };
+  const close    = () => { setEditing(null); setCreating(false); };
+
+  const onSaved = () => { close(); load(); };
+
+  return (
+    <div className="rise">
+      <div style={S.sectionHead} className="section-head">
+        <div>
+          <h2 style={S.h2}>{t.p_mastersTitle}</h2>
+          <p style={S.muted}>{t.p_mastersSub}</p>
+        </div>
+        <button style={S.addBtn} onClick={openNew}><Plus size={16}/> {t.p_masterAdd}</button>
+      </div>
+
+      {masters.length === 0 && (
+        <div style={S.empty}>{t.p_masterEmpty}</div>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+        {masters.map(m => (
+          <div key={m.id} style={{...S.card,padding:"14px 16px",display:"flex",gap:12,alignItems:"center"}}>
+            {m.photo ? (
+              <img src={m.photo} alt={m.name} style={{width:44,height:44,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+            ) : (
+              <div style={{width:44,height:44,borderRadius:"50%",background:"linear-gradient(135deg,#a78bfa,#ec4899)",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:15,flexShrink:0}}>
+                {masterInitials(m.name)}
+              </div>
+            )}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontSize:14,fontWeight:700}}>{m.name}</span>
+                {!m.isActive && <span style={{fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",padding:"2px 7px",borderRadius:999}}>{t.p_masterDeactivate}</span>}
+              </div>
+              {m.bio && <div style={{fontSize:12.5,color:"#71717a",marginTop:2}}>{m.bio}</div>}
+              <div style={{fontSize:12,color:"#a8a2b0",marginTop:3}}>
+                {services.filter(s=>m.serviceIds.includes(s.id)).map(s=>s.name).join(", ")||"—"}
+              </div>
+            </div>
+            <button style={S.miniBtn} onClick={()=>openEdit(m)}><Pencil size={14}/></button>
+          </div>
+        ))}
+      </div>
+
+      {(editing || creating) && (
+        <MasterModal
+          master={editing}
+          services={services}
+          onClose={close}
+          onSaved={onSaved}
+        />
+      )}
+    </div>
+  );
+}
+
+function MasterModal({ master, services, onClose, onSaved }:
+  { master: PublicMaster|null; services: Service[]; onClose: ()=>void; onSaved: ()=>void }) {
+  const { t } = useTranslation();
+  const isNew = !master;
+
+  const [name, setName]       = useState(master?.name || "");
+  const [photo, setPhoto]     = useState(master?.photo || "");
+  const [bio, setBio]         = useState(master?.bio || "");
+  const [isActive, setActive] = useState(master?.isActive ?? true);
+  const [sort, setSort]       = useState(master?.sort ?? 0);
+  const [hours, setHours]     = useState<Record<string,[string,string]>>(
+    master?.workingHours ? { ...master.workingHours } : {}
+  );
+  const [serviceIds, setServiceIds] = useState<number[]>(master?.serviceIds || []);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr]   = useState("");
+
+  const toggleDay = (day: string) => {
+    setHours(prev => {
+      const h = { ...prev };
+      if (h[day]) { delete h[day]; } else { h[day] = ["09:00","18:00"]; }
+      return h;
+    });
+  };
+  const setHour = (day: string, idx: 0|1, val: string) => {
+    setHours(prev => {
+      const h = { ...prev };
+      if (!h[day]) h[day] = ["09:00","18:00"];
+      h[day] = [h[day][0], h[day][1]];
+      h[day][idx] = val;
+      return h;
+    });
+  };
+  const toggleService = (id: number) => {
+    setServiceIds(prev => prev.includes(id) ? prev.filter(x=>x!==id) : [...prev, id]);
+  };
+
+  const save = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    setErr("");
+    try {
+      let m: PublicMaster;
+      if (isNew) {
+        m = await api.addMaster({ name: name.trim(), photo: photo.trim()||null, bio: bio.trim()||null, sort });
+      } else {
+        m = await api.updateMaster(master!.id, { name: name.trim(), photo: photo.trim()||null, bio: bio.trim()||null, isActive, sort });
+      }
+      await Promise.all([
+        api.updateMasterHours(m.id, hours),
+        api.updateMasterServices(m.id, serviceIds),
+      ]);
+      onSaved();
+    } catch(e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  const deactivate = async () => {
+    if (!master) return;
+    setBusy(true);
+    try {
+      await api.updateMaster(master.id, { isActive: false });
+      onSaved();
+    } catch(e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
+      <div style={{...S.modal,maxHeight:"90vh",overflowY:"auto"}} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
+        <div style={S.modalHead}>
+          <span style={{fontWeight:800,fontSize:17}}>{isNew ? t.p_masterNewTitle : t.p_masterEditTitle}</span>
+          <button style={S.iconBtn} onClick={onClose}><X size={18}/></button>
+        </div>
+
+        <label style={S.lbl}>{t.p_masterName}</label>
+        <input style={S.input} value={name} onChange={e=>setName(e.target.value)} autoFocus/>
+
+        <label style={S.lbl}>{t.p_masterPhoto}</label>
+        <input style={S.input} value={photo} onChange={e=>setPhoto(e.target.value)} placeholder="https://…"/>
+
+        <label style={S.lbl}>{t.p_masterBio}</label>
+        <textarea style={{...S.input,minHeight:60,resize:"vertical" as const,fontFamily:font}}
+          value={bio} onChange={e=>setBio(e.target.value)}/>
+
+        {!isNew && (
+          <div style={{display:"flex",alignItems:"center",gap:10,margin:"8px 0"}}>
+            <button style={{...S.toggle,...(isActive?S.toggleOn:{})}} onClick={()=>setActive(v=>!v)}>
+              <span style={{...S.knob,...(isActive?S.knobOn:{})}}/>
+            </button>
+            <div>
+              <div style={{fontSize:13,fontWeight:600}}>{t.p_masterActive}</div>
+              <div style={{fontSize:12,color:"#a8a2b0"}}>{t.p_masterActiveSub}</div>
+            </div>
+          </div>
+        )}
+
+        <label style={S.lbl}>{t.p_masterSort}</label>
+        <input style={S.input} type="number" value={sort} onChange={e=>setSort(Number(e.target.value))}/>
+
+        <label style={{...S.lbl,marginTop:14}}>{t.p_masterHours}</label>
+        <div style={S.hoursGrid}>
+          {DAY_KEYS.map(key => {
+            const on = !!hours[key];
+            const vals = (hours[key] || ["09:00","18:00"]) as [string,string];
+            const dayLabel = (t.days as Record<string,string>)[key] || key;
+            return (
+              <div key={key} style={S.hoursRow}>
+                <button style={{...S.toggle,...(on?S.toggleOn:{})}} onClick={()=>toggleDay(key)}>
+                  <span style={{...S.knob,...(on?S.knobOn:{})}}/>
+                </button>
+                <span style={{width:28,fontSize:13,fontWeight:600,color:on?"#1b1420":"#a8a2b0"}}>{dayLabel}</span>
+                {on ? (
+                  <>
+                    <input style={S.timeInput} type="time" value={vals[0]} onChange={e=>setHour(key,0,e.target.value)}/>
+                    <span style={{color:"#a8a2b0",fontSize:13}}>—</span>
+                    <input style={S.timeInput} type="time" value={vals[1]} onChange={e=>setHour(key,1,e.target.value)}/>
+                  </>
+                ) : <span style={{fontSize:12,color:"#c4bece"}}>{t.p_closed}</span>}
+              </div>
+            );
+          })}
+        </div>
+
+        {services.length > 0 && (
+          <>
+            <label style={{...S.lbl,marginTop:14}}>{t.p_masterServices}</label>
+            <div style={{fontSize:12,color:"#a8a2b0",marginBottom:8}}>{t.p_masterServicesHint}</div>
+            <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+              {services.map(s => (
+                <label key={s.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#1a1320"}}>
+                  <input type="checkbox" checked={serviceIds.includes(s.id)} onChange={()=>toggleService(s.id)}
+                    style={{accentColor:ACC,width:16,height:16}}/>
+                  {s.name}
+                  {s.duration ? <span style={{color:"#a8a2b0",fontSize:12}}>{s.duration} min</span> : null}
+                </label>
+              ))}
+            </div>
+          </>
+        )}
+
+        {err && <div style={{color:"#dc2626",fontSize:13,marginTop:10}}>{err}</div>}
+
+        <button style={{...S.primary,marginTop:18,opacity:name.trim()?1:0.5}} disabled={!name.trim()||busy} onClick={save}>
+          <Save size={16}/> {t.p_save}
+        </button>
+
+        {!isNew && master?.isActive && (
+          <button style={{...S.miniBtn,width:"100%",justifyContent:"center",marginTop:8,color:"#dc2626",fontSize:13,padding:"8px 0"}}
+            disabled={busy} onClick={deactivate}>
+            <EyeOff size={14}/> {t.p_masterDeactivate}
+          </button>
+        )}
       </div>
     </div>
   );

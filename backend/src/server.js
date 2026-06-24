@@ -224,6 +224,8 @@ const apptClient = (a) => ({
   serviceId: a.service_id ? Number(a.service_id) : null,
   serviceName: a.service_name || null,
   servicePrice: a.service_price != null ? Number(a.service_price) : null,
+  masterId: a.master_id ? Number(a.master_id) : null,
+  masterName: a.master_name || null,
   clientName: a.client_name,
   clientPhone: a.client_phone,
   clientEmail: a.client_email || "",
@@ -565,8 +567,10 @@ app.delete("/api/masters/:id", requireAuth, ah(async (req, res) => {
 app.get("/api/appointments", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { date, status } = req.query;
-  let sql = `SELECT a.*, s.name as service_name, s.price as service_price
-    FROM appointments a LEFT JOIN services s ON s.id = a.service_id
+  let sql = `SELECT a.*, s.name as service_name, s.price as service_price, m.name as master_name
+    FROM appointments a
+    LEFT JOIN services s ON s.id = a.service_id
+    LEFT JOIN masters m ON m.id = a.master_id
     WHERE a.business_id = $1`;
   const params = [b.id];
   if (date) { sql += ` AND a.date = $${params.length + 1}`; params.push(date); }
@@ -585,7 +589,8 @@ app.put("/api/appointments/:id", requireAuth, ah(async (req, res) => {
     return res.status(400).json({ error: "Nieprawidłowy status" });
   const [row] = await q("UPDATE appointments SET status=$1 WHERE id=$2 RETURNING *", [status, a.id]);
   const [svc] = row.service_id ? await q("SELECT name, price FROM services WHERE id=$1", [row.service_id]) : [null];
-  res.json(apptClient({ ...row, service_name: svc?.name || null, service_price: svc?.price || null }));
+  const [mst] = row.master_id ? await q("SELECT name FROM masters WHERE id=$1", [row.master_id]) : [null];
+  res.json(apptClient({ ...row, service_name: svc?.name || null, service_price: svc?.price || null, master_name: mst?.name || null }));
 }));
 
 /* ---------- service requests (owner) ---------- */
@@ -606,8 +611,10 @@ app.get("/api/clients/:phone", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const phone = req.params.phone;
   const history = await q(`
-    SELECT a.*, s.name as service_name, s.price as service_price
-    FROM appointments a LEFT JOIN services s ON s.id = a.service_id
+    SELECT a.*, s.name as service_name, s.price as service_price, m.name as master_name
+    FROM appointments a
+    LEFT JOIN services s ON s.id = a.service_id
+    LEFT JOIN masters m ON m.id = a.master_id
     WHERE a.business_id=$1 AND a.client_phone=$2 ORDER BY a.date DESC, a.start_min DESC`,
     [b.id, phone]);
   const [note] = await q("SELECT note FROM client_notes WHERE business_id=$1 AND client_phone=$2", [b.id, phone]);

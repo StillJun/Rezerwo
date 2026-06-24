@@ -43,6 +43,7 @@ export interface PublicMaster {
 export interface Appointment {
   id: number; businessId: number;
   serviceId: number | null; serviceName: string | null; servicePrice: number | null;
+  masterId?: number | null; masterName?: string | null;
   clientName: string; clientPhone: string; clientEmail: string; comment: string;
   date: string; startMin: number; duration: number;
   status: "pending" | "confirmed" | "cancelled" | "done" | "no_show";

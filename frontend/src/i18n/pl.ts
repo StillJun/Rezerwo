@@ -157,11 +157,30 @@ export const pl = {
   // panel: tabs
   p_tabAppointments:   "Terminy",
   p_tabServices:       "Usługi",
+  p_tabMasters:        "Specjaliści",
   p_tabReviews:        "Opinie",
   p_tabWaitlist:       "Lista",
   p_tabProfile:        "Profil",
   p_tabRequests:       "Zapytania",
   p_tabWidget:         "Widget",
+
+  // panel: masters
+  p_mastersTitle:       "Twoi specjaliści",
+  p_mastersSub:         "Zarządzaj specjalistami, ich grafikiem i usługami.",
+  p_masterAdd:          "Dodaj specjalistę",
+  p_masterEmpty:        "Brak specjalistów. Dodaj pierwszego — pojawi się jako opcja przy rezerwacji.",
+  p_masterNewTitle:     "Nowy specjalista",
+  p_masterEditTitle:    "Edytuj specjalistę",
+  p_masterName:         "Imię i nazwisko *",
+  p_masterPhoto:        "URL zdjęcia (opcjonalnie)",
+  p_masterBio:          "Opis / specjalizacja",
+  p_masterActive:       "Przyjmuje wizyty",
+  p_masterActiveSub:    "Odznacz, aby tymczasowo wyłączyć specjalistę",
+  p_masterHours:        "Godziny pracy",
+  p_masterServices:     "Wykonywane usługi",
+  p_masterServicesHint: "Zaznacz usługi, które ten specjalista wykonuje.",
+  p_masterSort:         "Kolejność (sortowanie)",
+  p_masterDeactivate:   "Dezaktywuj",
 
   // panel: service requests
   p_reqTitle:          "Zapytania o usługi",
