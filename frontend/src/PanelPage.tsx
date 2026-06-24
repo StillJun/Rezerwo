@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import {
   Store, LogOut, Scissors, Plus, Trash2, Save, Check, Bell, Clock,
@@ -1584,7 +1585,7 @@ function MasterModal({ master, services, onClose, onSaved }:
     finally { setBusy(false); }
   };
 
-  return (
+  return createPortal(
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
       <div style={S.modal} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
@@ -1668,7 +1669,8 @@ function MasterModal({ master, services, onClose, onSaved }:
           </button>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
