@@ -166,6 +166,7 @@ export const en: T = {
   p_masterServicesHint: "Check services this specialist performs.",
   p_masterSort:         "Order (sort)",
   p_masterDeactivate:   "Deactivate",
+  p_masterNoServices:   "⚠ No services assigned — specialist won't appear during booking",
 
   p_reqTitle:          "Service requests",
   p_reqSub:            "Clients asking about services not on your list.",

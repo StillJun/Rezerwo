@@ -181,6 +181,7 @@ export const pl = {
   p_masterServicesHint: "Zaznacz usługi, które ten specjalista wykonuje.",
   p_masterSort:         "Kolejność (sortowanie)",
   p_masterDeactivate:   "Dezaktywuj",
+  p_masterNoServices:   "⚠ Brak usług — specjalista nie pojawi się przy rezerwacji",
 
   // panel: service requests
   p_reqTitle:          "Zapytania o usługi",

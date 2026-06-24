@@ -1496,6 +1496,9 @@ function MastersTab() {
               <div style={{fontSize:12,color:"#a8a2b0",marginTop:3}}>
                 {services.filter(s=>m.serviceIds.includes(s.id)).map(s=>s.name).join(", ")||"—"}
               </div>
+              {m.isActive && m.serviceIds.length === 0 && (
+                <div style={{fontSize:11.5,color:"#d97706",marginTop:4,fontWeight:600}}>{t.p_masterNoServices}</div>
+              )}
             </div>
             <button style={S.miniBtn} onClick={()=>openEdit(m)}><Pencil size={14}/></button>
           </div>
