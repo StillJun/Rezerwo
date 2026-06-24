@@ -1586,7 +1586,7 @@ function MasterModal({ master, services, onClose, onSaved }:
 
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
-      <div style={{...S.modal,maxHeight:"90vh",overflowY:"auto"}} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
+      <div style={S.modal} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
           <span style={{fontWeight:800,fontSize:17}}>{isNew ? t.p_masterNewTitle : t.p_masterEditTitle}</span>
           <button style={S.iconBtn} onClick={onClose}><X size={18}/></button>
@@ -1599,11 +1599,11 @@ function MasterModal({ master, services, onClose, onSaved }:
         <input style={S.input} value={photo} onChange={e=>setPhoto(e.target.value)} placeholder="https://…"/>
 
         <label style={S.lbl}>{t.p_masterBio}</label>
-        <textarea style={{...S.input,minHeight:60,resize:"vertical" as const,fontFamily:font}}
+        <textarea style={{...S.input,minHeight:56,resize:"vertical" as const,fontFamily:font}}
           value={bio} onChange={e=>setBio(e.target.value)}/>
 
         {!isNew && (
-          <div style={{display:"flex",alignItems:"center",gap:10,margin:"8px 0"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,margin:"4px 0 12px"}}>
             <button style={{...S.toggle,...(isActive?S.toggleOn:{})}} onClick={()=>setActive(v=>!v)}>
               <span style={{...S.knob,...(isActive?S.knobOn:{})}}/>
             </button>
@@ -1614,10 +1614,7 @@ function MasterModal({ master, services, onClose, onSaved }:
           </div>
         )}
 
-        <label style={S.lbl}>{t.p_masterSort}</label>
-        <input style={S.input} type="number" value={sort} onChange={e=>setSort(Number(e.target.value))}/>
-
-        <label style={{...S.lbl,marginTop:14}}>{t.p_masterHours}</label>
+        <label style={{...S.lbl,marginTop:4}}>{t.p_masterHours}</label>
         <div style={S.hoursGrid}>
           {DAY_KEYS.map(key => {
             const on = !!hours[key];
@@ -1643,29 +1640,29 @@ function MasterModal({ master, services, onClose, onSaved }:
 
         {services.length > 0 && (
           <>
-            <label style={{...S.lbl,marginTop:14}}>{t.p_masterServices}</label>
+            <label style={{...S.lbl,marginTop:6}}>{t.p_masterServices}</label>
             <div style={{fontSize:12,color:"#a8a2b0",marginBottom:8}}>{t.p_masterServicesHint}</div>
-            <div style={{display:"flex",flexDirection:"column" as const,gap:6}}>
+            <div style={{display:"flex",flexDirection:"column" as const,gap:6,marginBottom:4}}>
               {services.map(s => (
-                <label key={s.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#1a1320"}}>
+                <label key={s.id} style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#1a1320",userSelect:"none" as const}}>
                   <input type="checkbox" checked={serviceIds.includes(s.id)} onChange={()=>toggleService(s.id)}
-                    style={{accentColor:ACC,width:16,height:16}}/>
-                  {s.name}
-                  {s.duration ? <span style={{color:"#a8a2b0",fontSize:12}}>{s.duration} min</span> : null}
+                    style={{accentColor:ACC,width:16,height:16,flexShrink:0}}/>
+                  <span style={{flex:1}}>{s.name}</span>
+                  {s.duration ? <span style={{color:"#a8a2b0",fontSize:12,flexShrink:0}}>{s.duration} min</span> : null}
                 </label>
               ))}
             </div>
           </>
         )}
 
-        {err && <div style={{color:"#dc2626",fontSize:13,marginTop:10}}>{err}</div>}
+        {err && <div style={{color:"#dc2626",fontSize:13,marginTop:8,padding:"8px 12px",background:"#fef2f2",borderRadius:10}}>{err}</div>}
 
-        <button style={{...S.primary,marginTop:18,opacity:name.trim()?1:0.5}} disabled={!name.trim()||busy} onClick={save}>
-          <Save size={16}/> {t.p_save}
+        <button style={{...S.primary,marginTop:14,opacity:name.trim()?1:0.5}} disabled={!name.trim()||busy} onClick={save}>
+          <Save size={16}/> {busy ? "…" : t.p_save}
         </button>
 
         {!isNew && master?.isActive && (
-          <button style={{...S.miniBtn,width:"100%",justifyContent:"center",marginTop:8,color:"#dc2626",fontSize:13,padding:"8px 0"}}
+          <button style={{display:"flex",alignItems:"center",justifyContent:"center",gap:6,width:"100%",marginTop:10,padding:"9px",border:"1.5px solid #fca5a5",borderRadius:12,background:"#fff",color:"#dc2626",fontSize:13,fontWeight:600,cursor:"pointer",fontFamily:font}}
             disabled={busy} onClick={deactivate}>
             <EyeOff size={14}/> {t.p_masterDeactivate}
           </button>
