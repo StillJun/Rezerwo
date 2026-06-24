@@ -221,5 +221,35 @@ export async function initDb() {
     WHERE a.master_id IS NULL
   `).catch(() => {});
 
+  // ── masters stage 2: working_hours + master_services ────────────────────────
+  // Same format as businesses.hours: {"mon":["10:00","19:00"],...}
+  await pool.query(`ALTER TABLE masters ADD COLUMN IF NOT EXISTS working_hours JSONB NOT NULL DEFAULT '{}'::jsonb`).catch(() => {});
+  // Inherit business hours for masters that still have empty schedule (idempotent)
+  await pool.query(`
+    UPDATE masters m
+    SET working_hours = b.hours
+    FROM businesses b
+    WHERE m.business_id = b.id
+      AND m.working_hours = '{}'::jsonb
+      AND b.hours IS NOT NULL
+      AND b.hours != '{}'::jsonb
+  `).catch(() => {});
+  // Many-to-many: which services each master can perform
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS master_services (
+      master_id  BIGINT NOT NULL REFERENCES masters(id) ON DELETE CASCADE,
+      service_id BIGINT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+      PRIMARY KEY (master_id, service_id)
+    )
+  `).catch(() => {});
+  // Populate from services.master_id set in stage 1 (ON CONFLICT = idempotent)
+  await pool.query(`
+    INSERT INTO master_services (master_id, service_id)
+    SELECT s.master_id, s.id
+    FROM services s
+    WHERE s.master_id IS NOT NULL
+    ON CONFLICT DO NOTHING
+  `).catch(() => {});
+
   console.log("Database ready (tables checked/created)");
 }

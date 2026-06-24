@@ -426,47 +426,60 @@ app.delete("/api/services/:id", requireAuth, ah(async (req, res) => {
 }));
 
 /* ---------- masters (public + owner) ---------- */
-const masterClient = (m) => ({
+const masterClient = (m, serviceIds = []) => ({
   id: Number(m.id), businessId: Number(m.business_id),
   name: m.name, photo: m.photo || null, bio: m.bio || null,
   isActive: m.is_active, sort: m.sort,
+  workingHours: m.working_hours || {},
+  serviceIds: (m.service_ids || serviceIds).map(Number),
 });
 
-// Public: list active masters for a business (by slug or id)
+// Efficient single-query fetch: masters + their service_ids via array_agg
+async function fetchMastersWithServices(businessId, activeOnly = false) {
+  const cond = activeOnly ? "m.business_id=$1 AND m.is_active=TRUE" : "m.business_id=$1";
+  return q(`
+    SELECT m.*,
+      COALESCE(array_agg(ms.service_id::bigint) FILTER (WHERE ms.service_id IS NOT NULL), ARRAY[]::bigint[]) AS service_ids
+    FROM masters m
+    LEFT JOIN master_services ms ON ms.master_id = m.id
+    WHERE ${cond}
+    GROUP BY m.id
+    ORDER BY m.sort, m.id
+  `, [businessId]);
+}
+
+// Public: list active masters + their services + schedule
 app.get("/api/p/:slug/masters", ah(async (req, res) => {
   const [biz] = await q(
     "SELECT id FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE",
     [req.params.slug]
   );
   if (!biz) return res.status(404).json({ error: "Nie znaleziono" });
-  const rows = await q(
-    "SELECT * FROM masters WHERE business_id=$1 AND is_active=TRUE ORDER BY sort, id",
-    [biz.id]
-  );
-  res.json(rows.map(masterClient));
+  const rows = await fetchMastersWithServices(biz.id, true);
+  res.json(rows.map(m => masterClient(m)));
 }));
 
-// Owner: list all masters (including inactive)
+// Owner: list all masters (including inactive) + their services + schedule
 app.get("/api/masters", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const rows = await q("SELECT * FROM masters WHERE business_id=$1 ORDER BY sort, id", [b.id]);
-  res.json(rows.map(masterClient));
+  const rows = await fetchMastersWithServices(b.id, false);
+  res.json(rows.map(m => masterClient(m)));
 }));
 
-// Owner: add master
+// Owner: add master (inherits business hours as default schedule)
 app.post("/api/masters", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { name, photo = null, bio = null, sort = 0 } = req.body || {};
   if (!name || !String(name).trim()) return res.status(400).json({ error: "Imię jest wymagane" });
   const [row] = await q(
-    `INSERT INTO masters (business_id, name, photo, bio, sort, is_active)
-     VALUES ($1,$2,$3,$4,$5,TRUE) RETURNING *`,
-    [b.id, String(name).trim(), photo, bio, sort]
+    `INSERT INTO masters (business_id, name, photo, bio, sort, is_active, working_hours)
+     VALUES ($1,$2,$3,$4,$5,TRUE,$6) RETURNING *`,
+    [b.id, String(name).trim(), photo, bio, sort, JSON.stringify(b.hours || {})]
   );
   res.json(masterClient(row));
 }));
 
-// Owner: update master
+// Owner: update master metadata (name/photo/bio/sort/isActive)
 app.put("/api/masters/:id", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const [cur] = await q("SELECT * FROM masters WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
@@ -482,7 +495,48 @@ app.put("/api/masters/:id", requireAuth, ah(async (req, res) => {
      WHERE id=$6 AND business_id=$7 RETURNING *`,
     [name, photo, bio, sort, isActive, cur.id, b.id]
   );
-  res.json(masterClient(row));
+  const svcRows = await q("SELECT service_id FROM master_services WHERE master_id=$1", [cur.id]);
+  res.json(masterClient(row, svcRows.map(r => r.service_id)));
+}));
+
+// Owner: update master's working hours (same format as businesses.hours)
+app.put("/api/masters/:id/hours", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const [cur] = await q("SELECT id FROM masters WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
+  if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
+  const hours = req.body?.hours;
+  if (!hours || typeof hours !== "object") return res.status(400).json({ error: "Nieprawidłowy format godzin" });
+  const [row] = await q(
+    "UPDATE masters SET working_hours=$1 WHERE id=$2 RETURNING *",
+    [JSON.stringify(hours), cur.id]
+  );
+  const svcRows = await q("SELECT service_id FROM master_services WHERE master_id=$1", [cur.id]);
+  res.json(masterClient(row, svcRows.map(r => r.service_id)));
+}));
+
+// Owner: replace service list for a master (PUT replaces all)
+app.put("/api/masters/:id/services", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const [cur] = await q("SELECT id FROM masters WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
+  if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
+  const { serviceIds = [] } = req.body || {};
+  if (!Array.isArray(serviceIds)) return res.status(400).json({ error: "serviceIds musi być tablicą" });
+  // Verify all service IDs belong to this business
+  if (serviceIds.length > 0) {
+    const owned = await q(
+      `SELECT id FROM services WHERE id = ANY($1::bigint[]) AND business_id=$2`,
+      [serviceIds, b.id]
+    );
+    if (owned.length !== serviceIds.length) return res.status(400).json({ error: "Nieznana usługa" });
+  }
+  // Replace atomically
+  await q("DELETE FROM master_services WHERE master_id=$1", [cur.id]);
+  if (serviceIds.length > 0) {
+    const vals = serviceIds.map((_, i) => `($1,$${i + 2})`).join(",");
+    await q(`INSERT INTO master_services (master_id, service_id) VALUES ${vals} ON CONFLICT DO NOTHING`,
+      [cur.id, ...serviceIds]);
+  }
+  res.json({ ok: true, serviceIds: serviceIds.map(Number) });
 }));
 
 // Owner: deactivate master (soft-delete via is_active=false)
