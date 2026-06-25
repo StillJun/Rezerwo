@@ -948,7 +948,7 @@ function ServicesTab() {
         <div><h2 style={S.h2}>{t.p_svcTitle}</h2>
           <p style={S.muted}>{t.p_svcSub}</p></div>
         <button className="add-btn" style={S.addBtn}
-          onClick={()=>setEditing({grp:"",name:"",description:"",duration:30,price:0})}>
+          onClick={()=>setEditing({grp:"",name:"",description:"",duration:30})}>
           <Plus size={16}/> {t.p_svcAdd}
         </button>
       </div>
@@ -992,7 +992,7 @@ function ServicesTab() {
               boxShadow: "0 4px 16px rgba(124,58,237,.35)",
               display: "inline-flex", alignItems: "center", gap: 8,
             }}
-            onClick={() => setEditing({grp:"",name:"",description:"",duration:30,price:0})}
+            onClick={() => setEditing({grp:"",name:"",description:"",duration:30})}
           >
             <Plus size={16}/> {t.p_svcNoVisCta}
           </button>
@@ -1070,8 +1070,8 @@ function ServiceModal({ init, onClose, onSave }:
           <div style={{flex:1}}>
             <label style={S.lbl}>{t.p_svcPrice}</label>
             <input style={S.input} type="number" min={0} step={1}
-              value={s.price === undefined || s.price === null ? "" : s.price}
-              placeholder="0"
+              value={s.price == null ? "" : s.price}
+              placeholder="np. 80"
               onChange={e => setF("price", e.target.value === "" ? 0 : Number(e.target.value))}/>
           </div>
         </div>
