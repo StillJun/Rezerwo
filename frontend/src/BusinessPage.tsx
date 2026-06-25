@@ -33,6 +33,16 @@ function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 }
 function isoToday() { return new Date().toISOString().slice(0,10); }
+function fmtDur(min: number, durH: string, durM: string): string {
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h === 0) return `${m} ${durM}`;
+  if (m === 0) return `${h} ${durH}`;
+  return `${h} ${durH} ${m} ${durM}`;
+}
+function fmtPrice(price: number | null | undefined, onSite: string): string {
+  if (!price) return onSite;
+  return `${price} zł`;
+}
 function addDays(base: string, n: number) {
   const d = new Date(base + "T00:00:00"); d.setDate(d.getDate()+n);
   return d.toISOString().slice(0,10);
@@ -189,10 +199,10 @@ function BookingWizard({ biz, initService, onClose }: {
                         <div style={{fontSize:14,fontWeight:700}}>{s.name}</div>
                         {s.description&&<div style={{fontSize:12.5,color:"#71717a",marginTop:2}}>{s.description}</div>}
                         <div style={{fontSize:12,color:"#a8a2b0",marginTop:3,display:"flex",gap:8}}>
-                          <span><Clock size={10}/> {s.duration} min</span>
+                          <span><Clock size={10}/> {fmtDur(s.duration, t.p_svcDurationHours, t.p_svcDurationMins)}</span>
                         </div>
                       </div>
-                      <div style={{fontWeight:800,color:ACC,fontSize:15,flexShrink:0}}>{s.price} zł</div>
+                      <div style={{fontWeight:800,color:ACC,fontSize:15,flexShrink:0}}>{fmtPrice(s.price, t.p_priceOnSite)}</div>
                     </button>
                   ))}
                 </div>
@@ -208,7 +218,7 @@ function BookingWizard({ biz, initService, onClose }: {
             <h3 style={S.stepTitle}>{t.chooseMaster}</h3>
             <div style={S.svcSummary}>
               <span style={{fontWeight:700}}>{state.service.name}</span>
-              <span style={{color:"#a8a2b0"}}> · {state.service.duration} min · {state.service.price} zł</span>
+              <span style={{color:"#a8a2b0"}}> · {fmtDur(state.service.duration, t.p_svcDurationHours, t.p_svcDurationMins)} · {fmtPrice(state.service.price, t.p_priceOnSite)}</span>
             </div>
 
             {/* Any available option */}
@@ -250,7 +260,7 @@ function BookingWizard({ biz, initService, onClose }: {
             <h3 style={S.stepTitle}>{t.chooseDate}</h3>
             <div style={S.svcSummary}>
               <span style={{fontWeight:700}}>{state.service.name}</span>
-              <span style={{color:"#a8a2b0"}}> · {state.service.duration} min · {state.service.price} zł</span>
+              <span style={{color:"#a8a2b0"}}> · {fmtDur(state.service.duration, t.p_svcDurationHours, t.p_svcDurationMins)} · {fmtPrice(state.service.price, t.p_priceOnSite)}</span>
               {state.masterName && <span style={{color:ACC}}> · {state.masterName}</span>}
             </div>
 
@@ -724,11 +734,11 @@ export default function BusinessPage({ slug }: { slug: string }) {
                     <div style={{fontSize:14.5,fontWeight:700}}>{s.name}</div>
                     {s.description && <div style={{fontSize:13,color:"#71717a",marginTop:3,lineHeight:1.4}}>{s.description}</div>}
                     <div style={{fontSize:12,color:"#a8a2b0",marginTop:4,display:"flex",gap:10}}>
-                      <span><Clock size={11}/> {s.duration} min</span>
+                      <span><Clock size={11}/> {fmtDur(s.duration, t.p_svcDurationHours, t.p_svcDurationMins)}</span>
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column" as const,alignItems:"flex-end",gap:6}}>
-                    <span style={{fontSize:15,fontWeight:800,color:ACC}}>{s.price} zł</span>
+                    <span style={{fontSize:15,fontWeight:800,color:ACC}}>{fmtPrice(s.price, t.p_priceOnSite)}</span>
                     <button style={S.bookBtn} onClick={()=>setBooking(s)}>{t.book}</button>
                   </div>
                 </div>

@@ -95,6 +95,17 @@ function PasswordStrength({ pw }: { pw: string }) {
 function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 }
+function formatDuration(min: number, t: T): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h === 0) return `${m} ${t.p_svcDurationMins}`;
+  if (m === 0) return `${h} ${t.p_svcDurationHours}`;
+  return `${h} ${t.p_svcDurationHours} ${m} ${t.p_svcDurationMins}`;
+}
+function formatPrice(price: number | null | undefined, t: T): string {
+  if (!price) return t.p_priceOnSite;
+  return `${price} zł`;
+}
 function todayStr() { return new Date().toISOString().slice(0,10); }
 function dateLabel(d: string, t: T): string {
   const today = todayStr();
@@ -126,7 +137,7 @@ export default function PanelPage() {
 /* ========== AUTH ========== */
 function Auth({ onAuth }: { onAuth: () => void }) {
   const { t } = useTranslation();
-  const [mode, setMode] = useState<"register"|"login">("register");
+  const [step, setStep] = useState<"choice"|"register"|"login"|"success">("choice");
   const [email, setEmail] = useState(""); const [pw, setPw] = useState("");
   const [biz, setBiz] = useState(""); const [cats, setCats] = useState<string[]>(["barber"]);
   const [meta, setMeta] = useState<Meta|null>(null);
@@ -134,33 +145,82 @@ function Auth({ onAuth }: { onAuth: () => void }) {
   const [termsAccepted, setTermsAccepted] = useState(false);
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
 
+  const switchStep = (s: "register"|"login") => { setErr(""); setStep(s); };
+
   const submit = async () => {
     setErr(""); setBusy(true);
     try {
-      const r = mode === "register"
-        ? await api.register(email, pw, biz, cats)
-        : await api.login(email, pw);
-      setToken(r.token); onAuth();
+      if (step === "register") {
+        const r = await api.register(email, pw, biz, cats);
+        setToken(r.token);
+        setStep("success");
+      } else {
+        const r = await api.login(email, pw);
+        setToken(r.token); onAuth();
+      }
     } catch (e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
 
-  return (
+  /* ── choice screen ── */
+  if (step === "choice") return (
     <div style={S.authWrap}>
       <button style={S.backLink} onClick={() => navigate("/")}>{t.p_authBack}</button>
-      <div style={S.authCard} className="rise">
+      <div style={{...S.authCard, textAlign:"center" as const}} className="rise auth-card">
         <div style={S.logoRow}>
           <div style={S.logo}>R</div>
           <span style={{ fontSize:20, fontWeight:800 }}>Rezerwo</span>
           <span style={S.panelTag}>{t.p_panelTag}</span>
         </div>
-        <h1 style={S.h1}>{mode === "register" ? t.p_authRegisterTitle : t.p_authLoginTitle}</h1>
+        <h1 style={{...S.h1, textAlign:"center" as const, marginBottom:6}}>{t.p_authChoiceTitle}</h1>
+        <p style={{...S.sub, textAlign:"center" as const, marginBottom:32}}>{t.p_authChoiceSub}</p>
+        <button className="btn-primary" style={{...S.primary, marginBottom:12, display:"flex", justifyContent:"center", gap:8}}
+          onClick={() => switchStep("register")}>
+          <Store size={17}/> {t.p_authRegisterCompany}
+        </button>
+        <button style={{...S.primary, background:"transparent", color:ACC, border:`1.5px solid ${ACC}`,
+          boxShadow:"none", display:"flex", justifyContent:"center", gap:8}}
+          onClick={() => switchStep("login")}>
+          {t.p_authAlreadyHave}
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ── success screen ── */
+  if (step === "success") return (
+    <div style={S.authWrap}>
+      <div style={S.authCard} className="rise auth-card">
+        <div style={{ textAlign:"center" as const, padding:"8px 0 4px" }}>
+          <div style={{ fontSize:48, marginBottom:12 }}>✉️</div>
+          <h2 style={{ fontSize:22, fontWeight:800, margin:"0 0 10px", color:"#1a1320" }}>{t.p_authSuccessTitle}</h2>
+          <p style={{ fontSize:14, color:"#52525b", lineHeight:1.65, margin:"0 0 24px" }}>{t.p_authSuccessMsg}</p>
+          <button className="btn-primary" style={{...S.primary, marginBottom:14}} onClick={onAuth}>
+            {t.p_authSuccessBtn}
+          </button>
+          <p style={{ fontSize:12, color:"#8b8194", margin:0, lineHeight:1.5 }}>{t.p_authSuccessSub}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  /* ── register / login form ── */
+  return (
+    <div style={S.authWrap}>
+      <button style={S.backLink} onClick={() => { setErr(""); setStep("choice"); }}>{t.p_authBackToChoice}</button>
+      <div style={S.authCard} className="rise auth-card">
+        <div style={S.logoRow}>
+          <div style={S.logo}>R</div>
+          <span style={{ fontSize:20, fontWeight:800 }}>Rezerwo</span>
+          <span style={S.panelTag}>{t.p_panelTag}</span>
+        </div>
+        <h1 style={S.h1}>{step === "register" ? t.p_authRegisterTitle : t.p_authLoginTitle}</h1>
         <p style={S.sub}>{t.p_authSub}</p>
 
-        {mode === "register" && (
+        {step === "register" && (
           <>
             <Field icon={<Store size={15}/>} value={biz} onChange={setBiz} placeholder={t.p_bizNamePh}/>
             <label style={S.lbl}>{t.p_fieldCategory}</label>
-            <div style={S.catGrid}>
+            <div style={S.catGrid} className="cat-grid">
               {meta?.categories.map(c => {
                 const on = cats.includes(c.id);
                 return (
@@ -172,13 +232,19 @@ function Auth({ onAuth }: { onAuth: () => void }) {
                 );
               })}
             </div>
+            <p style={{ fontSize:12, color:"#8b8194", margin:"4px 0 12px" }}>{t.p_authCategoryHint}</p>
           </>
         )}
         <Field icon={<User size={15}/>} value={email} onChange={setEmail} placeholder={t.p_emailPh} type="email"/>
         <Field icon={<User size={15}/>} value={pw} onChange={setPw} placeholder={t.p_passwordPh} type="password"/>
-        {mode === "register" && <PasswordStrength pw={pw}/>}
-        {mode === "register" && (
-          <label style={{ display:"flex", alignItems:"flex-start", gap:10, margin:"12px 0 4px", cursor:"pointer" }}>
+        {step === "register" && (
+          <>
+            {!pw && <p style={{ fontSize:12, color:"#8b8194", margin:"-4px 0 10px" }}>{t.p_authPwHint}</p>}
+            <PasswordStrength pw={pw}/>
+          </>
+        )}
+        {step === "register" && (
+          <label style={{ display:"flex", alignItems:"flex-start", gap:10, margin:"8px 0 4px", cursor:"pointer" }}>
             <input
               type="checkbox"
               checked={termsAccepted}
@@ -194,13 +260,14 @@ function Auth({ onAuth }: { onAuth: () => void }) {
           </label>
         )}
         {err && <div style={S.err}>{err}</div>}
-        <button className="btn-primary" style={S.primary} onClick={submit} disabled={busy || (mode === "register" && !termsAccepted)}>
-          {busy ? "…" : mode === "register" ? t.p_authRegisterBtn : t.p_authLoginBtn}
+        <button className="btn-primary" style={S.primary} onClick={submit}
+          disabled={busy || (step === "register" && !termsAccepted)}>
+          {busy ? "…" : step === "register" ? t.p_authRegisterBtn : t.p_authLoginBtn}
         </button>
         <div style={S.switch}>
-          {mode === "register" ? t.p_authHaveAccount : t.p_authNoAccount}{" "}
-          <span style={S.link} onClick={()=>{setErr("");setMode(mode==="register"?"login":"register");}}>
-            {mode === "register" ? t.p_authToLogin : t.p_authToRegister}
+          {step === "register" ? t.p_authHaveAccount : t.p_authNoAccount}{" "}
+          <span style={S.link} onClick={() => switchStep(step === "register" ? "login" : "register")}>
+            {step === "register" ? t.p_authToLogin : t.p_authToRegister}
           </span>
         </div>
       </div>
@@ -580,7 +647,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
               <div key={a.id} className="appt-row" style={{...S.apptRow,background:"#fffbeb"}}>
                 <div className="appt-time" style={{minWidth:52,textAlign:"center"}}>
                   <div style={{fontSize:15,fontWeight:800,color:"#d97706"}}>{minToTime(a.startMin)}</div>
-                  <div style={{fontSize:11,color:"#a8a2b0"}}>{a.duration}min</div>
+                  <div style={{fontSize:11,color:"#a8a2b0"}}>{formatDuration(a.duration, t)}</div>
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{a.clientName}</div>
@@ -639,7 +706,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
               <div key={a.id} className="appt-row" style={S.apptRow}>
                 <div className="appt-time" style={{minWidth:52,textAlign:"center"}}>
                   <div style={{fontSize:15,fontWeight:800,color:ACC}}>{minToTime(a.startMin)}</div>
-                  <div style={{fontSize:11,color:"#a8a2b0"}}>{a.duration}min</div>
+                  <div style={{fontSize:11,color:"#a8a2b0"}}>{formatDuration(a.duration, t)}</div>
                 </div>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontSize:14,fontWeight:700}}>{a.clientName}</div>
@@ -944,9 +1011,9 @@ function ServicesTab() {
                 <div style={{flex:1}}>
                   <div style={S.svcName}>{s.name}</div>
                   {s.description && <div style={S.svcDesc}>{s.description}</div>}
-                  <div style={S.svcMeta}><Clock size={11}/> {s.duration} min</div>
+                  <div style={S.svcMeta}><Clock size={11}/> {formatDuration(s.duration, t)}</div>
                 </div>
-                <div style={S.svcPrice}>{s.price} zł</div>
+                <div style={S.svcPrice}>{formatPrice(s.price, t)}</div>
                 <button style={S.miniBtn} onClick={()=>setEditing(s)}><Pencil size={14}/></button>
                 <button style={{...S.miniBtn,color:"#ef4444"}} onClick={()=>del(s.id)}><Trash2 size={14}/></button>
               </div>
@@ -964,33 +1031,56 @@ function ServiceModal({ init, onClose, onSave }:
   { init: Partial<Service>; onClose: ()=>void; onSave: (s: Partial<Service>)=>void }) {
   const { t } = useTranslation();
   const [s, setS] = useState<Partial<Service>>(init);
-  const set = (k: keyof Service, v: string|number) => setS(p => ({...p,[k]:v}));
+  const setF = (k: keyof Service, v: string|number) => setS(p => ({...p,[k]:v}));
   const valid = (s.name||"").trim();
-  return (
+
+  const durH = s.duration !== undefined ? Math.floor(s.duration / 60) : 0;
+  const durM = s.duration !== undefined ? s.duration % 60 : 30;
+
+  const setDuration = (h: number, m: number) => setS(p => ({...p, duration: h * 60 + m}));
+
+  return createPortal(
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
-      <div style={S.modal} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
+      <div style={{...S.modal, overflowY:"auto", maxHeight:"90vh"}} className="rise modal-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.modalHead}>
           <span style={{fontWeight:800,fontSize:17}}>{s.id ? t.p_svcEditTitle : t.p_svcNewTitle}</span>
           <button style={S.iconBtn} onClick={onClose}><X size={18}/></button>
         </div>
         <label style={S.lbl}>{t.p_svcGroup}</label>
-        <input style={S.input} value={s.grp||""} onChange={e=>set("grp",e.target.value)} placeholder={t.p_svcGroupPh}/>
+        <input style={S.input} value={s.grp||""} onChange={e=>setF("grp",e.target.value)} placeholder={t.p_svcGroupPh}/>
         <label style={S.lbl}>{t.p_svcNameLabel}</label>
-        <input style={S.input} value={s.name||""} onChange={e=>set("name",e.target.value)} placeholder={t.p_svcNamePh} autoFocus/>
+        <input style={S.input} value={s.name||""} onChange={e=>setF("name",e.target.value)} placeholder={t.p_svcNamePh} autoFocus/>
         <label style={S.lbl}>{t.p_svcDescLabel}</label>
         <textarea style={{...S.input,minHeight:64,resize:"vertical",fontFamily:font}}
-          value={s.description||""} onChange={e=>set("description",e.target.value)} placeholder={t.p_svcDescPh}/>
-        <div style={{display:"flex",gap:10}}>
-          <div style={{flex:1}}><label style={S.lbl}>{t.p_svcDuration}</label>
-            <input style={S.input} type="number" value={s.duration??30} onChange={e=>set("duration",Number(e.target.value))}/></div>
-          <div style={{flex:1}}><label style={S.lbl}>{t.p_svcPrice}</label>
-            <input style={S.input} type="number" value={s.price??0} onChange={e=>set("price",Number(e.target.value))}/></div>
+          value={s.description||""} onChange={e=>setF("description",e.target.value)} placeholder={t.p_svcDescPh}/>
+        <div style={{display:"flex",gap:10}} className="svc-duration-row">
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_svcDuration}</label>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <select style={{...S.input,flex:1}} value={durH} onChange={e=>setDuration(Number(e.target.value),durM)}>
+                {Array.from({length:13},(_,i)=><option key={i} value={i}>{i}</option>)}
+              </select>
+              <span style={{fontSize:12,color:"#8b8194",flexShrink:0}}>{t.p_svcDurationHours}</span>
+              <select style={{...S.input,flex:1}} value={durM} onChange={e=>setDuration(durH,Number(e.target.value))}>
+                {[0,5,10,15,20,25,30,35,40,45,50,55].map(m=><option key={m} value={m}>{String(m).padStart(2,"0")}</option>)}
+              </select>
+              <span style={{fontSize:12,color:"#8b8194",flexShrink:0}}>{t.p_svcDurationMins}</span>
+            </div>
+          </div>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_svcPrice}</label>
+            <input style={S.input} type="number" min={0} step={1}
+              value={s.price === undefined || s.price === null ? "" : s.price}
+              placeholder="0"
+              onChange={e => setF("price", e.target.value === "" ? 0 : Number(e.target.value))}/>
+          </div>
         </div>
         <button style={{...S.primary,marginTop:18,opacity:valid?1:0.5}} disabled={!valid} onClick={()=>onSave(s)}>
           <Save size={16}/> {t.p_save}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1649,7 +1739,7 @@ function MasterModal({ master, services, onClose, onSaved }:
                   <input type="checkbox" checked={serviceIds.includes(s.id)} onChange={()=>toggleService(s.id)}
                     style={{accentColor:ACC,width:16,height:16,flexShrink:0}}/>
                   <span style={{flex:1}}>{s.name}</span>
-                  {s.duration ? <span style={{color:"#a8a2b0",fontSize:12,flexShrink:0}}>{s.duration} min</span> : null}
+                  {s.duration ? <span style={{color:"#a8a2b0",fontSize:12,flexShrink:0}}>{formatDuration(s.duration, t)}</span> : null}
                 </label>
               ))}
             </div>

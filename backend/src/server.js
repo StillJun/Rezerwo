@@ -51,14 +51,14 @@ const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders:
 app.use("/api/", limiter);
 
 // Stricter limit for auth endpoints (prevent brute-force)
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false });
 app.use("/api/auth/", authLimiter);
 
-// Register: 5 per hour per IP
-const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele prób rejestracji. Spróbuj za godzinę." } });
+// Register: 20 per hour per IP
+const registerLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele prób rejestracji. Spróbuj za godzinę." } });
 
-// Booking: 10 per hour per IP
-const bookLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele rezerwacji z tego adresu IP. Spróbuj za godzinę." } });
+// Booking: 20 per hour per IP
+const bookLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele rezerwacji z tego adresu IP. Spróbuj za godzinę." } });
 
 /* ---------- reference data ---------- */
 const CATEGORIES = [
