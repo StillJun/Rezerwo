@@ -114,7 +114,7 @@ img, video { max-width: 100% }
 @media (max-width: 480px) {
   /* nav: hide register button, keep only login */
   .nav-register-btn { display: none !important }
-  .nav-login-btn    { padding: 8px 14px !important; font-size: 12px !important }
+  .nav-login-btn    { padding: 8px 13px !important; font-size: 12px !important }
 
   .hero-title { font-size: 28px !important }
   .search-box { border-radius: 20px !important; padding: 16px !important }
@@ -214,6 +214,12 @@ img, video { max-width: 100% }
 /* Benefits ≤ 768px → 2 col */
 @media (max-width: 768px) {
   .benefits-grid { grid-template-columns: 1fr 1fr !important }
+}
+
+/* Nav: hide register on small tablets too */
+@media (max-width: 620px) {
+  .nav-register-btn { display: none !important }
+  .nav-login-btn    { padding: 8px 14px !important; font-size: 13px !important }
 }
 
 /* ═══════════ MOBILE ≤ 640px ═══════════ */
