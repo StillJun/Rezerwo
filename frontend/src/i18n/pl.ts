@@ -11,7 +11,9 @@ export const pl = {
   noResultsSub: "Spróbuj zmienić miasto lub kategorię.",
   found: (n: number) => `Znaleziono ${n} ${n === 1 ? "salon" : "salonów"}`,
   book: "Zarezerwuj",
-  panelOwner: "Panel właściciela",
+  panelOwner:    "Panel właściciela",
+  navRegister:   "Zarejestruj firmę",
+  navLogin:      "Zaloguj się",
   searching: "Szukam…",
   pickCity: "Wybierz miasto i kliknij Szukaj",
 

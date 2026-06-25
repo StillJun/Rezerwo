@@ -137,7 +137,8 @@ export default function PanelPage() {
 /* ========== AUTH ========== */
 function Auth({ onAuth }: { onAuth: () => void }) {
   const { t } = useTranslation();
-  const [step, setStep] = useState<"choice"|"register"|"login"|"success">("choice");
+  const initStep = new URLSearchParams(window.location.search).get("mode") === "login" ? "login" : "choice";
+  const [step, setStep] = useState<"choice"|"register"|"login"|"success">(initStep);
   const [email, setEmail] = useState(""); const [pw, setPw] = useState("");
   const [biz, setBiz] = useState(""); const [cats, setCats] = useState<string[]>(["barber"]);
   const [meta, setMeta] = useState<Meta|null>(null);

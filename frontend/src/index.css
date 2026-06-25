@@ -112,6 +112,9 @@ img, video { max-width: 100% }
 
 /* ═══════════ MOBILE ≤ 480px ═══════════ */
 @media (max-width: 480px) {
+  /* nav: hide register button, keep only login */
+  .nav-register-btn { display: none !important }
+  .nav-login-btn    { padding: 8px 14px !important; font-size: 12px !important }
 
   .hero-title { font-size: 28px !important }
   .search-box { border-radius: 20px !important; padding: 16px !important }

@@ -74,8 +74,12 @@ export default function MarketplacePage() {
         </div>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <LangDropdown/>
-          <button className="panel-btn-sec" style={S.panelBtn} onClick={() => navigate("/panel")}>
-            <Store size={14}/> {t.panelOwner.split(" ")[0]}
+          <button className="panel-btn-sec nav-login-btn" style={S.panelBtn} onClick={() => navigate("/panel?mode=login")}>
+            {t.navLogin}
+          </button>
+          <button className="btn-primary nav-register-btn" style={{...S.panelBtn, background:"linear-gradient(115deg,#7c3aed,#e0399e)", color:"#fff", border:"none", boxShadow:"0 2px 8px rgba(124,58,237,.25)"}}
+            onClick={() => navigate("/panel")}>
+            <Store size={14}/> {t.navRegister}
           </button>
         </div>
       </header>

@@ -12,7 +12,9 @@ export const en: T = {
   noResultsSub: "Try changing the city or category.",
   found: (n: number) => `Found ${n} ${n === 1 ? "salon" : "salons"}`,
   book: "Book",
-  panelOwner: "Owner panel",
+  panelOwner:  "Owner panel",
+  navRegister: "Register business",
+  navLogin:    "Sign in",
   searching: "Searching…",
   pickCity: "Choose a city and click Search",
 
