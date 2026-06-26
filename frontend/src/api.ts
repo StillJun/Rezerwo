@@ -100,9 +100,9 @@ export const api = {
 
   /* owner: CRM */
   clientHistory: (phone: string) =>
-    req<{ history: Appointment[]; note: string }>(`/clients/${encodeURIComponent(phone)}`),
+    req<{ history: Appointment[]; note: string }>(`/clients/history?phone=${encodeURIComponent(phone)}`),
   saveClientNote: (phone: string, note: string) =>
-    req<{ ok: boolean }>(`/clients/${encodeURIComponent(phone)}/note`, { method: "PUT", body: JSON.stringify({ note }) }),
+    req<{ ok: boolean }>(`/clients/note`, { method: "PUT", body: JSON.stringify({ phone, note }) }),
 
   /* public marketplace */
   publicBusinesses: (params: { city?: string; district?: string; category?: string; q?: string } = {}) => {

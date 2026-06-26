@@ -157,6 +157,11 @@ function minToTime(min) {
 function todayPoland() {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" });
 }
+function nowMinPoland() {
+  const t = new Date().toLocaleTimeString("sv-SE", { timeZone: "Europe/Warsaw", hour12: false });
+  const [h, m] = t.split(":").map(Number);
+  return h * 60 + m;
+}
 
 function calcSlots(hours, bookedAppts, serviceMin, dateStr, blockedIntervals = []) {
   const DAY_KEYS = ["sun","mon","tue","wed","thu","fri","sat"];
@@ -170,9 +175,8 @@ function calcSlots(hours, bookedAppts, serviceMin, dateStr, blockedIntervals = [
   const openMin = openH * 60 + openM;
   const closeMin = closeH * 60 + closeM;
 
-  const now = new Date();
   const todayStr = todayPoland();
-  const nowMin = now.getHours() * 60 + now.getMinutes() + 15; // 15-min buffer
+  const nowMin = nowMinPoland() + 15; // 15-min buffer, Warsaw time
 
   const booked   = bookedAppts.map(a => ({ s: a.start_min, e: a.start_min + a.duration }));
   const blocked  = blockedIntervals.map(b => ({ s: b.start_min, e: b.start_min + b.duration }));
@@ -195,8 +199,7 @@ function isSlotFree(hours, bookedAppts, serviceMin, dateStr, slotMin, blockedInt
   const [openH, openM] = dayHours[0].split(":").map(Number);
   const [closeH, closeM] = dayHours[1].split(":").map(Number);
   if (slotMin < openH * 60 + openM || slotMin + serviceMin > closeH * 60 + closeM) return false;
-  const now = new Date();
-  if (dateStr === todayPoland() && slotMin <= now.getHours() * 60 + now.getMinutes() + 15) return false;
+  if (dateStr === todayPoland() && slotMin <= nowMinPoland() + 15) return false;
   const end = slotMin + serviceMin;
   if (bookedAppts.some(a => slotMin < a.start_min + a.duration && a.start_min < end)) return false;
   if (blockedIntervals.some(b => slotMin < b.start_min + b.duration && b.start_min < end)) return false;
@@ -733,9 +736,9 @@ app.put("/api/service-requests/:id", requireAuth, ah(async (req, res) => {
 }));
 
 /* ---------- CRM: client history + notes (owner) ---------- */
-app.get("/api/clients/:phone", requireAuth, ah(async (req, res) => {
+app.get("/api/clients/history", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const phone = req.params.phone;
+  const phone = String(req.query.phone || "");
   const history = await q(`
     SELECT a.*, s.name as service_name, s.price as service_price, m.name as master_name
     FROM appointments a
@@ -747,12 +750,13 @@ app.get("/api/clients/:phone", requireAuth, ah(async (req, res) => {
   res.json({ history: history.map(apptClient), note: note?.note || "" });
 }));
 
-app.put("/api/clients/:phone/note", requireAuth, ah(async (req, res) => {
+app.put("/api/clients/note", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { note = "" } = req.body || {};
+  const { phone = "", note = "" } = req.body || {};
+  if (!phone) return res.status(400).json({ error: "Telefon jest wymagany." });
   await q(`INSERT INTO client_notes (business_id, client_phone, note, updated_at) VALUES ($1,$2,$3,now())
     ON CONFLICT (business_id, client_phone) DO UPDATE SET note=$3, updated_at=now()`,
-    [b.id, req.params.phone, note]);
+    [b.id, phone, note]);
   res.json({ ok: true });
 }));
 

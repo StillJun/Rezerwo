@@ -1876,6 +1876,8 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const [meta, setMeta] = useState<Meta|null>(null);
   const [form, setForm] = useState<Business|null>(biz);
   const [saved, setSaved] = useState(false);
+  const [saveErr, setSaveErr] = useState("");
+  const [saveBusy, setSaveBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
@@ -1884,8 +1886,12 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
 
   const set = (k: keyof Business, v: unknown) => setForm(p => p?{...p,[k]:v}:p);
   const save = async () => {
-    const b = await api.saveBusiness(form);
-    setBiz(b); setSaved(true); setTimeout(()=>setSaved(false),1800);
+    setSaveErr(""); setSaveBusy(true);
+    try {
+      const b = await api.saveBusiness(form);
+      setBiz(b); setSaved(true); setTimeout(()=>setSaved(false),1800);
+    } catch(e) { setSaveErr((e as Error).message || "Błąd zapisu"); }
+    finally { setSaveBusy(false); }
   };
   const profileUrl = form.slug ? `${window.location.origin}/${form.slug}` : "";
   const copyLink = () => {
@@ -2083,8 +2089,9 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       {/* ── PART 4: Languages ── */}
       <LanguagesSection languages={form.languages||[]} onChange={l=>set("languages",l)} t={t}/>
 
-      <button className="btn-primary" style={{...S.primary,marginTop:20}} onClick={save}>
-        {saved?<><Check size={16}/> {t.p_profileSaved}</>:<><Save size={16}/> {t.p_profileSave}</>}
+      {saveErr && <div style={S.err}>{saveErr}</div>}
+      <button className="btn-primary" style={{...S.primary,marginTop:8}} onClick={save} disabled={saveBusy}>
+        {saved?<><Check size={16}/> {t.p_profileSaved}</>:saveBusy?"…":<><Save size={16}/> {t.p_profileSave}</>}
       </button>
     </div>
   );
