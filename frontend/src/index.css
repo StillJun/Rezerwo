@@ -1,5 +1,6 @@
 /* ═══════════ DESIGN TOKENS ═══════════ */
 :root {
+  color-scheme: light;
   --bg:         #fbf7f4;
   --surface:    #ffffff;
   --ink:        #1a1320;
