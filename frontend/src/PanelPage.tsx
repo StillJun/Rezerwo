@@ -38,6 +38,11 @@ const BANNERS: Record<string, string> = {
 };
 const DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"] as const;
 
+const SVC_COLORS = [
+  "#7c3aed", "#e0399e", "#ff7a59", "#10b981", "#3b82f6",
+  "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#64748b",
+];
+
 const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
   pending:   { color: "#92400e", bg: "#fef3c7" },
   confirmed: { color: "#065f46", bg: "#d1fae5" },
@@ -1080,6 +1085,7 @@ function ServicesTab() {
           <div style={S.card}>
             {items.map(s => (
               <div key={s.id} style={S.svcRow}>
+                <div style={{ width:10, height:38, borderRadius:4, background: s.color || "#e4dff0", flexShrink:0 }}/>
                 <div style={{flex:1}}>
                   <div style={S.svcName}>{s.name}</div>
                   {s.description && <div style={S.svcDesc}>{s.description}</div>}
@@ -1125,6 +1131,24 @@ function ServiceModal({ init, onClose, onSave }:
         <label style={S.lbl}>{t.p_svcDescLabel}</label>
         <textarea style={{...S.input,minHeight:64,resize:"vertical",fontFamily:font}}
           value={s.description||""} onChange={e=>setF("description",e.target.value)} placeholder={t.p_svcDescPh}/>
+        <label style={S.lbl}>{t.p_svcColor}</label>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          {SVC_COLORS.map(c => (
+            <button key={c} onClick={() => setF("color", c === s.color ? "" : c)}
+              style={{ width:30, height:30, borderRadius:"50%", background:c, border:"none", cursor:"pointer",
+                outline: s.color === c ? `3px solid ${c}` : "3px solid transparent",
+                outlineOffset: 2, transform: s.color === c ? "scale(1.18)" : "scale(1)",
+                transition:"transform .12s,outline .12s", flexShrink:0 }}
+            />
+          ))}
+          {s.color && (
+            <button onClick={() => setF("color","")}
+              style={{ width:30, height:30, borderRadius:"50%", background:"#f4f0f8", border:"none", cursor:"pointer",
+                display:"grid", placeItems:"center", flexShrink:0 }}>
+              <X size={13} color="#8b8194"/>
+            </button>
+          )}
+        </div>
         <div style={{display:"flex",gap:10}} className="svc-duration-row">
           <div style={{flex:1}}>
             <label style={S.lbl}>{t.p_svcDuration}</label>

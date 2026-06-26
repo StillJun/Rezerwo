@@ -322,6 +322,7 @@ export const en: T = {
   p_svcDurationHours:      "h.",
   p_svcDurationMins:       "min.",
   p_priceOnSite:           "Price on request",
+  p_svcColor:              "Color (in calendar)",
 
   p_contactsSection:       "Contact & social media",
   p_contactEmail:          "Contact email",

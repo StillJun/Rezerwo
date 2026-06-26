@@ -19,7 +19,7 @@ export interface Business {
 
 export interface Service {
   id: number; grp: string; name: string; description: string;
-  duration: number; price: number; sort: number;
+  duration: number; price: number; sort: number; color: string;
 }
 
 export interface Meta {
@@ -41,7 +41,7 @@ export interface PublicBusiness {
 
 export interface PublicService {
   id: number; grp: string; name: string; description: string;
-  duration: number; price: number; sort: number;
+  duration: number; price: number; sort: number; color: string;
 }
 
 export interface PublicMaster {

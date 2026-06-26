@@ -320,6 +320,7 @@ export const ru: T = {
   p_authSuccessSub:        "Вы уже можете управлять профилем. Ваш салон появится в результатах поиска после подтверждения email.",
 
   p_svcDurationHours:      "ч.",
+  p_svcColor:              "Цвет (в календаре)",
   p_svcDurationMins:       "мин.",
   p_priceOnSite:           "Цена по договорённости",
 

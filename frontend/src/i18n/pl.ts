@@ -345,10 +345,11 @@ export const pl = {
   p_authSuccessBtn:        "Przejdź do panelu →",
   p_authSuccessSub:        "Możesz już zarządzać profilem. Twój salon pojawi się w wynikach wyszukiwania po weryfikacji e-maila.",
 
-  // services: duration & price
+  // services: duration, price, color
   p_svcDurationHours:      "godz.",
   p_svcDurationMins:       "min.",
   p_priceOnSite:           "Cena na miejscu",
+  p_svcColor:              "Kolor (w kalendarzu)",
 
   // profile: contacts
   p_contactsSection:       "Kontakt i social media",

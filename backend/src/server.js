@@ -222,7 +222,7 @@ const publicBizClient = (b) => ({
 });
 const svcClient = (s) => ({
   id: Number(s.id), grp: s.grp, name: s.name, description: s.description,
-  duration: s.duration, price: Number(s.price), sort: s.sort,
+  duration: s.duration, price: Number(s.price), sort: s.sort, color: s.color || "",
 });
 const apptClient = (a) => ({
   id: Number(a.id),
@@ -425,12 +425,12 @@ app.get("/api/services", requireAuth, ah(async (req, res) => {
 
 app.post("/api/services", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { grp = "", name, description = "", duration = 30, price = 0, sort = 0 } = req.body || {};
+  const { grp = "", name, description = "", duration = 30, price = 0, sort = 0, color = "" } = req.body || {};
   if (!name) return res.status(400).json({ error: "Nazwa usługi jest wymagana" });
   const [row] = await q(`
-    INSERT INTO services (business_id, grp, name, description, duration, price, sort)
-    VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-    [b.id, grp, name, description, duration, price, sort]);
+    INSERT INTO services (business_id, grp, name, description, duration, price, sort, color)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+    [b.id, grp, name, description, duration, price, sort, color]);
   res.json(svcClient(row));
 }));
 
@@ -440,9 +440,9 @@ app.put("/api/services/:id", requireAuth, ah(async (req, res) => {
   if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
   const m = { ...svcClient(cur), ...req.body };
   const [row] = await q(`
-    UPDATE services SET grp=$1, name=$2, description=$3, duration=$4, price=$5, sort=$6
-    WHERE id=$7 AND business_id=$8 RETURNING *`,
-    [m.grp, m.name, m.description, m.duration, m.price, m.sort, cur.id, b.id]);
+    UPDATE services SET grp=$1, name=$2, description=$3, duration=$4, price=$5, sort=$6, color=$7
+    WHERE id=$8 AND business_id=$9 RETURNING *`,
+    [m.grp, m.name, m.description, m.duration, m.price, m.sort, m.color || "", cur.id, b.id]);
   res.json(svcClient(row));
 }));
 

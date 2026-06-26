@@ -320,6 +320,7 @@ export const ua: T = {
   p_authSuccessSub:        "Ви вже можете керувати профілем. Ваш салон з'явиться в результатах пошуку після підтвердження email.",
 
   p_svcDurationHours:      "год.",
+  p_svcColor:              "Колір (у календарі)",
   p_svcDurationMins:       "хв.",
   p_priceOnSite:           "Ціна на місці",
 

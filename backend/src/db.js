@@ -256,6 +256,9 @@ export async function initDb() {
     ON CONFLICT DO NOTHING
   `).catch(() => {});
 
+  // ── service color (stage 4) ──────────────────────────────────────────────────
+  await pool.query(`ALTER TABLE services ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT ''`).catch(() => {});
+
   // ── clients table (stage 3: CRM contacts book) ──────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS clients (
