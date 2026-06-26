@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const SECRET = process.env.JWT_SECRET || "dev-secret-change-me";
+if (!process.env.JWT_SECRET) throw new Error("JWT_SECRET must be set in environment — server cannot start without it");
+const SECRET = process.env.JWT_SECRET;
 const isProd = process.env.NODE_ENV === "production";
 const COOKIE = "rz_session";
 

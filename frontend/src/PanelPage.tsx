@@ -691,7 +691,7 @@ function fmtTimeMin(m: number): string {
 function CalendarView({ biz, services, masters }: { biz: Business; services: Service[]; masters: PublicMaster[] }) {
   const { t } = useTranslation();
   const [view, setView]         = useState<"day"|"week">("week");
-  const [dateStr, setDateStr]   = useState(todayStr);
+  const [dateStr, setDateStr]   = useState(todayStr());
   const [appts, setAppts]       = useState<Appointment[]>([]);
   const [blocked, setBlocked]   = useState<BlockedSlot[]>([]);
   const [loading, setLoading]   = useState(true);
@@ -871,6 +871,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
                 onBlockClick={setSelBlock}
                 dragging={dragging}
                 onDragStart={(id, dur) => setDragging({id, duration:dur})}
+                onDragCancel={() => { setDragging(null); setDragOver(null); }}
                 onDragEnd={async (id, date, startMin) => {
                   setDragging(null); setDragOver(null);
                   try {
@@ -952,7 +953,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
 }
 
 /* ── DayColumn ── */
-function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave }: {
+function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, onDragStart, onDragCancel, onDragEnd, dragOver, onDragOver, onDragLeave }: {
   day: string; appts: Appointment[]; blocked: BlockedSlot[];
   isFirst: boolean; isToday: boolean; nowMin: number; calHeight: number;
   onSlotClick: (d: string, m: number) => void;
@@ -961,6 +962,7 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
   onBlockClick: (b: BlockedSlot) => void;
   dragging: {id:number;duration:number}|null;
   onDragStart: (id:number, dur:number) => void;
+  onDragCancel: () => void;
   onDragEnd: (id:number, date:string, startMin:number) => void;
   dragOver: {date:string;startMin:number}|null;
   onDragOver: (d:string,m:number) => void;
@@ -1026,6 +1028,7 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
           <div key={a.id}
             draggable
             onDragStart={e => { e.dataTransfer.setData("apptId", String(a.id)); onDragStart(a.id, a.duration); }}
+            onDragEnd={onDragCancel}
             onClick={e => { e.stopPropagation(); onApptClick(a); }}
             style={{ position:"absolute", left:2, right:2, top, height: Math.max(height,22),
               background: isDone ? "#f4f4f5" : light,
@@ -1801,7 +1804,7 @@ function ServiceModal({ init, onClose, onSave }:
             <input style={S.input} type="number" min={0} step={1}
               value={s.price == null ? "" : s.price}
               placeholder="np. 80"
-              onChange={e => setF("price", e.target.value === "" ? 0 : Number(e.target.value))}/>
+              onChange={e => setF("price", e.target.value === "" ? 0 : Math.max(0, Number(e.target.value)))}/>
           </div>
         </div>
         <button style={{...S.primary,marginTop:18,opacity:valid?1:0.5}} disabled={!valid} onClick={()=>onSave(s)}>

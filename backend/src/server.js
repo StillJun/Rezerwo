@@ -35,8 +35,7 @@ app.use(cors({
   origin(origin, cb) {
     // no origin = curl / mobile / server-to-server
     if (!origin) return cb(null, true);
-    // exact match OR any *.vercel.app preview deploy
-    if (ALLOWED_ORIGINS.has(origin) || /\.vercel\.app$/.test(origin)) return cb(null, true);
+    if (ALLOWED_ORIGINS.has(origin)) return cb(null, true);
     console.warn("[CORS] rejected origin:", origin);
     cb(null, false); // soft-reject: no CORS headers, but don't throw (avoids error-handler spam)
   },
@@ -155,7 +154,11 @@ function minToTime(min) {
   return `${h}:${m}`;
 }
 
-function calcSlots(hours, bookedAppts, serviceMin, dateStr) {
+function todayPoland() {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" });
+}
+
+function calcSlots(hours, bookedAppts, serviceMin, dateStr, blockedIntervals = []) {
   const DAY_KEYS = ["sun","mon","tue","wed","thu","fri","sat"];
   const date = new Date(dateStr + "T00:00:00");
   const dayKey = DAY_KEYS[date.getDay()];
@@ -168,20 +171,24 @@ function calcSlots(hours, bookedAppts, serviceMin, dateStr) {
   const closeMin = closeH * 60 + closeM;
 
   const now = new Date();
-  const todayStr = now.toISOString().slice(0,10);
+  const todayStr = todayPoland();
   const nowMin = now.getHours() * 60 + now.getMinutes() + 15; // 15-min buffer
 
-  const booked = bookedAppts.map(a => ({ s: a.start_min, e: a.start_min + a.duration }));
+  const booked   = bookedAppts.map(a => ({ s: a.start_min, e: a.start_min + a.duration }));
+  const blocked  = blockedIntervals.map(b => ({ s: b.start_min, e: b.start_min + b.duration }));
   const slots = [];
   for (let s = openMin; s + serviceMin <= closeMin; s += 15) {
+    const e = s + serviceMin;
     if (dateStr === todayStr && s <= nowMin) continue;
-    if (!booked.some(b => s < b.e && b.s < s + serviceMin)) slots.push(s);
+    if (booked.some(b => s < b.e && b.s < e)) continue;
+    if (blocked.some(b => s < b.e && b.s < e)) continue;
+    slots.push(s);
   }
   return slots;
 }
 
 // Efficient single-slot check used at booking time
-function isSlotFree(hours, bookedAppts, serviceMin, dateStr, slotMin) {
+function isSlotFree(hours, bookedAppts, serviceMin, dateStr, slotMin, blockedIntervals = []) {
   const DAY_KEYS = ["sun","mon","tue","wed","thu","fri","sat"];
   const dayHours = hours?.[DAY_KEYS[new Date(dateStr + "T00:00:00").getDay()]];
   if (!dayHours || !dayHours[0] || !dayHours[1]) return false;
@@ -189,8 +196,11 @@ function isSlotFree(hours, bookedAppts, serviceMin, dateStr, slotMin) {
   const [closeH, closeM] = dayHours[1].split(":").map(Number);
   if (slotMin < openH * 60 + openM || slotMin + serviceMin > closeH * 60 + closeM) return false;
   const now = new Date();
-  if (dateStr === now.toISOString().slice(0, 10) && slotMin <= now.getHours() * 60 + now.getMinutes() + 15) return false;
-  return !bookedAppts.some(a => slotMin < a.start_min + a.duration && a.start_min < slotMin + serviceMin);
+  if (dateStr === todayPoland() && slotMin <= now.getHours() * 60 + now.getMinutes() + 15) return false;
+  const end = slotMin + serviceMin;
+  if (bookedAppts.some(a => slotMin < a.start_min + a.duration && a.start_min < end)) return false;
+  if (blockedIntervals.some(b => slotMin < b.start_min + b.duration && b.start_min < end)) return false;
+  return true;
 }
 
 /* ---------- row → client mappers ---------- */
@@ -282,7 +292,7 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    const [owner] = await q("SELECT * FROM owners WHERE email=$1", [email]);
+    const [owner] = await q("SELECT id, email, password_hash, email_verified, role FROM owners WHERE email=$1", [email]);
     if (!owner || !(await verifyPassword(password, owner.password_hash)))
       return res.status(401).json({ error: "Nieprawidłowy email lub hasło" });
     const safe = { id: Number(owner.id), email: owner.email };
@@ -306,9 +316,8 @@ app.get("/api/auth/verify-email/:token", async (req, res) => {
   try {
     const token = String(req.params.token).replace(/[^a-f0-9]/gi, "").slice(0, 64);
     if (!token) return res.status(400).json({ error: "Nieprawidłowy token" });
-    // Token stays in DB after verification so re-clicking the same link works
     const [owner] = await q(
-      "UPDATE owners SET email_verified=TRUE WHERE verification_token=$1 RETURNING id",
+      "UPDATE owners SET email_verified=TRUE, verification_token=NULL WHERE verification_token=$1 RETURNING id",
       [token]
     );
     if (!owner) return res.status(400).json({ error: "Link weryfikacyjny jest nieprawidłowy lub już wykorzystany." });
@@ -428,6 +437,8 @@ app.post("/api/services", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { grp = "", name, description = "", duration = 30, price = 0, sort = 0, color = "" } = req.body || {};
   if (!name) return res.status(400).json({ error: "Nazwa usługi jest wymagana" });
+  if (Number(duration) < 1 || Number(duration) > 1440) return res.status(400).json({ error: "Czas trwania musi wynosić od 1 do 1440 minut." });
+  if (Number(price) < 0) return res.status(400).json({ error: "Cena nie może być ujemna." });
   const [row] = await q(`
     INSERT INTO services (business_id, grp, name, description, duration, price, sort, color)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
@@ -440,6 +451,8 @@ app.put("/api/services/:id", requireAuth, ah(async (req, res) => {
   const [cur] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
   const m = { ...svcClient(cur), ...req.body };
+  if (Number(m.duration) < 1 || Number(m.duration) > 1440) return res.status(400).json({ error: "Czas trwania musi wynosić od 1 do 1440 minut." });
+  if (Number(m.price) < 0) return res.status(400).json({ error: "Cena nie może być ujemna." });
   const [row] = await q(`
     UPDATE services SET grp=$1, name=$2, description=$3, duration=$4, price=$5, sort=$6, color=$7
     WHERE id=$8 AND business_id=$9 RETURNING *`,
@@ -618,22 +631,26 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
   const { service_id, master_id, client_name, client_phone, client_email = "", comment = "", date, start_min } = req.body || {};
   if (!client_name || !client_phone || !date || start_min == null)
     return res.status(400).json({ error: "Wymagane: imię klienta, telefon, data, godzina." });
+  if (typeof date !== "string" || date < todayPoland())
+    return res.status(400).json({ error: "Nie można tworzyć wizyt w przeszłości." });
 
   const [svc] = service_id ? await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]) : [null];
   const duration = svc?.duration || 60;
+  const mid = master_id ? Number(master_id) : null;
 
-  // Overlap check (same business, same day, active statuses)
+  // Overlap check scoped to the same master (or business-wide if no master)
   const [overlap] = await q(`
     SELECT id FROM appointments
     WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')
+      AND ($5::int IS NULL OR master_id = $5)
       AND NOT (start_min + duration <= $3 OR $3 + $4 <= start_min)`,
-    [b.id, date, start_min, duration]);
+    [b.id, date, start_min, duration, mid]);
   if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
 
   const [row] = await q(`
     INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed') RETURNING *`,
-    [b.id, service_id || null, master_id || null, client_name, client_phone, client_email, comment, date, start_min, duration]);
+    [b.id, service_id || null, mid, client_name, client_phone, client_email, comment, date, start_min, duration]);
   const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
   const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
   res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
@@ -647,12 +664,14 @@ app.patch("/api/appointments/:id", requireAuth, ah(async (req, res) => {
   const { date, start_min } = req.body || {};
   if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
 
-  // Overlap check (exclude self)
+  // Overlap check (exclude self, scoped to same master)
+  const amid = a.master_id ? Number(a.master_id) : null;
   const [overlap] = await q(`
     SELECT id FROM appointments
     WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed') AND id != $5
+      AND ($6::int IS NULL OR master_id = $6)
       AND NOT (start_min + duration <= $3 OR $3 + $4 <= start_min)`,
-    [b.id, date, start_min, a.duration, a.id]);
+    [b.id, date, start_min, a.duration, a.id, amid]);
   if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
 
   const [row] = await q("UPDATE appointments SET date=$1, start_min=$2 WHERE id=$3 RETURNING *", [date, start_min, a.id]);
@@ -683,6 +702,10 @@ app.post("/api/blocked", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { master_id, date, start_min, duration = 60, label = "" } = req.body || {};
   if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
+  if (master_id != null) {
+    const [m] = await q("SELECT id FROM masters WHERE id=$1 AND business_id=$2", [master_id, b.id]);
+    if (!m) return res.status(400).json({ error: "Nie znaleziono specjalisty." });
+  }
   const [row] = await q(
     `INSERT INTO blocked_slots (business_id, master_id, date, start_min, duration, label) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
     [b.id, master_id || null, date, start_min, duration, label]);
@@ -737,7 +760,7 @@ app.put("/api/clients/:phone/note", requireAuth, ah(async (req, res) => {
 
 app.get("/api/crm/clients", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { q: search = "" } = req.query;
+  const search = String(req.query.q || "").slice(0, 100);
   const rows = await q(
     `SELECT id, name, phone, email, notes, tags, rodo_consent, created_at
      FROM clients
@@ -828,7 +851,7 @@ app.get("/api/public/businesses", async (req, res) => {
 
 app.get("/api/public/businesses/:slug", async (req, res) => {
   try {
-    const [b] = await q("SELECT * FROM businesses WHERE slug=$1", [req.params.slug]);
+    const [b] = await q("SELECT * FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono firmy" });
     const services = await q("SELECT * FROM services WHERE business_id=$1 ORDER BY grp, sort, id", [b.id]);
     res.json({ ...publicBizClient(b), services: services.map(svcClient) });
@@ -839,7 +862,7 @@ app.get("/api/public/businesses/:slug/slots", async (req, res) => {
   try {
     const { date, service_id, master_id } = req.query;
     if (!date || !service_id) return res.status(400).json({ error: "date i service_id są wymagane" });
-    const [b] = await q("SELECT * FROM businesses WHERE slug=$1", [req.params.slug]);
+    const [b] = await q("SELECT * FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
     if (!svc) return res.status(404).json({ error: "Usługa nie znaleziona" });
@@ -856,22 +879,22 @@ app.get("/api/public/businesses/:slug/slots", async (req, res) => {
 
     if (!masters.length) {
       // Fallback: no master_services data → legacy business-level calculation
-      const appts = await q(
-        "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')",
-        [b.id, date]
-      );
-      const slots = calcSlots(b.hours, appts, svc.duration, date);
+      const [appts, blockedRows] = await Promise.all([
+        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')", [b.id, date]),
+        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND master_id IS NULL", [b.id, date]),
+      ]);
+      const slots = calcSlots(b.hours, appts, svc.duration, date, blockedRows);
       return res.json({ slots, duration: svc.duration, slotTimes: slots.map(minToTime) });
     }
 
     // Per-master slot calculation → union (slot available if ANY capable master is free)
     const slotSet = new Set();
     await Promise.all(masters.map(async (master) => {
-      const appts = await q(
-        "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')",
-        [b.id, date, master.id]
-      );
-      calcSlots(master.working_hours, appts, svc.duration, date).forEach(s => slotSet.add(s));
+      const [appts, blockedRows] = await Promise.all([
+        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')", [b.id, date, master.id]),
+        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND (master_id=$3 OR master_id IS NULL)", [b.id, date, master.id]),
+      ]);
+      calcSlots(master.working_hours, appts, svc.duration, date, blockedRows).forEach(s => slotSet.add(s));
     }));
     const slots = Array.from(slotSet).sort((a, b) => a - b);
     res.json({ slots, duration: svc.duration, slotTimes: slots.map(minToTime) });
@@ -890,7 +913,9 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
       return res.status(400).json({ error: "Podaj prawidłowy numer telefonu" });
     if (comment && comment.length > 500)
       return res.status(400).json({ error: "Komentarz zbyt długi (max 500 znaków)" });
-    const [b] = await q("SELECT * FROM businesses WHERE slug=$1", [req.params.slug]);
+    if (typeof date !== "string" || date < todayPoland())
+      return res.status(400).json({ error: "Nie można rezerwować terminów w przeszłości." });
+    const [b] = await q("SELECT * FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
     if (!svc) return res.status(404).json({ error: "Usługa nie znaleziona" });
@@ -908,20 +933,20 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
     let assignedMasterId = null;
     if (!masters.length) {
       // Fallback: no master_services data → legacy business-level overlap check
-      const appts = await q(
-        "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')",
-        [b.id, date]
-      );
-      if (appts.some(a => start_min < a.start_min + a.duration && a.start_min < start_min + svc.duration))
+      const [appts, blockedRows] = await Promise.all([
+        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')", [b.id, date]),
+        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND master_id IS NULL", [b.id, date]),
+      ]);
+      if (!isSlotFree(b.hours, appts, svc.duration, date, start_min, blockedRows))
         return res.status(409).json({ error: "Ten termin jest już zajęty. Wybierz inny." });
     } else {
       // Find first capable master who is free at the requested slot
       for (const master of masters) {
-        const appts = await q(
-          "SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')",
-          [b.id, date, master.id]
-        );
-        if (isSlotFree(master.working_hours, appts, svc.duration, date, start_min)) {
+        const [appts, blockedRows] = await Promise.all([
+          q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')", [b.id, date, master.id]),
+          q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND (master_id=$3 OR master_id IS NULL)", [b.id, date, master.id]),
+        ]);
+        if (isSlotFree(master.working_hours, appts, svc.duration, date, start_min, blockedRows)) {
           assignedMasterId = master.id;
           break;
         }
@@ -953,12 +978,16 @@ app.get("/api/public/businesses/:slug/reviews", async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
-app.post("/api/public/businesses/:slug/reviews", async (req, res) => {
+app.post("/api/public/businesses/:slug/reviews", bookLimiter, async (req, res) => {
   try {
     const { client_name, rating, text = "" } = req.body || {};
     if (!client_name || !rating || rating < 1 || rating > 5)
       return res.status(400).json({ error: "Imię i ocena (1-5) są wymagane" });
-    const [b] = await q("SELECT id FROM businesses WHERE slug=$1", [req.params.slug]);
+    if (typeof client_name !== "string" || client_name.trim().length < 2 || client_name.length > 100)
+      return res.status(400).json({ error: "Podaj imię (2-100 znaków)" });
+    if (text && text.length > 1000)
+      return res.status(400).json({ error: "Opinia zbyt długa (max 1000 znaków)" });
+    const [b] = await q("SELECT id FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     const [row] = await q(
       "INSERT INTO reviews (business_id, client_name, rating, text) VALUES ($1,$2,$3,$4) RETURNING id",
@@ -991,7 +1020,8 @@ app.post("/api/reviews/:id/report", requireAuth, ah(async (req, res) => {
 }));
 
 /* ---------- public: support ticket ---------- */
-app.post("/api/support", async (req, res) => {
+const supportLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele zgłoszeń. Spróbuj za godzinę." } });
+app.post("/api/support", supportLimiter, async (req, res) => {
   try {
     const { email, subject, message } = req.body || {};
     if (!email || !subject || !message) return res.status(400).json({ error: "Wszystkie pola są wymagane" });
@@ -1001,15 +1031,17 @@ app.post("/api/support", async (req, res) => {
 });
 
 /* ---------- public: waitlist ---------- */
-app.post("/api/public/businesses/:slug/waitlist", async (req, res) => {
+app.post("/api/public/businesses/:slug/waitlist", bookLimiter, async (req, res) => {
   try {
     const { service_id, client_name, client_phone, client_email = "", preferred_date } = req.body || {};
     if (!client_name || !client_phone) return res.status(400).json({ error: "Imię i telefon są wymagane" });
-    const [b] = await q("SELECT id FROM businesses WHERE slug=$1", [req.params.slug]);
+    const phone = String(client_phone).replace(/\s/g, "");
+    if (!/^\+?[\d]{7,15}$/.test(phone)) return res.status(400).json({ error: "Podaj prawidłowy numer telefonu" });
+    const [b] = await q("SELECT id FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
     await q(
       "INSERT INTO waitlist (business_id, service_id, client_name, client_phone, client_email, preferred_date) VALUES ($1,$2,$3,$4,$5,$6)",
-      [b.id, service_id || null, client_name.trim(), client_phone.trim(), client_email.trim(), preferred_date || null]
+      [b.id, service_id || null, client_name.trim(), phone, client_email.trim(), preferred_date || null]
     );
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
@@ -1046,13 +1078,16 @@ app.post("/api/feedback", async (req, res) => {
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
-app.post("/api/public/businesses/:slug/service-request", async (req, res) => {
+app.post("/api/public/businesses/:slug/service-request", bookLimiter, async (req, res) => {
   try {
     const { client_phone, text } = req.body || {};
     if (!client_phone || !text) return res.status(400).json({ error: "Telefon i opis usługi są wymagane" });
-    const [b] = await q("SELECT id FROM businesses WHERE slug=$1", [req.params.slug]);
+    const phone = String(client_phone).replace(/\s/g, "");
+    if (!/^\+?[\d]{7,15}$/.test(phone)) return res.status(400).json({ error: "Podaj prawidłowy numer telefonu" });
+    if (text.length > 1000) return res.status(400).json({ error: "Opis zbyt długi (max 1000 znaków)" });
+    const [b] = await q("SELECT id FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
-    await q("INSERT INTO service_requests (business_id, client_phone, text) VALUES ($1,$2,$3)", [b.id, client_phone.trim(), text.trim()]);
+    await q("INSERT INTO service_requests (business_id, client_phone, text) VALUES ($1,$2,$3)", [b.id, phone, text.trim()]);
     res.json({ ok: true });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
