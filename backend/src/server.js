@@ -230,6 +230,7 @@ const apptClient = (a) => ({
   serviceId: a.service_id ? Number(a.service_id) : null,
   serviceName: a.service_name || null,
   servicePrice: a.service_price != null ? Number(a.service_price) : null,
+  serviceColor: a.service_color || null,
   masterId: a.master_id ? Number(a.master_id) : null,
   masterName: a.master_name || null,
   clientName: a.client_name,
@@ -580,14 +581,18 @@ app.delete("/api/masters/:id", requireAuth, ah(async (req, res) => {
 /* ---------- appointments (owner) ---------- */
 app.get("/api/appointments", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { date, status } = req.query;
-  let sql = `SELECT a.*, s.name as service_name, s.price as service_price, m.name as master_name
+  const { date, status, start_date, end_date } = req.query;
+  let sql = `SELECT a.*, s.name as service_name, s.price as service_price, s.color as service_color, m.name as master_name
     FROM appointments a
     LEFT JOIN services s ON s.id = a.service_id
     LEFT JOIN masters m ON m.id = a.master_id
     WHERE a.business_id = $1`;
   const params = [b.id];
   if (date) { sql += ` AND a.date = $${params.length + 1}`; params.push(date); }
+  else if (start_date && end_date) {
+    sql += ` AND a.date >= $${params.length + 1} AND a.date <= $${params.length + 2}`;
+    params.push(start_date, end_date);
+  }
   if (status) { sql += ` AND a.status = $${params.length + 1}`; params.push(status); }
   sql += " ORDER BY a.date, a.start_min";
   const rows = await q(sql, params);
@@ -605,6 +610,90 @@ app.put("/api/appointments/:id", requireAuth, ah(async (req, res) => {
   const [svc] = row.service_id ? await q("SELECT name, price FROM services WHERE id=$1", [row.service_id]) : [null];
   const [mst] = row.master_id ? await q("SELECT name FROM masters WHERE id=$1", [row.master_id]) : [null];
   res.json(apptClient({ ...row, service_name: svc?.name || null, service_price: svc?.price || null, master_name: mst?.name || null }));
+}));
+
+/* owner: create appointment from panel */
+app.post("/api/appointments", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { service_id, master_id, client_name, client_phone, client_email = "", comment = "", date, start_min } = req.body || {};
+  if (!client_name || !client_phone || !date || start_min == null)
+    return res.status(400).json({ error: "Wymagane: imię klienta, telefon, data, godzina." });
+
+  const [svc] = service_id ? await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]) : [null];
+  const duration = svc?.duration || 60;
+
+  // Overlap check (same business, same day, active statuses)
+  const [overlap] = await q(`
+    SELECT id FROM appointments
+    WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')
+      AND NOT (start_min + duration <= $3 OR $3 + $4 <= start_min)`,
+    [b.id, date, start_min, duration]);
+  if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
+
+  const [row] = await q(`
+    INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed') RETURNING *`,
+    [b.id, service_id || null, master_id || null, client_name, client_phone, client_email, comment, date, start_min, duration]);
+  const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
+  const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
+  res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
+}));
+
+/* owner: reschedule appointment (update date/time) */
+app.patch("/api/appointments/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const [a] = await q("SELECT * FROM appointments WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
+  if (!a) return res.status(404).json({ error: "Nie znaleziono" });
+  const { date, start_min } = req.body || {};
+  if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
+
+  // Overlap check (exclude self)
+  const [overlap] = await q(`
+    SELECT id FROM appointments
+    WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed') AND id != $5
+      AND NOT (start_min + duration <= $3 OR $3 + $4 <= start_min)`,
+    [b.id, date, start_min, a.duration, a.id]);
+  if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
+
+  const [row] = await q("UPDATE appointments SET date=$1, start_min=$2 WHERE id=$3 RETURNING *", [date, start_min, a.id]);
+  const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
+  const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
+  res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
+}));
+
+/* blocked slots (calendar) */
+app.get("/api/blocked", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { start_date, end_date } = req.query;
+  let sql = "SELECT * FROM blocked_slots WHERE business_id=$1";
+  const params = [b.id];
+  if (start_date && end_date) {
+    sql += ` AND date >= $2 AND date <= $3`;
+    params.push(start_date, end_date);
+  }
+  sql += " ORDER BY date, start_min";
+  res.json((await q(sql, params)).map(r => ({
+    id: Number(r.id), masterId: r.master_id ? Number(r.master_id) : null,
+    date: r.date.toISOString?.().slice(0,10) || String(r.date),
+    startMin: r.start_min, duration: r.duration, label: r.label || "",
+  })));
+}));
+
+app.post("/api/blocked", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { master_id, date, start_min, duration = 60, label = "" } = req.body || {};
+  if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
+  const [row] = await q(
+    `INSERT INTO blocked_slots (business_id, master_id, date, start_min, duration, label) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+    [b.id, master_id || null, date, start_min, duration, label]);
+  res.json({ id: Number(row.id), masterId: row.master_id ? Number(row.master_id) : null,
+    date: row.date.toISOString?.().slice(0,10) || String(row.date), startMin: row.start_min, duration: row.duration, label: row.label || "" });
+}));
+
+app.delete("/api/blocked/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  await q("DELETE FROM blocked_slots WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
+  res.json({ ok: true });
 }));
 
 /* ---------- service requests (owner) ---------- */

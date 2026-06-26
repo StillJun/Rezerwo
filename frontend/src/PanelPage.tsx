@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import React from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import {
@@ -8,11 +9,12 @@ import {
   ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff, Users,
   Mail, Send, Globe, Navigation, Music, ParkingCircle, CreditCard,
   Accessibility, Sofa, Wind, Wifi, Smartphone, MoreHorizontal, BookUser, Search,
+  CalendarDays, ListChecks,
   type LucideIcon,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
-import type { Business, BusinessContacts, Service, Meta, Appointment, Review, PublicMaster, Client } from "./types";
+import type { Business, BusinessContacts, Service, Meta, Appointment, Review, PublicMaster, Client, BlockedSlot } from "./types";
 import { useTranslation } from "./i18n";
 import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
@@ -649,16 +651,633 @@ function ProfileCompleteness({ biz, onGo }: { biz: Business; onGo: () => void })
   );
 }
 
+/* ========== CALENDAR HELPERS ========== */
+const HOUR_H  = 64;
+const CAL_S   = 7;  // 07:00
+const CAL_E   = 22; // 22:00
+const PX_MIN  = HOUR_H / 60;
+const CAL_HOURS = Array.from({ length: CAL_E - CAL_S }, (_, i) => CAL_S + i);
+
+function calY(min: number): number { return (min - CAL_S * 60) * PX_MIN; }
+function calH(dur: number): number { return Math.max(dur * PX_MIN, 20); }
+
+function weekStart(dateStr: string): Date {
+  const d = new Date(dateStr + "T00:00:00");
+  const diff = d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1);
+  return new Date(new Date(dateStr + "T00:00:00").setDate(diff));
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+const DAY_SHORT_PL = ["Nd","Pn","Wt","Śr","Cz","Pt","Sb"];
+const MONTH_PL = ["sty","lut","mar","kwi","maj","cze","lip","sie","wrz","paź","lis","gru"];
+function fmtDayHdr(ds: string) {
+  const d = new Date(ds + "T00:00:00");
+  return { dn: DAY_SHORT_PL[d.getDay()], dd: d.getDate(), mo: MONTH_PL[d.getMonth()] };
+}
+function fmtRange(days: string[]) {
+  const a = fmtDayHdr(days[0]), b = fmtDayHdr(days[6]);
+  return `${a.dd} ${a.mo} – ${b.dd} ${b.mo}`;
+}
+function fmtTimeMin(m: number): string {
+  return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
+}
+
+/* ========== CALENDAR VIEW ========== */
+function CalendarView({ biz, services, masters }: { biz: Business; services: Service[]; masters: PublicMaster[] }) {
+  const { t } = useTranslation();
+  const [view, setView]         = useState<"day"|"week">("week");
+  const [dateStr, setDateStr]   = useState(todayStr);
+  const [appts, setAppts]       = useState<Appointment[]>([]);
+  const [blocked, setBlocked]   = useState<BlockedSlot[]>([]);
+  const [loading, setLoading]   = useState(true);
+  const [selAppt, setSelAppt]   = useState<Appointment|null>(null);
+  const [addAppt, setAddAppt]   = useState<{date:string;startMin:number}|null>(null);
+  const [addBlock, setAddBlock] = useState<{date:string;startMin:number}|null>(null);
+  const [selBlock, setSelBlock] = useState<BlockedSlot|null>(null);
+  const [dragging, setDragging] = useState<{id:number;duration:number}|null>(null);
+  const [dragOver, setDragOver] = useState<{date:string;startMin:number}|null>(null);
+
+  const days = useMemo<string[]>(() => {
+    if (view === "day") return [dateStr];
+    const mon = weekStart(dateStr);
+    return Array.from({length:7}, (_,i) => {
+      const d = new Date(mon); d.setDate(d.getDate()+i);
+      return d.toISOString().slice(0,10);
+    });
+  }, [view, dateStr]);
+
+  const [start, end] = [days[0], days[days.length-1]];
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [a, b] = await Promise.all([
+        api.appointments({ start_date: start, end_date: end }),
+        api.blocked(start, end),
+      ]);
+      setAppts(a);
+      setBlocked(b);
+    } finally { setLoading(false); }
+  }, [start, end]);
+
+  useEffect(() => { reload(); }, [reload]);
+
+  const nav = (dir: 1|-1) => {
+    setDateStr(prev => addDays(prev, dir * (view === "day" ? 1 : 7)));
+  };
+
+  const today = todayStr();
+  const now = new Date();
+  const nowMin = now.getHours() * 60 + now.getMinutes();
+  const nowVisible = nowMin >= CAL_S * 60 && nowMin < CAL_E * 60;
+
+  const dayAppts = (d: string) => appts.filter(a => a.date === d && a.status !== "cancelled");
+  const dayBlocked = (d: string) => blocked.filter(b => b.date === d);
+
+  const svcMap = useMemo(() => {
+    const m: Record<number, Service> = {};
+    services.forEach(s => { m[s.id] = s; });
+    return m;
+  }, [services]);
+
+  // Click on empty time slot
+  const handleSlotClick = (date: string, startMin: number) => {
+    const snapped = Math.floor(startMin / 15) * 15;
+    setAddAppt({ date, startMin: snapped });
+  };
+  const handleSlotRightClick = (e: React.MouseEvent, date: string, startMin: number) => {
+    e.preventDefault();
+    const snapped = Math.floor(startMin / 15) * 15;
+    setAddBlock({ date, startMin: snapped });
+  };
+
+  // Drop target hover
+  const getDropMin = (e: React.MouseEvent<HTMLDivElement>, colEl: HTMLDivElement) => {
+    const rect = colEl.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const rawMin = CAL_S * 60 + y / PX_MIN;
+    return Math.round(rawMin / 15) * 15;
+  };
+
+  const calHeight = (CAL_E - CAL_S) * HOUR_H;
+
+  return (
+    <div>
+      {/* ── Controls ── */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:14, gap:10, flexWrap:"wrap" as const }}>
+        <div style={{ display:"flex", gap:6 }}>
+          {(["day","week"] as const).map(v => (
+            <button key={v} style={{ ...S.filterBtn, ...(view===v ? S.filterBtnOn : {}) }}
+              onClick={() => setView(v)}>
+              {v === "day" ? t.p_calViewDay : t.p_calViewWeek}
+            </button>
+          ))}
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:8, flex:1, justifyContent:"center" }}>
+          <button style={S.miniBtn} onClick={() => nav(-1)}><ChevronLeft size={16}/></button>
+          <span style={{ fontSize:14, fontWeight:700, color:"#1a1320", minWidth:130, textAlign:"center" as const }}>
+            {view === "day" ? (() => { const h = fmtDayHdr(dateStr); return `${h.dn} ${h.dd} ${h.mo}`; })() : fmtRange(days)}
+          </span>
+          <button style={S.miniBtn} onClick={() => nav(1)}><ChevronRight size={16}/></button>
+          {dateStr !== today && (
+            <button style={{ ...S.filterBtn, padding:"6px 12px", fontSize:12 }} onClick={() => setDateStr(today)}>
+              {t.p_calToday}
+            </button>
+          )}
+        </div>
+        <div style={{ display:"flex", gap:6 }}>
+          <button style={{ ...S.addBtn, background:"#f4f0f8", color:"#52525b", boxShadow:"none" }}
+            onClick={() => setAddBlock({ date: dateStr, startMin: 9*60 })}>
+            <Bell size={14}/> {t.p_calBlock}
+          </button>
+          <button style={S.addBtn} onClick={() => setAddAppt({ date: dateStr, startMin: 9*60 })}>
+            <Plus size={14}/> {t.p_calNewAppt}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Grid ── */}
+      <div style={{ background:"#fff", borderRadius:20, border:"1px solid #efe9ee", overflow:"hidden" }}>
+        {/* Day headers */}
+        <div style={{ display:"flex", borderBottom:"1px solid #efe9ee" }}>
+          <div style={{ width:48, flexShrink:0 }}/>
+          {days.map(day => {
+            const h = fmtDayHdr(day);
+            const isToday = day === today;
+            return (
+              <div key={day} style={{ flex:1, textAlign:"center" as const, padding:"10px 2px", minWidth:0,
+                background: isToday ? "rgba(124,58,237,.04)" : undefined,
+                borderLeft:"1px solid #efe9ee" }}>
+                <div style={{ fontSize:11, color:"#a8a2b0", fontWeight:600, letterSpacing:.5 }}>{h.dn}</div>
+                <div style={{ display:"inline-flex", alignItems:"center", justifyContent:"center",
+                  width:26, height:26, borderRadius:"50%", fontSize:14, fontWeight:700, marginTop:2,
+                  background: isToday ? ACC : undefined, color: isToday ? "#fff" : "#1a1320" }}>
+                  {h.dd}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Scrollable time grid */}
+        <div style={{ display:"flex", overflowY:"auto", maxHeight:"calc(100vh - 330px)", position:"relative" }}
+          className="cal-scroll">
+          {/* Time axis */}
+          <div style={{ width:48, flexShrink:0, position:"relative", height:calHeight, borderRight:"1px solid #efe9ee" }}>
+            {CAL_HOURS.map(h => (
+              <div key={h} style={{ position:"absolute", top: (h-CAL_S)*HOUR_H - 7, right:8,
+                fontSize:10.5, color:"#b8b2c0", fontWeight:600, userSelect:"none" }}>
+                {String(h).padStart(2,"0")}:00
+              </div>
+            ))}
+          </div>
+
+          {/* Day columns */}
+          <div style={{ flex:1, position:"relative", display:"flex" }}>
+            {/* Gridlines (behind everything) */}
+            <div style={{ position:"absolute", inset:0, pointerEvents:"none" }}>
+              {CAL_HOURS.map(h => (
+                <div key={h} style={{ position:"absolute", top:(h-CAL_S)*HOUR_H, left:0, right:0, borderTop:"1px solid #efe9ee" }}/>
+              ))}
+              {CAL_HOURS.map(h => (
+                <div key={`${h}h`} style={{ position:"absolute", top:(h-CAL_S)*HOUR_H+HOUR_H/2, left:0, right:0, borderTop:"1px dashed #f4f0f8" }}/>
+              ))}
+              {/* Current time line */}
+              {days.includes(today) && nowVisible && (
+                <div style={{ position:"absolute", top: calY(nowMin), left:0, right:0, height:2, background:"#ef4444", zIndex:5 }}>
+                  <div style={{ position:"absolute", left:0, top:-4, width:10, height:10, borderRadius:"50%", background:"#ef4444" }}/>
+                </div>
+              )}
+            </div>
+
+            {/* Each day column */}
+            {days.map((day, di) => (
+              <DayColumn key={day}
+                day={day}
+                appts={dayAppts(day)}
+                blocked={dayBlocked(day)}
+                isFirst={di===0}
+                isToday={day===today}
+                nowMin={day===today ? nowMin : -1}
+                calHeight={calHeight}
+                onSlotClick={handleSlotClick}
+                onSlotRightClick={handleSlotRightClick}
+                onApptClick={setSelAppt}
+                onBlockClick={setSelBlock}
+                dragging={dragging}
+                onDragStart={(id, dur) => setDragging({id, duration:dur})}
+                onDragEnd={async (id, date, startMin) => {
+                  setDragging(null); setDragOver(null);
+                  try {
+                    const updated = await api.rescheduleAppointment(id, date, startMin);
+                    setAppts(prev => prev.map(a => a.id===id ? updated : a));
+                  } catch(e) { alert((e as Error).message); reload(); }
+                }}
+                dragOver={dragOver}
+                onDragOver={(date, startMin) => setDragOver({date, startMin})}
+                onDragLeave={() => setDragOver(null)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Modals ── */}
+      {selAppt && createPortal(
+        <ApptDetailModal appt={selAppt} t={t} services={services}
+          onClose={() => setSelAppt(null)}
+          onStatus={async (status) => {
+            const updated = await api.updateAppointment(selAppt.id, status);
+            setAppts(prev => prev.map(a => a.id===selAppt.id ? updated : a));
+            setSelAppt(null);
+          }}
+        />, document.body
+      )}
+
+      {addAppt && createPortal(
+        <NewApptModal date={addAppt.date} startMin={addAppt.startMin}
+          services={services} masters={masters} t={t}
+          onClose={() => setAddAppt(null)}
+          onSave={async (data) => {
+            const created = await api.createAppointment(data);
+            setAppts(prev => [...prev, created]);
+            setAddAppt(null);
+          }}
+        />, document.body
+      )}
+
+      {addBlock && createPortal(
+        <BlockModal date={addBlock.date} startMin={addBlock.startMin} t={t}
+          onClose={() => setAddBlock(null)}
+          onSave={async (data) => {
+            const created = await api.addBlocked(data);
+            setBlocked(prev => [...prev, created]);
+            setAddBlock(null);
+          }}
+        />, document.body
+      )}
+
+      {selBlock && createPortal(
+        <div style={S.overlay} onClick={e => e.target===e.currentTarget && setSelBlock(null)}>
+          <div style={S.modal} className="modal-sheet">
+            <div style={S.modalHead}>
+              <span style={{fontWeight:700}}>🚫 {selBlock.label || t.p_calBlock}</span>
+              <button style={S.miniBtn} onClick={()=>setSelBlock(null)}><X size={16}/></button>
+            </div>
+            <div style={{fontSize:13.5,color:"#52525b",marginBottom:16}}>
+              {selBlock.date.split("-").reverse().join(".")} {fmtTimeMin(selBlock.startMin)} – {fmtTimeMin(selBlock.startMin+selBlock.duration)}
+            </div>
+            <button style={{...S.primary,background:"#fee2e2",color:"#dc2626",boxShadow:"none"}}
+              onClick={async()=>{
+                await api.deleteBlocked(selBlock.id);
+                setBlocked(prev=>prev.filter(b=>b.id!==selBlock.id));
+                setSelBlock(null);
+              }}>
+              <Trash2 size={14}/> {t.p_calDeleteBlock}
+            </button>
+          </div>
+        </div>, document.body
+      )}
+
+      {loading && (
+        <div style={{position:"absolute",top:8,right:8,fontSize:12,color:"#a8a2b0"}}>⏳</div>
+      )}
+    </div>
+  );
+}
+
+/* ── DayColumn ── */
+function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, onDragStart, onDragEnd, dragOver, onDragOver, onDragLeave }: {
+  day: string; appts: Appointment[]; blocked: BlockedSlot[];
+  isFirst: boolean; isToday: boolean; nowMin: number; calHeight: number;
+  onSlotClick: (d: string, m: number) => void;
+  onSlotRightClick: (e: React.MouseEvent, d: string, m: number) => void;
+  onApptClick: (a: Appointment) => void;
+  onBlockClick: (b: BlockedSlot) => void;
+  dragging: {id:number;duration:number}|null;
+  onDragStart: (id:number, dur:number) => void;
+  onDragEnd: (id:number, date:string, startMin:number) => void;
+  dragOver: {date:string;startMin:number}|null;
+  onDragOver: (d:string,m:number) => void;
+  onDragLeave: () => void;
+}) {
+  const colRef = React.useRef<HTMLDivElement>(null);
+
+  const getMin = (e: React.MouseEvent) => {
+    const rect = colRef.current!.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    return Math.round((CAL_S * 60 + y / PX_MIN) / 15) * 15;
+  };
+
+  const isDragTarget = dragOver?.date === day;
+  const dragTop = isDragTarget ? calY(dragOver!.startMin) : -1;
+
+  return (
+    <div ref={colRef}
+      style={{ flex:1, position:"relative", height:calHeight, minWidth:0, cursor:"crosshair",
+        borderLeft: !isFirst ? "1px solid #efe9ee" : undefined,
+        background: isToday ? "rgba(124,58,237,.015)" : undefined }}
+      onClick={e => { if ((e.target as HTMLElement).classList.contains("cal-col")) onSlotClick(day, getMin(e)); }}
+      onContextMenu={e => { e.preventDefault(); onSlotRightClick(e, day, getMin(e)); }}
+      onDragOver={e => { e.preventDefault(); const m=getMin(e); onDragOver(day,m); }}
+      onDragLeave={onDragLeave}
+      onDrop={e => {
+        e.preventDefault();
+        const id = Number(e.dataTransfer.getData("apptId"));
+        if (!id || !dragOver) return;
+        onDragEnd(id, day, dragOver.startMin);
+      }}
+      className="cal-col">
+
+      {/* Drag target preview */}
+      {isDragTarget && dragging && (
+        <div style={{ position:"absolute", left:2, right:2, top: dragTop,
+          height: calH(dragging.duration), background:"rgba(124,58,237,.15)",
+          border:"2px dashed #7c3aed", borderRadius:8, zIndex:1, pointerEvents:"none" }}/>
+      )}
+
+      {/* Blocked slots */}
+      {blocked.map(bl => (
+        <div key={bl.id} onClick={e => { e.stopPropagation(); onBlockClick(bl); }}
+          style={{ position:"absolute", left:2, right:2,
+            top: calY(bl.startMin), height: calH(bl.duration),
+            background:"repeating-linear-gradient(45deg,#f4f0f8,#f4f0f8 4px,#ebe5f5 4px,#ebe5f5 8px)",
+            border:"1.5px solid #d8b4fe", borderRadius:6,
+            display:"flex", alignItems:"center", padding:"0 6px",
+            cursor:"pointer", zIndex:2, overflow:"hidden" }}>
+          <span style={{ fontSize:10.5, color:"#8b5cf6", fontWeight:700 }}>🚫 {bl.label || "Zajęty"}</span>
+        </div>
+      ))}
+
+      {/* Appointment blocks */}
+      {appts.map(a => {
+        const top    = calY(a.startMin);
+        const height = calH(a.duration);
+        const color  = a.serviceColor || ACC;
+        const light  = color + "22";
+        const isDone = a.status === "done" || a.status === "no_show";
+        const isPend = a.status === "pending";
+        return (
+          <div key={a.id}
+            draggable
+            onDragStart={e => { e.dataTransfer.setData("apptId", String(a.id)); onDragStart(a.id, a.duration); }}
+            onClick={e => { e.stopPropagation(); onApptClick(a); }}
+            style={{ position:"absolute", left:2, right:2, top, height: Math.max(height,22),
+              background: isDone ? "#f4f4f5" : light,
+              border: `2px ${isPend ? "dashed" : "solid"} ${isDone ? "#d1d5db" : color}`,
+              borderRadius:7, padding:"3px 6px", cursor:"pointer", overflow:"hidden",
+              opacity: isDone ? 0.65 : 1, zIndex:3,
+              boxShadow: a.status==="confirmed" ? `0 1px 6px ${color}33` : undefined }}>
+            <div style={{ fontSize:11, fontWeight:700, color: isDone ? "#71717a" : color, lineHeight:1.25, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+              {a.clientName}
+            </div>
+            {height > 28 && (
+              <div style={{ fontSize:10, color:"#8b8194", lineHeight:1.2, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+                {fmtTimeMin(a.startMin)} · {a.serviceName || "—"}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── ApptDetailModal ── */
+function ApptDetailModal({ appt, t, services, onClose, onStatus }: {
+  appt: Appointment; t: T; services: Service[];
+  onClose: () => void;
+  onStatus: (s: string) => Promise<void>;
+}) {
+  const ST = statusLabels(t);
+  const st = ST[appt.status] || ST.pending;
+  const [busy, setBusy] = useState(false);
+  const setStatus = async (s: string) => { setBusy(true); try { await onStatus(s); } finally { setBusy(false); } };
+
+  return (
+    <div style={S.overlay} onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={S.modal} className="modal-sheet">
+        <div style={S.modalHead}>
+          <div>
+            <div style={{ fontWeight:700, fontSize:15 }}>{appt.clientName}</div>
+            <div style={{ fontSize:12, color:"#8b8194" }}>{appt.clientPhone}</div>
+          </div>
+          <button style={S.miniBtn} onClick={onClose}><X size={16}/></button>
+        </div>
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:14 }}>
+          <span style={{ ...S.statusBadge, background:st.bg, color:st.color }}>{st.label}</span>
+          <span style={{ ...S.statusBadge, background:"#f3f4f6", color:"#374151" }}>
+            {appt.date.split("-").reverse().join(".")} {fmtTimeMin(appt.startMin)}–{fmtTimeMin(appt.startMin+appt.duration)}
+          </span>
+        </div>
+        {appt.serviceName && (
+          <div style={{ fontSize:13.5, color:"#52525b", marginBottom:6 }}>
+            ✂️ {appt.serviceName}{appt.servicePrice ? ` · ${appt.servicePrice} zł` : ""}
+          </div>
+        )}
+        {appt.masterName && (
+          <div style={{ fontSize:13, color:"#52525b", marginBottom:6 }}>👤 {appt.masterName}</div>
+        )}
+        {appt.comment && (
+          <div style={{ background:"#f9f7fc", borderRadius:10, padding:"8px 12px", fontSize:13, color:"#52525b", marginBottom:14, lineHeight:1.5 }}>
+            💬 {appt.comment}
+          </div>
+        )}
+        {appt.clientEmail && <div style={{ fontSize:13, color:"#8b8194", marginBottom:10 }}>✉️ {appt.clientEmail}</div>}
+        <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+          {appt.status === "pending" && (
+            <button style={{ ...S.addBtn, flex:1 }} disabled={busy}
+              onClick={() => setStatus("confirmed")}>
+              <Check size={14}/> {t.p_btnConfirm}
+            </button>
+          )}
+          {(appt.status === "pending" || appt.status === "confirmed") && (
+            <button style={{ padding:"10px 14px", borderRadius:999, border:"none", background:"#fef3c7", color:"#92400e", fontSize:13, fontWeight:600, cursor:"pointer", flex:1 }}
+              disabled={busy} onClick={() => setStatus("done")}>
+              <Check size={13}/> {t.p_apptDoneTitle}
+            </button>
+          )}
+          {(appt.status === "pending" || appt.status === "confirmed") && (
+            <button style={{ padding:"10px 14px", borderRadius:999, border:"none", background:"#fee2e2", color:"#dc2626", fontSize:13, fontWeight:600, cursor:"pointer" }}
+              disabled={busy} onClick={() => setStatus("cancelled")}>
+              <XCircle size={13}/> {t.p_apptCancelTitle}
+            </button>
+          )}
+          {(appt.status === "pending" || appt.status === "confirmed") && (
+            <button style={{ padding:"10px 14px", borderRadius:999, border:"none", background:"#f4f4f5", color:"#374151", fontSize:13, fontWeight:600, cursor:"pointer" }}
+              disabled={busy} onClick={() => setStatus("no_show")}>
+              <X size={13}/> {t.p_apptNoShowTitle}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── NewApptModal ── */
+function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }: {
+  date: string; startMin: number; services: Service[]; masters: PublicMaster[]; t: T;
+  onClose: () => void;
+  onSave: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number }) => Promise<void>;
+}) {
+  const [clientName, setClientName] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [comment, setComment] = useState("");
+  const [svcId, setSvcId] = useState<number|"">(services[0]?.id || "");
+  const [masterId, setMasterId] = useState<number|"">("");
+  const [dateVal, setDateVal] = useState(date);
+  const [timeVal, setTimeVal] = useState(fmtTimeMin(startMin));
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!clientName.trim()) { setErr(t.p_calClientName.replace(" *","")+": wymagane"); return; }
+    if (!clientPhone.trim()) { setErr(t.p_calClientPhone.replace(" *","")+": wymagane"); return; }
+    const [hh,mm] = timeVal.split(":").map(Number);
+    const smIn = hh*60+(mm||0);
+    setErr(""); setBusy(true);
+    try {
+      await onSave({
+        service_id: svcId ? Number(svcId) : undefined,
+        master_id:  masterId ? Number(masterId) : undefined,
+        client_name: clientName.trim(),
+        client_phone: clientPhone.trim(),
+        client_email: clientEmail.trim() || undefined,
+        comment: comment.trim() || undefined,
+        date: dateVal,
+        start_min: smIn,
+      });
+    } catch(e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={S.overlay} onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={S.modal} className="modal-sheet">
+        <div style={S.modalHead}>
+          <span style={{fontWeight:800,fontSize:16}}>{t.p_calNewTitle}</span>
+          <button style={S.miniBtn} onClick={onClose}><X size={16}/></button>
+        </div>
+        <label style={S.lbl}>{t.p_calClientName}</label>
+        <input style={S.input} value={clientName} onChange={e=>setClientName(e.target.value)} placeholder="Anna Kowalska" autoFocus/>
+        <label style={S.lbl}>{t.p_calClientPhone}</label>
+        <input style={S.input} value={clientPhone} onChange={e=>setClientPhone(e.target.value)} placeholder="+48 500 600 700"/>
+        <div style={{display:"flex",gap:10}}>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_calDate}</label>
+            <input type="date" style={S.input} value={dateVal} onChange={e=>setDateVal(e.target.value)}/>
+          </div>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_calTime}</label>
+            <input type="time" style={S.input} value={timeVal} onChange={e=>setTimeVal(e.target.value)}/>
+          </div>
+        </div>
+        {services.length > 0 && (
+          <>
+            <label style={S.lbl}>{t.p_calService}</label>
+            <select style={S.input} value={svcId} onChange={e=>setSvcId(e.target.value?Number(e.target.value):"")}>
+              <option value="">— {t.p_pickSelect} —</option>
+              {services.map(s => <option key={s.id} value={s.id}>{s.name} ({formatDuration(s.duration,t)})</option>)}
+            </select>
+          </>
+        )}
+        {masters.length > 1 && (
+          <>
+            <label style={S.lbl}>{t.p_calMaster}</label>
+            <select style={S.input} value={masterId} onChange={e=>setMasterId(e.target.value?Number(e.target.value):"")}>
+              <option value="">{t.anyMaster}</option>
+              {masters.filter(m=>m.isActive).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+            </select>
+          </>
+        )}
+        <label style={S.lbl}>{t.p_calComment}</label>
+        <textarea style={{...S.input,resize:"vertical" as const,minHeight:52}} value={comment} onChange={e=>setComment(e.target.value)}/>
+        {err && <div style={S.err}>{err}</div>}
+        <button style={{...S.primary,marginTop:12}} className="btn-primary" disabled={busy} onClick={submit}>
+          <Plus size={15}/> {busy?"…":t.p_calNewAppt}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── BlockModal ── */
+function BlockModal({ date, startMin, t, onClose, onSave }: {
+  date: string; startMin: number; t: T;
+  onClose: () => void;
+  onSave: (data: {date:string;start_min:number;duration:number;label?:string}) => Promise<void>;
+}) {
+  const [dateVal, setDateVal] = useState(date);
+  const [timeVal, setTimeVal] = useState(fmtTimeMin(startMin));
+  const [dur, setDur]         = useState(60);
+  const [label, setLabel]     = useState("");
+  const [err, setErr]         = useState("");
+  const [busy, setBusy]       = useState(false);
+
+  const submit = async () => {
+    const [hh,mm] = timeVal.split(":").map(Number);
+    const sm = hh*60+(mm||0);
+    setErr(""); setBusy(true);
+    try { await onSave({date:dateVal,start_min:sm,duration:dur,label:label.trim()||undefined}); }
+    catch(e) { setErr((e as Error).message); } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={S.overlay} onClick={e => e.target===e.currentTarget && onClose()}>
+      <div style={S.modal} className="modal-sheet">
+        <div style={S.modalHead}>
+          <span style={{fontWeight:800,fontSize:16}}>🚫 {t.p_calBlockTitle}</span>
+          <button style={S.miniBtn} onClick={onClose}><X size={16}/></button>
+        </div>
+        <label style={S.lbl}>{t.p_calBlockLabel}</label>
+        <input style={S.input} value={label} onChange={e=>setLabel(e.target.value)} placeholder={t.p_calBlockLabelPh} autoFocus/>
+        <div style={{display:"flex",gap:10}}>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_calDate}</label>
+            <input type="date" style={S.input} value={dateVal} onChange={e=>setDateVal(e.target.value)}/>
+          </div>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_calTime}</label>
+            <input type="time" style={S.input} value={timeVal} onChange={e=>setTimeVal(e.target.value)}/>
+          </div>
+        </div>
+        <label style={S.lbl}>{t.p_calBlockDuration}</label>
+        <select style={S.input} value={dur} onChange={e=>setDur(Number(e.target.value))}>
+          {[30,45,60,90,120,180,240,480].map(d=><option key={d} value={d}>{formatDuration(d,t)}</option>)}
+        </select>
+        {err && <div style={S.err}>{err}</div>}
+        <button style={{...S.primary,marginTop:12}} className="btn-primary" disabled={busy} onClick={submit}>
+          <Save size={15}/> {busy?"…":"Zapisz blokadę"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ========== APPOINTMENTS TAB ========== */
 function AppointmentsTab({ biz }: { biz: Business }) {
   const { t } = useTranslation();
   const ST = statusLabels(t);
+  const [viewMode, setViewMode] = useState<"list"|"cal">("cal");
   const [filter, setFilter] = useState<"today"|"upcoming"|"all">("today");
   const [date, setDate] = useState(todayStr());
   const [list, setList] = useState<Appointment[]>([]);
   const [pendingList, setPendingList] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<string|null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [masters, setMasters]   = useState<PublicMaster[]>([]);
+
+  useEffect(() => {
+    api.services().then(setServices).catch(()=>{});
+    api.masters().then(setMasters).catch(()=>{});
+  }, []);
 
   const loadPending = useCallback(async () => {
     const data = await api.appointments({ status: "pending" });
@@ -704,8 +1323,21 @@ function AppointmentsTab({ biz }: { biz: Business }) {
       <div style={S.sectionHead} className="section-head">
         <div><h2 style={S.h2}>{t.p_apptTitle}</h2>
           <p style={S.muted}>{t.p_apptSub}</p></div>
+        <div style={{display:"flex",gap:6}}>
+          <button style={{...S.filterBtn,...(viewMode==="cal"?S.filterBtnOn:{})}} onClick={()=>setViewMode("cal")}>
+            <CalendarDays size={14}/> {t.p_calViewWeek}
+          </button>
+          <button style={{...S.filterBtn,...(viewMode==="list"?S.filterBtnOn:{})}} onClick={()=>setViewMode("list")}>
+            <ListChecks size={14}/> {t.p_calViewList}
+          </button>
+        </div>
       </div>
 
+      {viewMode === "cal" && (
+        <CalendarView biz={biz} services={services} masters={masters}/>
+      )}
+
+      {viewMode === "list" && (<>
       {/* ── Oczekujące section ── */}
       <div style={{marginBottom:20}}>
         <div style={{fontSize:13,fontWeight:700,color:"#92400e",marginBottom:8,display:"flex",alignItems:"center",gap:6}}>
@@ -819,6 +1451,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
       )}
 
       {client && <ClientModal phone={client} onClose={()=>setClient(null)}/>}
+      </>)}
     </div>
   );
 }

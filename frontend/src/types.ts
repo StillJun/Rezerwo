@@ -54,11 +54,17 @@ export interface PublicMaster {
 export interface Appointment {
   id: number; businessId: number;
   serviceId: number | null; serviceName: string | null; servicePrice: number | null;
+  serviceColor?: string | null;
   masterId?: number | null; masterName?: string | null;
   clientName: string; clientPhone: string; clientEmail: string; comment: string;
   date: string; startMin: number; duration: number;
   status: "pending" | "confirmed" | "cancelled" | "done" | "no_show";
   createdAt: string;
+}
+
+export interface BlockedSlot {
+  id: number; masterId: number | null;
+  date: string; startMin: number; duration: number; label: string;
 }
 
 export interface BookingResult {

@@ -256,6 +256,21 @@ export async function initDb() {
     ON CONFLICT DO NOTHING
   `).catch(() => {});
 
+  // ── blocked_slots table (stage 5: calendar) ─────────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS blocked_slots (
+      id          BIGSERIAL PRIMARY KEY,
+      business_id BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      master_id   BIGINT REFERENCES masters(id) ON DELETE CASCADE,
+      date        DATE NOT NULL,
+      start_min   INT NOT NULL,
+      duration    INT NOT NULL DEFAULT 60,
+      label       TEXT DEFAULT '',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `).catch(() => {});
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_blocked_biz ON blocked_slots(business_id, date)`).catch(() => {});
+
   // ── service color (stage 4) ──────────────────────────────────────────────────
   await pool.query(`ALTER TABLE services ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT ''`).catch(() => {});
 
