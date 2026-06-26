@@ -69,3 +69,8 @@ export interface Review {
   id: number; clientName: string; rating: number; text: string;
   hidden?: boolean; createdAt: string;
 }
+
+export interface Client {
+  id: number; name: string; phone: string; email: string;
+  notes: string; tags: string[]; rodoConsent: boolean; createdAt: string;
+}

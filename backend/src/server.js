@@ -644,6 +644,69 @@ app.put("/api/clients/:phone/note", requireAuth, ah(async (req, res) => {
   res.json({ ok: true });
 }));
 
+/* ---------- CRM: contacts book (owner) ---------- */
+
+app.get("/api/crm/clients", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { q: search = "" } = req.query;
+  const rows = await q(
+    `SELECT id, name, phone, email, notes, tags, rodo_consent, created_at
+     FROM clients
+     WHERE business_id=$1
+       AND ($2='' OR name ILIKE '%'||$2||'%' OR phone ILIKE '%'||$2||'%')
+     ORDER BY name ASC`,
+    [b.id, search]
+  );
+  res.json(rows);
+}));
+
+app.post("/api/crm/clients", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { name = "", phone = "", email = "", notes = "", tags = [], rodo_consent } = req.body || {};
+  if (!name.trim()) return res.status(400).json({ error: "Imię jest wymagane." });
+  if (!phone.trim()) return res.status(400).json({ error: "Telefon jest wymagany." });
+  if (!rodo_consent)  return res.status(400).json({ error: "Wymagana jest zgoda RODO klienta." });
+  const [row] = await q(
+    `INSERT INTO clients (business_id, name, phone, email, notes, tags, rodo_consent)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (business_id, phone) DO UPDATE
+       SET name=$2, email=$4, notes=$5, tags=$6
+     RETURNING id, name, phone, email, notes, tags, rodo_consent, created_at`,
+    [b.id, name.trim(), phone.trim(), email.trim(), notes.trim(), tags, true]
+  );
+  res.json(row);
+}));
+
+app.put("/api/crm/clients/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const id = Number(req.params.id);
+  const { name, phone, email, notes, tags } = req.body || {};
+  const [row] = await q(
+    `UPDATE clients SET
+       name  = COALESCE($3, name),
+       phone = COALESCE($4, phone),
+       email = COALESCE($5, email),
+       notes = COALESCE($6, notes),
+       tags  = COALESCE($7, tags)
+     WHERE id=$1 AND business_id=$2
+     RETURNING id, name, phone, email, notes, tags, rodo_consent, created_at`,
+    [id, b.id, name ?? null, phone ?? null, email ?? null, notes ?? null, tags ?? null]
+  );
+  if (!row) return res.status(404).json({ error: "Klient nie znaleziony." });
+  res.json(row);
+}));
+
+app.delete("/api/crm/clients/:id", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const id = Number(req.params.id);
+  const [row] = await q(
+    `DELETE FROM clients WHERE id=$1 AND business_id=$2 RETURNING id`,
+    [id, b.id]
+  );
+  if (!row) return res.status(404).json({ error: "Klient nie znaleziony." });
+  res.json({ ok: true });
+}));
+
 /* ---------- public marketplace ---------- */
 app.get("/api/public/businesses", async (req, res) => {
   try {

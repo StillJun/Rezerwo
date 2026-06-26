@@ -7,12 +7,12 @@ import {
   XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
   ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff, Users,
   Mail, Send, Globe, Navigation, Music, ParkingCircle, CreditCard,
-  Accessibility, Sofa, Wind, Wifi, Smartphone, MoreHorizontal,
+  Accessibility, Sofa, Wind, Wifi, Smartphone, MoreHorizontal, BookUser, Search,
   type LucideIcon,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
-import type { Business, BusinessContacts, Service, Meta, Appointment, Review, PublicMaster } from "./types";
+import type { Business, BusinessContacts, Service, Meta, Appointment, Review, PublicMaster, Client } from "./types";
 import { useTranslation } from "./i18n";
 import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
@@ -360,12 +360,13 @@ function Onboarding({ onCreated, onLogout }: { onCreated: (b: Business) => void;
 }
 
 /* ========== NAV ITEMS ========== */
-type TabId = "appointments"|"services"|"masters"|"profile"|"reviews"|"waitlist"|"requests"|"widget";
+type TabId = "appointments"|"clients"|"services"|"masters"|"profile"|"reviews"|"waitlist"|"requests"|"widget";
 type NavItem = { id: TabId; Icon: LucideIcon; label: string };
 
 function NAV_ITEMS(t: T): NavItem[] {
   return [
     { id: "appointments", Icon: Calendar,          label: t.p_tabAppointments },
+    { id: "clients",      Icon: BookUser,          label: t.p_tabClients      },
     { id: "services",     Icon: Scissors,          label: t.p_tabServices     },
     { id: "masters",      Icon: Users,             label: t.p_tabMasters      },
     { id: "reviews",      Icon: Star,              label: t.p_tabReviews      },
@@ -376,8 +377,8 @@ function NAV_ITEMS(t: T): NavItem[] {
   ];
 }
 
-const BOTTOM_MAIN: TabId[] = ["appointments","services","masters","profile"];
-const BOTTOM_MORE: TabId[] = ["reviews","waitlist","requests","widget"];
+const BOTTOM_MAIN: TabId[] = ["appointments","clients","services","profile"];
+const BOTTOM_MORE: TabId[] = ["masters","reviews","waitlist","requests","widget"];
 
 function BottomBar({ tab, setTab, t }: { tab: TabId; setTab: (id: TabId) => void; t: T }) {
   const [moreOpen, setMoreOpen] = useState(false);
@@ -585,6 +586,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
         <main className="panel-content">
           {tab==="appointments" && biz && <AppointmentsTab biz={biz}/>}
+          {tab==="clients"      && <ClientsTab/>}
           {tab==="services"     && <ServicesTab/>}
           {tab==="masters"      && <MastersTab/>}
           {tab==="reviews"      && <ReviewsTab/>}
@@ -1621,6 +1623,327 @@ const S: Record<string, CSSProperties> = {
   switch:  { textAlign:"center" as const, fontSize:13, color:"#8b8194", marginTop:16 },
   link:    { color:ACC, fontWeight:700, cursor:"pointer" },
 };
+
+/* ========== CLIENTS TAB ========== */
+function ClientsTab() {
+  const { t } = useTranslation();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [selected, setSelected] = useState<Client|null>(null);
+  const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [history, setHistory] = useState<Appointment[]>([]);
+  const [historyNote, setHistoryNote] = useState("");
+  const [histLoading, setHistLoading] = useState(false);
+
+  const load = useCallback(async (q = "") => {
+    setLoading(true);
+    try { setClients(await api.crmClients(q || undefined)); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(search); }, [load, search]);
+
+  const handleSearch = () => setSearch(searchInput.trim());
+
+  const openClient = async (c: Client) => {
+    setSelected(c); setEditing(false);
+    setHistLoading(true);
+    try {
+      const res = await api.clientHistory(c.phone);
+      setHistory(res.history);
+      setHistoryNote(res.note);
+    } finally { setHistLoading(false); }
+  };
+
+  const closeDetail = () => { setSelected(null); setEditing(false); };
+
+  return (
+    <div className="rise">
+      <div style={S.sectionHead} className="section-head">
+        <div>
+          <h2 style={S.h2}>{t.p_cliTitle}</h2>
+          <p style={S.muted}>{t.p_cliSub}</p>
+        </div>
+        <button style={S.addBtn} className="add-btn" onClick={() => setAdding(true)}>
+          <Plus size={15}/> {t.p_cliAdd}
+        </button>
+      </div>
+
+      {/* Search */}
+      <div style={{ display:"flex", gap:8, marginBottom:14 }}>
+        <div style={{ flex:1, display:"flex", alignItems:"center", gap:8, background:"#fff", border:"1.5px solid #efe9ee", borderRadius:12, padding:"0 12px" }}>
+          <Search size={15} color="#b8b2c0"/>
+          <input
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleSearch()}
+            placeholder={t.p_cliSearch}
+            style={{ flex:1, border:"none", outline:"none", background:"transparent", fontSize:14, padding:"11px 0", fontFamily:font, color:"#1a1320" }}
+          />
+        </div>
+        <button style={{ ...S.addBtn, background:"#f4f0f8", color:ACC, boxShadow:"none", padding:"0 16px" }}
+          onClick={handleSearch}>
+          <Search size={15}/>
+        </button>
+      </div>
+
+      {loading ? (
+        <div style={S.empty}><div style={{ fontSize:24, marginBottom:8 }}>⏳</div>{t.loading}</div>
+      ) : clients.length === 0 ? (
+        <div style={S.empty}>
+          <div style={{ fontSize:32, marginBottom:10 }}>📋</div>
+          <div style={{ fontWeight:600, marginBottom:4 }}>{t.p_cliEmpty}</div>
+          <button style={{ ...S.addBtn, marginTop:10 }} onClick={() => setAdding(true)}>
+            <Plus size={15}/> {t.p_cliAdd}
+          </button>
+        </div>
+      ) : (
+        <div style={S.card}>
+          {clients.map((c, i) => (
+            <div key={c.id} className="appt-row" style={{ ...S.apptRow, cursor:"pointer", borderBottom: i<clients.length-1 ? "1px solid #efe9ee" : "none" }}
+              onClick={() => openClient(c)}>
+              <div style={{ width:36, height:36, borderRadius:10, background:GRAD, color:"#fff", display:"grid", placeItems:"center", flexShrink:0, fontSize:15, fontWeight:700 }}>
+                {c.name.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontWeight:600, fontSize:14.5, color:"#1a1320" }}>{c.name}</div>
+                <div style={{ fontSize:12.5, color:"#8b8194", marginTop:2 }}>{c.phone}{c.email ? ` · ${c.email}` : ""}</div>
+                {c.tags.length > 0 && (
+                  <div style={{ display:"flex", gap:4, flexWrap:"wrap", marginTop:4 }}>
+                    {c.tags.map(tag => (
+                      <span key={tag} style={{ fontSize:11, fontWeight:600, background:"#f3eeff", color:ACC, padding:"2px 8px", borderRadius:999 }}>{tag}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <ChevronRight size={16} color="#c4bdd0"/>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Detail modal */}
+      {selected && createPortal(
+        <div style={S.overlay} className="overlay-sheet" onClick={e => e.target === e.currentTarget && closeDetail()}>
+          <div style={S.modal} className="modal-sheet">
+            <ClientDetail
+              client={selected}
+              history={history}
+              historyNote={historyNote}
+              histLoading={histLoading}
+              editing={editing}
+              setEditing={setEditing}
+              t={t}
+              onSave={async (data) => {
+                const updated = await api.crmUpdateClient(selected.id, data);
+                setSelected(updated);
+                setClients(cs => cs.map(c => c.id === updated.id ? updated : c));
+                setEditing(false);
+              }}
+              onDelete={async () => {
+                if (!confirm(t.p_cliDeleteConfirm)) return;
+                await api.crmDeleteClient(selected.id);
+                setClients(cs => cs.filter(c => c.id !== selected.id));
+                closeDetail();
+              }}
+              onClose={closeDetail}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Add modal */}
+      {adding && createPortal(
+        <div style={S.overlay} className="overlay-sheet" onClick={e => e.target === e.currentTarget && setAdding(false)}>
+          <div style={S.modal} className="modal-sheet">
+            <ClientForm
+              t={t}
+              onSave={async (data) => {
+                const c = await api.crmAddClient(data);
+                setClients(cs => [c, ...cs]);
+                setAdding(false);
+              }}
+              onClose={() => setAdding(false)}
+            />
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+function ClientForm({ t, onSave, onClose, initial }: {
+  t: T;
+  onSave: (data: { name: string; phone: string; email?: string; notes?: string; tags?: string[]; rodo_consent: boolean }) => Promise<void>;
+  onClose: () => void;
+  initial?: { name: string; phone: string; email: string; notes: string; tags: string[] };
+}) {
+  const [name, setName]   = useState(initial?.name   || "");
+  const [phone, setPhone] = useState(initial?.phone  || "");
+  const [email, setEmail] = useState(initial?.email  || "");
+  const [notes, setNotes] = useState(initial?.notes  || "");
+  const [tags, setTags]   = useState<string[]>(initial?.tags || []);
+  const [tagInput, setTagInput] = useState("");
+  const [rodo, setRodo]   = useState(!!initial);
+  const [err, setErr]     = useState("");
+  const [busy, setBusy]   = useState(false);
+
+  const addTag = () => {
+    const v = tagInput.trim();
+    if (v && !tags.includes(v)) setTags(t => [...t, v]);
+    setTagInput("");
+  };
+  const removeTag = (tag: string) => setTags(ts => ts.filter(t => t !== tag));
+
+  const submit = async () => {
+    if (!rodo) { setErr(t.p_cliNoRodo); return; }
+    setErr(""); setBusy(true);
+    try { await onSave({ name, phone, email: email||undefined, notes: notes||undefined, tags, rodo_consent: true }); }
+    catch (e) { setErr((e as Error).message); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <>
+      <div style={S.modalHead}>
+        <span style={{ fontSize:16, fontWeight:700 }}>{initial ? t.p_cliEdit : t.p_cliAdd}</span>
+        <button style={S.miniBtn} onClick={onClose}><X size={16}/></button>
+      </div>
+      <label style={S.lbl}>{t.p_cliName}</label>
+      <input value={name} onChange={e=>setName(e.target.value)} placeholder="Anna Kowalska" style={S.input}/>
+      <label style={S.lbl}>{t.p_cliPhone}</label>
+      <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 600 700" style={S.input}/>
+      <label style={S.lbl}>{t.p_cliEmail}</label>
+      <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="anna@email.com" style={S.input}/>
+      <label style={S.lbl}>{t.p_cliNotes}</label>
+      <textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2}
+        style={{ ...S.input, resize:"vertical" as const, padding:"10px 14px" }}/>
+      <label style={S.lbl}>{t.p_cliTags}</label>
+      <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:6 }}>
+        {tags.map(tag => (
+          <span key={tag} style={{ fontSize:12, fontWeight:600, background:"#f3eeff", color:ACC, padding:"4px 10px", borderRadius:999, display:"flex", alignItems:"center", gap:4 }}>
+            {tag}<button onClick={()=>removeTag(tag)} style={{ background:"none", border:"none", cursor:"pointer", padding:0, color:ACC, display:"flex" }}><X size={11}/></button>
+          </span>
+        ))}
+      </div>
+      <div style={{ display:"flex", gap:6, marginBottom:14 }}>
+        <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
+          onKeyDown={e => { if(e.key==="Enter"){e.preventDefault();addTag();} }}
+          placeholder={t.p_cliTagPh}
+          style={{ ...S.input, flex:1, marginBottom:0 }}/>
+        <button style={{ ...S.addBtn, padding:"0 14px", flexShrink:0 }} onClick={addTag}><Plus size={14}/></button>
+      </div>
+      <label style={{ display:"flex", alignItems:"flex-start", gap:10, cursor:"pointer", marginBottom:14, fontSize:13, color:"#52525b", lineHeight:1.5 }}>
+        <input type="checkbox" checked={rodo} onChange={e=>setRodo(e.target.checked)} style={{ marginTop:2, flexShrink:0, accentColor:ACC }}/>
+        {t.p_cliRodo}
+      </label>
+      {err && <div style={S.err}>{err}</div>}
+      <div style={{ display:"flex", gap:8, marginTop:4 }}>
+        <button style={{ ...S.primary, flex:1 }} className="btn-primary" disabled={busy} onClick={submit}>
+          <Save size={15}/> {busy ? "…" : t.p_cliSave}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function ClientDetail({ client, history, historyNote, histLoading, editing, setEditing, t, onSave, onDelete, onClose }: {
+  client: Client; history: Appointment[]; historyNote: string; histLoading: boolean;
+  editing: boolean; setEditing: (v: boolean) => void; t: T;
+  onSave: (data: { name: string; phone: string; email: string; notes: string; tags: string[] }) => Promise<void>;
+  onDelete: () => Promise<void>;
+  onClose: () => void;
+}) {
+  const ST = statusLabels(t);
+  if (editing) {
+    return (
+      <ClientForm
+        t={t}
+        initial={{ name: client.name, phone: client.phone, email: client.email, notes: client.notes, tags: client.tags }}
+        onSave={async (data) => { await onSave(data as { name: string; phone: string; email: string; notes: string; tags: string[] }); }}
+        onClose={() => setEditing(false)}
+      />
+    );
+  }
+
+  return (
+    <>
+      <div style={S.modalHead}>
+        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+          <div style={{ width:38, height:38, borderRadius:10, background:GRAD, color:"#fff", display:"grid", placeItems:"center", fontSize:17, fontWeight:700 }}>
+            {client.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style={{ fontWeight:700, fontSize:16 }}>{client.name}</div>
+            <div style={{ fontSize:12, color:"#8b8194" }}>{client.phone}</div>
+          </div>
+        </div>
+        <button style={S.miniBtn} onClick={onClose}><X size={16}/></button>
+      </div>
+
+      {/* Info */}
+      {client.email && <div style={{ fontSize:13, color:"#52525b", marginBottom:4 }}>✉️ {client.email}</div>}
+      {client.notes && (
+        <div style={{ background:"#f9f7fc", borderRadius:12, padding:"10px 14px", fontSize:13.5, color:"#1a1320", marginBottom:10, lineHeight:1.6 }}>
+          {client.notes}
+        </div>
+      )}
+      {client.tags.length > 0 && (
+        <div style={{ display:"flex", gap:6, flexWrap:"wrap", marginBottom:14 }}>
+          {client.tags.map(tag => (
+            <span key={tag} style={{ fontSize:12, fontWeight:600, background:"#f3eeff", color:ACC, padding:"4px 10px", borderRadius:999 }}>{tag}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Visit history */}
+      <div style={{ fontWeight:700, fontSize:13.5, color:"#1a1320", marginBottom:8 }}>{t.p_cliHistory(history.length)}</div>
+      {histLoading ? (
+        <div style={{ color:"#8b8194", fontSize:13, textAlign:"center", padding:"10px 0" }}>⏳</div>
+      ) : history.length === 0 ? (
+        <div style={{ color:"#8b8194", fontSize:13, textAlign:"center", padding:"10px 0" }}>—</div>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:14, maxHeight:220, overflowY:"auto" }}>
+          {history.map(a => {
+            const st = ST[a.status] || ST.pending;
+            return (
+              <div key={a.id} style={{ background:"#f9f7fc", borderRadius:12, padding:"10px 14px", fontSize:13 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span style={{ fontWeight:600, color:"#1a1320" }}>{a.date.split("-").reverse().join(".")} {minToTime(a.startMin)}</span>
+                  <span style={{ ...S.statusBadge, background:st.bg, color:st.color }}>{st.label}</span>
+                </div>
+                <div style={{ color:"#52525b", marginTop:2 }}>{a.serviceName || "—"}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* CRM note (existing client_notes) */}
+      {historyNote && (
+        <div style={{ background:"#fef9ee", borderRadius:12, padding:"10px 14px", fontSize:13, color:"#52525b", marginBottom:14, lineHeight:1.5 }}>
+          <span style={{ fontWeight:600, color:"#92400e" }}>📝 Notatka: </span>{historyNote}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display:"flex", gap:8, marginTop:4 }}>
+        <button style={{ ...S.addBtn, flex:1 }} onClick={() => setEditing(true)}>
+          <Pencil size={14}/> {t.p_cliEdit}
+        </button>
+        <button style={{ padding:"10px 16px", borderRadius:999, border:"none", background:"#fee2e2", color:"#dc2626", fontSize:13, fontWeight:600, cursor:"pointer" }}
+          onClick={onDelete}>
+          <Trash2 size={14}/>
+        </button>
+      </div>
+    </>
+  );
+}
 
 /* ========== WIDGET TAB ========== */
 function WidgetTab({ biz }: { biz: Business }) {

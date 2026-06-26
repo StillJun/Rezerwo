@@ -387,6 +387,29 @@ export const pl = {
   // profile: service languages
   p_languagesTitle:        "Języki obsługi",
   p_languagesSub:          "Zaznacz języki, w których obsługujesz klientów.",
+
+  // clients (CRM contacts book)
+  p_tabClients:            "Klienci",
+  p_cliTitle:              "Baza klientów",
+  p_cliSub:                "Twoje kontakty — historia wizyt, notatki, tagi.",
+  p_cliAdd:                "Dodaj klienta",
+  p_cliEmpty:              "Baza jest pusta. Dodaj pierwszego klienta.",
+  p_cliSearch:             "Szukaj po nazwisku lub telefonie…",
+  p_cliName:               "Imię i nazwisko *",
+  p_cliPhone:              "Telefon *",
+  p_cliEmail:              "Email (opcjonalnie)",
+  p_cliNotes:              "Notatka (opcjonalnie)",
+  p_cliTags:               "Tagi (opcjonalnie)",
+  p_cliTagPh:              "np. VIP",
+  p_cliRodo:               "Mam zgodę klienta na przetwarzanie jego danych osobowych (RODO)",
+  p_cliHistory:            (n: number) => `Historia wizyt (${n})`,
+  p_cliSave:               "Zapisz",
+  p_cliDelete:             "Usuń klienta",
+  p_cliEdit:               "Edytuj",
+  p_cliSaved:              "Zapisano ✓",
+  p_cliDeleteConfirm:      "Czy na pewno usunąć tego klienta z bazy?",
+  p_cliNoRodo:             "Wymagana jest zgoda klienta na przetwarzanie danych (RODO).",
+  p_cliAddTag:             "Dodaj tag",
 };
 
 export type T = typeof pl;

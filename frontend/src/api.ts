@@ -1,4 +1,4 @@
-import type { Business, Service, Meta, User, PublicBusiness, PublicMaster, Appointment, BookingResult, Review } from "./types";
+import type { Business, Service, Meta, User, PublicBusiness, PublicMaster, Appointment, BookingResult, Review, Client } from "./types";
 
 const BASE = (import.meta.env.VITE_API_URL || "") + "/api";
 const TOKEN = "rz_token";
@@ -153,6 +153,18 @@ export const api = {
   /* feedback */
   submitFeedback: (data: { kind: string; message: string; email?: string; page?: string }) =>
     req<{ ok: boolean }>("/feedback", { method: "POST", body: JSON.stringify(data) }),
+
+  /* owner: CRM contacts book */
+  crmClients: (search?: string) => {
+    const qs = search ? `?q=${encodeURIComponent(search)}` : "";
+    return req<Client[]>(`/crm/clients${qs}`);
+  },
+  crmAddClient: (data: { name: string; phone: string; email?: string; notes?: string; tags?: string[]; rodo_consent: boolean }) =>
+    req<Client>("/crm/clients", { method: "POST", body: JSON.stringify(data) }),
+  crmUpdateClient: (id: number, data: { name?: string; phone?: string; email?: string; notes?: string; tags?: string[] }) =>
+    req<Client>(`/crm/clients/${id}`, { method: "PUT", body: JSON.stringify(data) }),
+  crmDeleteClient: (id: number) =>
+    req<{ ok: boolean }>(`/crm/clients/${id}`, { method: "DELETE" }),
 
   /* admin */
   adminBusinesses: (status?: string) => {

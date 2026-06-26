@@ -256,5 +256,22 @@ export async function initDb() {
     ON CONFLICT DO NOTHING
   `).catch(() => {});
 
+  // ── clients table (stage 3: CRM contacts book) ──────────────────────────────
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS clients (
+      id           BIGSERIAL PRIMARY KEY,
+      business_id  BIGINT NOT NULL REFERENCES businesses(id) ON DELETE CASCADE,
+      name         TEXT NOT NULL,
+      phone        TEXT NOT NULL,
+      email        TEXT DEFAULT '',
+      notes        TEXT DEFAULT '',
+      tags         TEXT[] DEFAULT '{}',
+      rodo_consent BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE(business_id, phone)
+    )
+  `).catch(() => {});
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_biz ON clients(business_id)`).catch(() => {});
+
   console.log("Database ready (tables checked/created)");
 }
