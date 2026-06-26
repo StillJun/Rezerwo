@@ -221,6 +221,11 @@ export async function initDb() {
     WHERE a.master_id IS NULL
   `).catch(() => {});
 
+  // ── contacts / amenities / languages (profile extension) ────────────────────
+  await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS contacts  JSONB  DEFAULT '{}'::jsonb`).catch(() => {});
+  await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS amenities TEXT[] DEFAULT ARRAY[]::TEXT[]`).catch(() => {});
+  await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS languages TEXT[] DEFAULT ARRAY[]::TEXT[]`).catch(() => {});
+
   // ── masters stage 2: working_hours + master_services ────────────────────────
   // Same format as businesses.hours: {"mon":["10:00","19:00"],...}
   await pool.query(`ALTER TABLE masters ADD COLUMN IF NOT EXISTS working_hours JSONB NOT NULL DEFAULT '{}'::jsonb`).catch(() => {});

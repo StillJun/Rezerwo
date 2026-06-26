@@ -6,10 +6,12 @@ import {
   MapPin, Phone, Instagram, Pencil, X, BadgeCheck, Image, Calendar,
   XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
   ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff, Users,
+  Mail, Send, Globe, Navigation, Music, ParkingCircle, CreditCard,
+  Accessibility, Sofa, Wind, Wifi, Smartphone,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
-import type { Business, Service, Meta, Appointment, Review, PublicMaster } from "./types";
+import type { Business, BusinessContacts, Service, Meta, Appointment, Review, PublicMaster } from "./types";
 import { useTranslation } from "./i18n";
 import type { T } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
@@ -1343,9 +1345,117 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
         </div>
       </div>
 
+      {/* ── PART 1: Contacts ── */}
+      <ContactsSection contacts={form.contacts||{}} onChange={c=>set("contacts",c)} t={t}/>
+
+      {/* ── PART 3: Amenities ── */}
+      <AmenitiesSection amenities={form.amenities||[]} onChange={a=>set("amenities",a)} t={t}/>
+
+      {/* ── PART 4: Languages ── */}
+      <LanguagesSection languages={form.languages||[]} onChange={l=>set("languages",l)} t={t}/>
+
       <button className="btn-primary" style={{...S.primary,marginTop:20}} onClick={save}>
         {saved?<><Check size={16}/> {t.p_profileSaved}</>:<><Save size={16}/> {t.p_profileSave}</>}
       </button>
+    </div>
+  );
+}
+
+/* ========== CONTACTS SECTION ========== */
+type CKey = keyof BusinessContacts;
+const CONTACT_FIELDS: { key: CKey; label: (t: T) => string; ph: (t: T) => string; icon: React.ReactNode }[] = [
+  { key: "email",      label: t => t.p_contactEmail,      ph: t => t.p_contactEmailPh,   icon: <Mail size={15}/> },
+  { key: "telegram",   label: t => t.p_contactTelegram,   ph: t => t.p_contactTelegramPh, icon: <Send size={15}/> },
+  { key: "whatsapp",   label: t => t.p_contactWhatsApp,   ph: t => t.p_contactWhatsAppPh, icon: <Phone size={15}/> },
+  { key: "facebook",   label: t => t.p_contactFacebook,   ph: t => t.p_contactFacebookPh, icon: <Globe size={15}/> },
+  { key: "tiktok",     label: t => t.p_contactTikTok,     ph: t => t.p_contactTikTokPh,   icon: <Music size={15}/> },
+  { key: "website",    label: t => t.p_contactWebsite,    ph: t => t.p_contactWebsitePh,  icon: <Link size={15}/> },
+  { key: "googleMaps", label: t => t.p_contactGoogleMaps, ph: t => t.p_contactMapsPh,     icon: <Navigation size={15}/> },
+];
+
+function ContactsSection({ contacts, onChange, t }: { contacts: BusinessContacts; onChange: (c: BusinessContacts) => void; t: T }) {
+  const set = (k: CKey, v: string) => onChange({ ...contacts, [k]: v });
+  return (
+    <div style={{ marginTop: 24 }}>
+      <label style={S.lbl}>{t.p_contactsSection}</label>
+      <p style={S.hint}>{t.p_contactsSub}</p>
+      {CONTACT_FIELDS.map(({ key, label, ph, icon }) => (
+        <div key={key} style={{ marginBottom: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: "#52525b", marginBottom: 4 }}>{label(t)}</div>
+          <Field icon={icon} value={contacts[key]||""} onChange={v=>set(key,v)} placeholder={ph(t)}/>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ========== AMENITIES SECTION ========== */
+const AMENITY_DEFS: { key: string; label: (t: T) => string; icon: React.ReactNode }[] = [
+  { key: "parking",  label: t => t.p_amenParking,  icon: <ParkingCircle size={14}/> },
+  { key: "card",     label: t => t.p_amenCard,     icon: <CreditCard size={14}/> },
+  { key: "disabled", label: t => t.p_amenDisabled, icon: <Accessibility size={14}/> },
+  { key: "waiting",  label: t => t.p_amenWaiting,  icon: <Sofa size={14}/> },
+  { key: "ac",       label: t => t.p_amenAC,       icon: <Wind size={14}/> },
+  { key: "wifi",     label: t => t.p_amenWifi,     icon: <Wifi size={14}/> },
+  { key: "blik",     label: t => t.p_amenBlik,     icon: <Smartphone size={14}/> },
+];
+
+function AmenitiesSection({ amenities, onChange, t }: { amenities: string[]; onChange: (a: string[]) => void; t: T }) {
+  const toggle = (key: string) =>
+    onChange(amenities.includes(key) ? amenities.filter(k=>k!==key) : [...amenities, key]);
+  return (
+    <div style={{ marginTop: 24 }}>
+      <label style={S.lbl}>{t.p_amenitiesTitle}</label>
+      <p style={S.hint}>{t.p_amenitiesSub}</p>
+      <div style={{ display:"flex", flexWrap:"wrap" as const, gap:8 }}>
+        {AMENITY_DEFS.map(({ key, label, icon }) => {
+          const on = amenities.includes(key);
+          return (
+            <button key={key} onClick={()=>toggle(key)}
+              style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 13px",
+                borderRadius:999, fontSize:13, fontWeight:600, cursor:"pointer", border:"1.5px solid",
+                borderColor: on ? "#7c3aed" : "#efe9ee",
+                background: on ? "#f3eeff" : "#fff",
+                color: on ? "#7c3aed" : "#52525b", transition:"all .15s" }}>
+              {icon} {label(t)}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ========== LANGUAGES SECTION ========== */
+const LANG_DEFS = [
+  { key: "pl", label: "🇵🇱 Polski" },
+  { key: "en", label: "🇬🇧 English" },
+  { key: "ua", label: "🇺🇦 Українська" },
+  { key: "ru", label: "🇷🇺 Русский" },
+];
+
+function LanguagesSection({ languages, onChange, t }: { languages: string[]; onChange: (l: string[]) => void; t: T }) {
+  const toggle = (key: string) =>
+    onChange(languages.includes(key) ? languages.filter(k=>k!==key) : [...languages, key]);
+  return (
+    <div style={{ marginTop: 24 }}>
+      <label style={S.lbl}>{t.p_languagesTitle}</label>
+      <p style={S.hint}>{t.p_languagesSub}</p>
+      <div style={{ display:"flex", flexWrap:"wrap" as const, gap:8 }}>
+        {LANG_DEFS.map(({ key, label }) => {
+          const on = languages.includes(key);
+          return (
+            <button key={key} onClick={()=>toggle(key)}
+              style={{ display:"flex", alignItems:"center", gap:6, padding:"7px 13px",
+                borderRadius:999, fontSize:13, fontWeight:600, cursor:"pointer", border:"1.5px solid",
+                borderColor: on ? "#7c3aed" : "#efe9ee",
+                background: on ? "#f3eeff" : "#fff",
+                color: on ? "#7c3aed" : "#52525b", transition:"all .15s" }}>
+              {label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

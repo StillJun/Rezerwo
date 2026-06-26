@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import {
   MapPin, Phone, Instagram, Clock, ChevronLeft,
   BadgeCheck, X, Check, MessageSquarePlus, ArrowLeft,
+  Mail, Send, Globe, Navigation, Music, Link,
 } from "lucide-react";
 import { api } from "./api";
 import { navigate } from "./App";
@@ -33,6 +34,42 @@ function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 }
 function isoToday() { return new Date().toISOString().slice(0,10); }
+/* ── Open/closed badge ── */
+const DAY_IDX = ["sun","mon","tue","wed","thu","fri","sat"] as const;
+function getOpenStatus(hours: Record<string, [string,string]>): { open: boolean; nextOpenTime?: string } {
+  try {
+    const warsawStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Warsaw" });
+    const w = new Date(warsawStr);
+    const todayKey = DAY_IDX[w.getDay()];
+    const curMin = w.getHours() * 60 + w.getMinutes();
+    const todayH = hours[todayKey];
+    if (todayH) {
+      const [oh, om] = todayH[0].split(":").map(Number);
+      const [ch, cm] = todayH[1].split(":").map(Number);
+      if (curMin >= oh * 60 + om && curMin < ch * 60 + cm) return { open: true };
+      if (curMin < oh * 60 + om) return { open: false, nextOpenTime: todayH[0] };
+    }
+    for (let i = 1; i <= 7; i++) {
+      const key = DAY_IDX[(w.getDay() + i) % 7];
+      if (hours[key]) return { open: false, nextOpenTime: hours[key][0] };
+    }
+  } catch { /* ignore */ }
+  return { open: false };
+}
+
+/* ── Contact URL normalizers ── */
+function normContact(key: string, val: string): string {
+  if (!val) return "";
+  const v = val.trim();
+  if (key === "email") return `mailto:${v}`;
+  if (key === "whatsapp") return `https://wa.me/${v.replace(/[^0-9+]/g,"")}`;
+  if (key === "telegram") return v.startsWith("http") ? v : `https://t.me/${v.replace(/^@/,"")}`;
+  if (key === "facebook") return v.startsWith("http") ? v : `https://facebook.com/${v}`;
+  if (key === "tiktok") return v.startsWith("http") ? v : `https://tiktok.com/@${v.replace(/^@/,"")}`;
+  if (key === "website") return v.startsWith("http") ? v : `https://${v}`;
+  return v; // googleMaps — use as-is
+}
+
 function fmtDur(min: number, durH: string, durM: string): string {
   const h = Math.floor(min / 60), m = min % 60;
   if (h === 0) return `${m} ${durM}`;
@@ -665,28 +702,54 @@ export default function BusinessPage({ slug }: { slug: string }) {
 
       <div style={S.content}>
         {/* business header */}
-        <div style={S.bizHead}>
-          <div>
-            <div style={S.bizName}>
-              {biz.name}
-              {biz.verified && <span style={S.verBadge}><BadgeCheck size={16}/></span>}
+        {(() => {
+          const openStatus = biz.hours && Object.keys(biz.hours).length > 0 ? getOpenStatus(biz.hours) : null;
+          return (
+            <div style={S.bizHead}>
+              <div style={{flex:1}}>
+                <div style={S.bizName}>
+                  {biz.name}
+                  {biz.verified && <span style={S.verBadge}><BadgeCheck size={16}/></span>}
+                  {openStatus && (
+                    <span style={{
+                      display:"inline-flex", alignItems:"center", gap:4,
+                      fontSize:11.5, fontWeight:700, padding:"3px 9px", borderRadius:999,
+                      background: openStatus.open ? "#dcfce7" : "#f3f4f6",
+                      color: openStatus.open ? "#16a34a" : "#6b7280",
+                      marginLeft:8, verticalAlign:"middle",
+                    }}>
+                      <span style={{width:6,height:6,borderRadius:"50%",background:openStatus.open?"#16a34a":"#9ca3af",display:"inline-block"}}/>
+                      {openStatus.open ? t.p_openNow : openStatus.nextOpenTime ? t.p_openFrom(openStatus.nextOpenTime) : t.p_closedNow}
+                    </span>
+                  )}
+                </div>
+                <div style={S.bizMeta}>
+                  {(biz.categories && biz.categories.length > 0 ? biz.categories : [biz.category].filter(Boolean)).map((cid, i) => (
+                    <span key={cid} style={i === 0 ? S.catPrimary : S.catExtra}>
+                      {i === 0 && <CategoryIcon id={cid} size={13} color="#8b8194"/>}
+                      {" "}{t.catLabels[cid] ?? cid}
+                    </span>
+                  ))}
+                  {biz.city && <><span style={{color:"#d1c8d8"}}>·</span>{biz.city}{biz.district && `, ${biz.district}`}</>}
+                </div>
+                {/* service languages */}
+                {biz.languages && biz.languages.length > 0 && (
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap" as const,marginTop:6}}>
+                    {biz.languages.map(l => {
+                      const ldef = [{key:"pl",label:"🇵🇱 PL"},{key:"en",label:"🇬🇧 EN"},{key:"ua",label:"🇺🇦 UA"},{key:"ru",label:"🇷🇺 RU"}].find(x=>x.key===l);
+                      return ldef ? <span key={l} style={{fontSize:11,fontWeight:600,color:"#52525b",background:"#f3f4f6",borderRadius:6,padding:"2px 7px"}}>{ldef.label}</span> : null;
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={S.bizMeta}>
-              {(biz.categories && biz.categories.length > 0 ? biz.categories : [biz.category].filter(Boolean)).map((cid, i) => (
-                <span key={cid} style={i === 0 ? S.catPrimary : S.catExtra}>
-                  {i === 0 && <CategoryIcon id={cid} size={13} color="#8b8194"/>}
-                  {" "}{t.catLabels[cid] ?? cid}
-                </span>
-              ))}
-              {biz.city && <><span style={{color:"#d1c8d8"}}>·</span>{biz.city}{biz.district && `, ${biz.district}`}</>}
-            </div>
-          </div>
-        </div>
+          );
+        })()}
 
         {/* about */}
         {biz.about && <p style={S.about}>{biz.about}</p>}
 
-        {/* contact info */}
+        {/* contact info — existing + extended */}
         <div style={S.infoRow}>
           {biz.address && (
             <div style={S.infoChip}><MapPin size={13}/> {biz.address}</div>
@@ -697,9 +760,48 @@ export default function BusinessPage({ slug }: { slug: string }) {
             </a>
           )}
           {biz.instagram && (
-            <div style={S.infoChip}><Instagram size={13}/> {biz.instagram}</div>
+            <a href={`https://instagram.com/${biz.instagram.replace(/^@/,"")}`} target="_blank" rel="noopener noreferrer" style={{...S.infoChip,textDecoration:"none"}}>
+              <Instagram size={13}/> {biz.instagram}
+            </a>
           )}
+          {/* extended contacts from JSONB */}
+          {biz.contacts && ([
+            { key:"email",      icon:<Mail size={13}/>,       label: biz.contacts.email },
+            { key:"telegram",   icon:<Send size={13}/>,       label: "Telegram" },
+            { key:"whatsapp",   icon:<Phone size={13}/>,      label: "WhatsApp" },
+            { key:"facebook",   icon:<Globe size={13}/>,      label: "Facebook" },
+            { key:"tiktok",     icon:<Music size={13}/>,      label: "TikTok" },
+            { key:"website",    icon:<Link size={13}/>,       label: biz.contacts.website?.replace(/^https?:\/\//,"").split("/")[0] },
+            { key:"googleMaps", icon:<Navigation size={13}/>, label: "Mapa" },
+          ] as const).map(({ key, icon, label }) => {
+            const val = biz.contacts![key as keyof typeof biz.contacts];
+            if (!val) return null;
+            const href = normContact(key, val);
+            return (
+              <a key={key} href={href} target={key === "email" ? undefined : "_blank"} rel="noopener noreferrer"
+                style={{...S.infoChip, textDecoration:"none"}}>
+                {icon} {label || val}
+              </a>
+            );
+          })}
         </div>
+
+        {/* amenities */}
+        {biz.amenities && biz.amenities.length > 0 && (() => {
+          const ADEF: Record<string,string> = {
+            parking:"🅿️ Parking", card:"💳 Karta", disabled:"♿ Dostęp", waiting:"🛋️ Poczekalnia",
+            ac:"❄️ AC", wifi:"📶 WiFi", blik:"📱 BLIK",
+          };
+          return (
+            <div style={{display:"flex",flexWrap:"wrap" as const,gap:6,marginBottom:16}}>
+              {biz.amenities.map(a => ADEF[a] ? (
+                <span key={a} style={{fontSize:12,fontWeight:500,color:"#52525b",background:"#f3f4f6",borderRadius:8,padding:"4px 10px"}}>
+                  {ADEF[a]}
+                </span>
+              ) : null)}
+            </div>
+          );
+        })()}
 
         {/* working hours */}
         {workingDays.length>0 && (

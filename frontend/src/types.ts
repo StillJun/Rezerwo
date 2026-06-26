@@ -1,5 +1,10 @@
 export interface User { id: number; email: string; emailVerified?: boolean; role?: "owner" | "admin"; }
 
+export interface BusinessContacts {
+  email?: string; telegram?: string; whatsapp?: string;
+  facebook?: string; tiktok?: string; website?: string; googleMaps?: string;
+}
+
 export interface Business {
   id: number; slug: string; name: string; category: string; categories: string[]; city: string; district: string;
   address: string; phone: string; instagram: string; about: string; banner: string;
@@ -7,6 +12,9 @@ export interface Business {
   confirmRequired: boolean; reminderHours: number[]; verified: boolean;
   status: "pending" | "approved" | "rejected";
   isVisible: boolean;
+  contacts?: BusinessContacts;
+  amenities?: string[];
+  languages?: string[];
 }
 
 export interface Service {
@@ -26,6 +34,9 @@ export interface PublicBusiness {
   hours: Record<string, [string, string]>; photos: string[];
   verified: boolean; services?: PublicService[];
   avgRating?: number | null; reviewCount?: number;
+  contacts?: BusinessContacts;
+  amenities?: string[];
+  languages?: string[];
 }
 
 export interface PublicService {

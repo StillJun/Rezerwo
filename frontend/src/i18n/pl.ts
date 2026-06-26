@@ -349,6 +349,44 @@ export const pl = {
   p_svcDurationHours:      "godz.",
   p_svcDurationMins:       "min.",
   p_priceOnSite:           "Cena na miejscu",
+
+  // profile: contacts
+  p_contactsSection:       "Kontakt i social media",
+  p_contactEmail:          "Email kontaktowy",
+  p_contactTelegram:       "Telegram",
+  p_contactWhatsApp:       "WhatsApp",
+  p_contactFacebook:       "Facebook",
+  p_contactTikTok:         "TikTok",
+  p_contactWebsite:        "Strona www",
+  p_contactGoogleMaps:     "Google Maps (link do lokalizacji)",
+  p_contactEmailPh:        "kontakt@salon.pl",
+  p_contactTelegramPh:     "@twojprofil lub link",
+  p_contactWhatsAppPh:     "+48 500 600 700",
+  p_contactFacebookPh:     "facebook.com/twojsalon",
+  p_contactTikTokPh:       "@twojprofil",
+  p_contactWebsitePh:      "https://twojsalon.pl",
+  p_contactMapsPh:         "https://maps.google.com/...",
+  p_contactsSub:           "Puste pola nie będą widoczne dla klientów.",
+
+  // profile: open/closed badge
+  p_openNow:               "Otwarte teraz",
+  p_closedNow:             "Zamknięte",
+  p_openFrom:              (time: string) => `Otwarte od ${time}`,
+
+  // profile: amenities
+  p_amenitiesTitle:        "Udogodnienia",
+  p_amenitiesSub:          "Zaznacz co oferuje Twój salon.",
+  p_amenParking:           "Parking",
+  p_amenCard:              "Płatność kartą",
+  p_amenDisabled:          "Dostęp dla niepełnosprawnych",
+  p_amenWaiting:           "Poczekalnia",
+  p_amenAC:                "Klimatyzacja",
+  p_amenWifi:              "WiFi",
+  p_amenBlik:              "Płatność BLIK",
+
+  // profile: service languages
+  p_languagesTitle:        "Języki obsługi",
+  p_languagesSub:          "Zaznacz języki, w których obsługujesz klientów.",
 };
 
 export type T = typeof pl;

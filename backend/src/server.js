@@ -206,6 +206,9 @@ const bizClient = (b) => ({
   reminderHours: b.reminder_hours, verified: b.verified,
   status: b.status || "approved",
   isVisible: b.is_visible !== false,
+  contacts:  b.contacts  || {},
+  amenities: b.amenities || [],
+  languages: b.languages || [],
 });
 const publicBizClient = (b) => ({
   id: Number(b.id), slug: b.slug, name: b.name, category: b.category,
@@ -213,6 +216,9 @@ const publicBizClient = (b) => ({
   city: b.city, district: b.district, address: b.address, phone: b.phone,
   instagram: b.instagram, about: b.about, banner: b.banner,
   hours: b.hours, photos: b.photos, verified: b.verified,
+  contacts:  b.contacts  || {},
+  amenities: b.amenities || [],
+  languages: b.languages || [],
 });
 const svcClient = (s) => ({
   id: Number(s.id), grp: s.grp, name: s.name, description: s.description,
@@ -393,14 +399,20 @@ app.put("/api/business", requireAuth, ah(async (req, res) => {
   const cats = rawCats.filter(c => typeof c === "string" && c.trim().length > 0 && VALID_CAT_IDS.has(c));
   if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
   if (cats.length > 10) return res.status(400).json({ error: "Maksymalnie 10 kategorii." });
+  const contacts  = typeof m.contacts  === "object" && m.contacts  !== null ? m.contacts  : {};
+  const amenities = Array.isArray(m.amenities) ? m.amenities : [];
+  const languages = Array.isArray(m.languages) ? m.languages : [];
   const [row] = await q(`
     UPDATE businesses SET
       slug=$1, name=$2, category=$3, city=$4, district=$5, address=$6, phone=$7, instagram=$8,
-      about=$9, banner=$10, hours=$11, photos=$12, confirm_required=$13, reminder_hours=$14, categories=$15
-    WHERE owner_id=$16 RETURNING *`,
+      about=$9, banner=$10, hours=$11, photos=$12, confirm_required=$13, reminder_hours=$14, categories=$15,
+      contacts=$16, amenities=$17, languages=$18
+    WHERE owner_id=$19 RETURNING *`,
     [slug, m.name, cats[0], m.city, m.district, m.address, m.phone, m.instagram, m.about, m.banner,
      JSON.stringify(m.hours || {}), JSON.stringify(m.photos || []),
-     m.confirmRequired, JSON.stringify(m.reminderHours || [24,4]), cats, req.user.id]);
+     m.confirmRequired, JSON.stringify(m.reminderHours || [24,4]), cats,
+     JSON.stringify(contacts), amenities, languages,
+     req.user.id]);
   res.json(bizClient(row));
 }));
 
