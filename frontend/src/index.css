@@ -91,10 +91,167 @@ img, video { max-width: 100% }
   border-radius: 6px;
 }
 
-/* ───── Panel tabs ───── */
+/* ───── Panel tabs (legacy, kept for compatibility) ───── */
 .panel-tabs { display:flex; overflow-x:auto; -webkit-overflow-scrolling:touch; scrollbar-width:none; gap:8px; padding:0 20px 8px }
 .panel-tabs::-webkit-scrollbar { display:none }
 .panel-tab { white-space:nowrap; flex-shrink:0 }
+
+/* ═══════════ PANEL SIDEBAR LAYOUT ═══════════ */
+.panel-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse 900px 500px at 15% 30%, rgba(124,58,237,.045) 0%, transparent 65%),
+    radial-gradient(ellipse 700px 400px at 85% 80%, rgba(224,57,158,.032) 0%, transparent 60%);
+}
+
+.panel-layout {
+  display: flex;
+  flex: 1;
+  min-height: calc(100vh - 60px);
+}
+
+/* ── Sidebar (desktop) ── */
+.panel-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: #ffffff;
+  border-right: 1px solid #efe9ee;
+  position: sticky;
+  top: 60px;
+  align-self: flex-start;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  padding: 14px 10px;
+  scrollbar-width: none;
+}
+.panel-sidebar::-webkit-scrollbar { display: none }
+
+.panel-sidebar-nav { display: flex; flex-direction: column; gap: 2px }
+
+.panel-sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #8b8194;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-family: 'Inter', -apple-system, sans-serif;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.panel-sidebar-item:hover:not(.active) { background: #f4f0f8; color: #1a1320 }
+.panel-sidebar-item.active { background: #1a1320; color: #fff }
+
+/* ── Content area ── */
+.panel-content {
+  flex: 1;
+  min-width: 0;
+  padding: 16px 24px 80px;
+}
+
+/* ── Bottom bar (mobile) ── */
+.panel-bottom-bar {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-top: 1px solid #efe9ee;
+  z-index: 50;
+  box-shadow: 0 -2px 12px rgba(26,19,32,.06);
+}
+
+.panel-bottom-inner {
+  display: flex;
+  align-items: stretch;
+  height: 58px;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.panel-bottom-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: #a8a2b0;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, sans-serif;
+  padding: 0;
+  transition: color .15s;
+}
+.panel-bottom-item.active { color: #7c3aed }
+.panel-bottom-item span { line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* ── More drawer (mobile) ── */
+.panel-more-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,19,32,.35);
+  z-index: 48;
+  bottom: 58px;
+}
+.panel-more-drawer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 58px;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  border-top: 1px solid #efe9ee;
+  padding: 16px 16px 12px;
+  z-index: 49;
+  box-shadow: 0 -8px 32px rgba(26,19,32,.12);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.panel-more-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 16px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  color: #52525b;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, sans-serif;
+  text-align: left;
+  transition: background .15s;
+}
+.panel-more-item:hover, .panel-more-item.active { background: #f4f0f8; color: #1a1320 }
+.panel-more-item.active { color: #7c3aed }
+
+/* ── Responsive breakpoints ── */
+@media (min-width: 769px) {
+  .panel-bottom-bar,
+  .panel-more-drawer,
+  .panel-more-backdrop { display: none !important }
+}
+@media (max-width: 768px) {
+  .panel-sidebar { display: none }
+  .panel-content { padding: 8px 12px 80px }
+  .panel-bottom-bar { display: flex; flex-direction: column }
+}
 
 /* ───── Slot grid ───── */
 .slot-grid { display:grid; gap:8px }

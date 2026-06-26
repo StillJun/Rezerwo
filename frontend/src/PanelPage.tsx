@@ -7,7 +7,8 @@ import {
   XCircle, ChevronLeft, ChevronRight, NotebookPen, User,
   ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff, Users,
   Mail, Send, Globe, Navigation, Music, ParkingCircle, CreditCard,
-  Accessibility, Sofa, Wind, Wifi, Smartphone,
+  Accessibility, Sofa, Wind, Wifi, Smartphone, MoreHorizontal,
+  type LucideIcon,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
 import { navigate } from "./App";
@@ -358,10 +359,81 @@ function Onboarding({ onCreated, onLogout }: { onCreated: (b: Business) => void;
   );
 }
 
+/* ========== NAV ITEMS ========== */
+type TabId = "appointments"|"services"|"masters"|"profile"|"reviews"|"waitlist"|"requests"|"widget";
+type NavItem = { id: TabId; Icon: LucideIcon; label: string };
+
+function NAV_ITEMS(t: T): NavItem[] {
+  return [
+    { id: "appointments", Icon: Calendar,          label: t.p_tabAppointments },
+    { id: "services",     Icon: Scissors,          label: t.p_tabServices     },
+    { id: "masters",      Icon: Users,             label: t.p_tabMasters      },
+    { id: "reviews",      Icon: Star,              label: t.p_tabReviews      },
+    { id: "waitlist",     Icon: BellRing,          label: t.p_tabWaitlist     },
+    { id: "requests",     Icon: MessageSquarePlus, label: t.p_tabRequests     },
+    { id: "profile",      Icon: Store,             label: t.p_tabProfile      },
+    { id: "widget",       Icon: Code,              label: t.p_tabWidget       },
+  ];
+}
+
+const BOTTOM_MAIN: TabId[] = ["appointments","services","masters","profile"];
+const BOTTOM_MORE: TabId[] = ["reviews","waitlist","requests","widget"];
+
+function BottomBar({ tab, setTab, t }: { tab: TabId; setTab: (id: TabId) => void; t: T }) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const allItems = NAV_ITEMS(t);
+  const mainItems = allItems.filter(i => BOTTOM_MAIN.includes(i.id));
+  const moreItems = allItems.filter(i => BOTTOM_MORE.includes(i.id));
+  const moreActive = BOTTOM_MORE.includes(tab);
+
+  return (
+    <>
+      {moreOpen && (
+        <>
+          <div className="panel-more-backdrop" onClick={() => setMoreOpen(false)}/>
+          <div className="panel-more-drawer">
+            {moreItems.map(item => (
+              <button
+                key={item.id}
+                className={`panel-more-item${tab === item.id ? " active" : ""}`}
+                onClick={() => { setTab(item.id); setMoreOpen(false); }}
+              >
+                <item.Icon size={17}/>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <nav className="panel-bottom-bar">
+        <div className="panel-bottom-inner">
+          {mainItems.map(item => (
+            <button
+              key={item.id}
+              className={`panel-bottom-item${tab === item.id ? " active" : ""}`}
+              onClick={() => { setTab(item.id); setMoreOpen(false); }}
+            >
+              <item.Icon size={21}/>
+              <span>{item.label}</span>
+            </button>
+          ))}
+          <button
+            className={`panel-bottom-item${moreActive || moreOpen ? " active" : ""}`}
+            onClick={() => setMoreOpen(o => !o)}
+          >
+            <MoreHorizontal size={21}/>
+            <span>Więcej</span>
+          </button>
+        </div>
+      </nav>
+    </>
+  );
+}
+
 /* ========== DASHBOARD ========== */
 function Dashboard({ onLogout }: { onLogout: () => void }) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<"appointments"|"services"|"masters"|"profile"|"reviews"|"waitlist"|"requests"|"widget">("appointments");
+  const [tab, setTab] = useState<TabId>("appointments");
   const [biz, setBiz] = useState<Business|null>(null);
   const [bizLoading, setBizLoading] = useState(true);
   const [bizErr, setBizErr] = useState<string|null>(null);
@@ -452,12 +524,13 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   );
 
   return (
-    <div style={S.app} className="panel-app">
+    <div className="panel-shell" style={{ fontFamily:font }}>
+      {/* ─── Top header ─── */}
       <header style={S.top} className="panel-header">
         <div style={S.logoRow}>
           <div style={S.logo}>R</div>
           <div>
-            <div style={{fontSize:16,fontWeight:800}}>{biz?.name||"Rezerwo"}</div>
+            <div style={{fontSize:16,fontWeight:800}} className="panel-logo-name">{biz?.name||"Rezerwo"}</div>
             <div style={{fontSize:11.5,color:"#a8a2b0"}}>{t.p_ownerPanel}</div>
           </div>
         </div>
@@ -473,8 +546,9 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
         </div>
       </header>
 
+      {/* ─── Banners ─── */}
       {emailVerified === false && (
-        <div style={{ background: "#fef3c7", borderBottom: "1px solid #fcd34d", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ background: "#fef3c7", borderBottom: "1px solid #fcd34d", padding: "10px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const }}>
           <span style={{ fontSize: 13, color: "#92400e", flex: 1 }}>⚠️ {t.p_verifyBanner}</span>
           {resendDone ? (
             <span style={{ fontSize: 13, color: "#065f46", fontWeight: 600 }}>{t.p_verifySent}</span>
@@ -490,46 +564,39 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
           )}
         </div>
       )}
-
       {biz && emailVerified !== false && <ProfileCompleteness biz={biz} onGo={() => setTab("profile")}/>}
 
-      <div style={S.tabs} className="panel-tabs">
-        <button className="panel-tab" style={{...S.tab,...(tab==="appointments"?S.tabOn:{})}} onClick={()=>setTab("appointments")}>
-          <Calendar size={15}/> {t.p_tabAppointments}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="services"?S.tabOn:{})}} onClick={()=>setTab("services")}>
-          <Scissors size={15}/> {t.p_tabServices}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="masters"?S.tabOn:{})}} onClick={()=>setTab("masters")}>
-          <Users size={15}/> {t.p_tabMasters}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="reviews"?S.tabOn:{})}} onClick={()=>setTab("reviews")}>
-          <Star size={15}/> {t.p_tabReviews}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="waitlist"?S.tabOn:{})}} onClick={()=>setTab("waitlist")}>
-          <BellRing size={15}/> {t.p_tabWaitlist}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="requests"?S.tabOn:{})}} onClick={()=>setTab("requests")}>
-          <MessageSquarePlus size={15}/> {t.p_tabRequests}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="profile"?S.tabOn:{})}} onClick={()=>setTab("profile")}>
-          <Store size={15}/> {t.p_tabProfile}
-        </button>
-        <button className="panel-tab" style={{...S.tab,...(tab==="widget"?S.tabOn:{})}} onClick={()=>setTab("widget")}>
-          <Code size={15}/> {t.p_tabWidget}
-        </button>
+      {/* ─── Sidebar + Content ─── */}
+      <div className="panel-layout">
+        <aside className="panel-sidebar">
+          <nav className="panel-sidebar-nav">
+            {NAV_ITEMS(t).map(item => (
+              <button
+                key={item.id}
+                className={`panel-sidebar-item${tab === item.id ? " active" : ""}`}
+                onClick={() => setTab(item.id)}
+              >
+                <item.Icon size={17}/>
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
+
+        <main className="panel-content">
+          {tab==="appointments" && biz && <AppointmentsTab biz={biz}/>}
+          {tab==="services"     && <ServicesTab/>}
+          {tab==="masters"      && <MastersTab/>}
+          {tab==="reviews"      && <ReviewsTab/>}
+          {tab==="waitlist"     && biz && <WaitlistTab/>}
+          {tab==="requests"     && <ServiceRequestsTab/>}
+          {tab==="profile"      && <ProfileTab biz={biz} setBiz={setBiz}/>}
+          {tab==="widget"       && biz && <WidgetTab biz={biz}/>}
+        </main>
       </div>
 
-      <div style={S.body} className="panel-body">
-        {tab==="appointments" && biz && <AppointmentsTab biz={biz}/>}
-        {tab==="services"     && <ServicesTab/>}
-        {tab==="masters"      && <MastersTab/>}
-        {tab==="reviews"      && <ReviewsTab/>}
-        {tab==="waitlist"     && biz && <WaitlistTab/>}
-        {tab==="requests"     && <ServiceRequestsTab/>}
-        {tab==="profile"      && <ProfileTab biz={biz} setBiz={setBiz}/>}
-        {tab==="widget"       && biz && <WidgetTab biz={biz}/>}
-      </div>
+      {/* ─── Mobile bottom bar ─── */}
+      <BottomBar tab={tab} setTab={setTab} t={t}/>
     </div>
   );
 }
