@@ -2225,7 +2225,7 @@ const S: Record<string, CSSProperties> = {
   h2:      { fontSize:20, fontWeight:500, margin:0, letterSpacing:"-0.03em", fontFamily:"'Fraunces',Georgia,serif", color:"#1a1320" },
   muted:   { fontSize:13.5, color:"#8b8194", margin:"4px 0 0" },
   hint:    { fontSize:12, color:"#8b8194", margin:"6px 0 0" },
-  addBtn:  { display:"flex", alignItems:"center", gap:6, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"10px 18px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:font, flexShrink:0, boxShadow:"0 4px 14px rgba(124,58,237,.30)" },
+  addBtn:  { display:"inline-flex", alignItems:"center", gap:6, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"10px 18px", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:font, flexShrink:0, boxShadow:"0 4px 14px rgba(124,58,237,.30)" },
   empty:   { textAlign:"center" as const, color:"#8b8194", fontSize:14, padding:"36px 0", background:"#fff", borderRadius:20, border:"1px solid #efe9ee" },
 
   filterBtn:   { padding:"8px 16px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", color:"#8b8194", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:font },
