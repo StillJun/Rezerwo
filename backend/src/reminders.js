@@ -90,8 +90,20 @@ async function runReminders() {
   `);
 
   for (const appt of upcoming) {
-    const apptTime = new Date(`${String(appt.date).slice(0,10)}T00:00:00`);
-    apptTime.setMinutes(apptTime.getMinutes() + appt.start_min);
+    // Build the UTC instant of this appointment, which is stored as a Warsaw wall-clock time.
+    // Server (Render) runs in UTC, so we must convert explicitly.
+    // sv-SE locale produces "YYYY-MM-DD HH:MM:SS" — stable format, easy to add Z for UTC parsing.
+    const dateStr = String(appt.date).slice(0, 10);
+    const hh = String(Math.floor(appt.start_min / 60)).padStart(2, "0");
+    const mm = String(appt.start_min % 60).padStart(2, "0");
+    // Find Warsaw offset at noon on appointment date (safe from DST boundary edge cases)
+    const noonUtc = new Date(`${dateStr}T12:00:00Z`);
+    const noonAsWarsawParsedAsUtc = new Date(
+      noonUtc.toLocaleString("sv-SE", { timeZone: "Europe/Warsaw" }) + "Z"
+    );
+    const warsawOffsetMs = noonAsWarsawParsedAsUtc - noonUtc; // e.g. +7200000 (UTC+2 in summer)
+    // Appointment wall-clock treated naively as UTC, then subtract offset → correct UTC instant
+    const apptTime = new Date(new Date(`${dateStr}T${hh}:${mm}:00Z`).getTime() - warsawOffsetMs);
     const diffMs = apptTime - now;
     const diffHours = diffMs / (1000 * 60 * 60);
 
