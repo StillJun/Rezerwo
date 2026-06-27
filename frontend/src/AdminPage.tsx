@@ -13,7 +13,7 @@ const MESH = [
   "#fbf7f4",
 ].join(",");
 
-type BizRow = { id: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; isVisible: boolean; ownerEmail: string; createdAt: string };
+type BizRow = { id: number; ownerId: number; slug: string; name: string; category: string; categories: string[]; city: string; status: string; verified: boolean; isVisible: boolean; ownerEmail: string; createdAt: string };
 type Stats = { owners: number; businesses: Record<string, number>; appointments7d: number };
 type FbRow = { id: number; kind: string; message: string; email: string; page: string; createdAt: string };
 
@@ -32,9 +32,10 @@ export default function AdminPage() {
 }
 
 function AdminDashboard() {
-  const [tab, setTab] = useState<"pending"|"approved"|"rejected"|"stats"|"feedback">("pending");
+  const [tab, setTab] = useState<"all"|"pending"|"approved"|"rejected"|"stats"|"feedback">("all");
 
   const tabs: { key: typeof tab; label: string; icon: React.ReactNode }[] = [
+    { key: "all",      label: "Wszyscy",      icon: <Store size={14}/> },
     { key: "pending",  label: "Oczekujące",   icon: <Store size={14}/> },
     { key: "approved", label: "Zatwierdzone",  icon: <CheckCircle2 size={14}/> },
     { key: "rejected", label: "Odrzucone",     icon: <XCircle size={14}/> },
@@ -66,7 +67,7 @@ function AdminDashboard() {
       </div>
 
       <div style={S.body}>
-        {(tab==="pending"||tab==="approved"||tab==="rejected") && <BizList status={tab}/>}
+        {(tab==="all"||tab==="pending"||tab==="approved"||tab==="rejected") && <BizList status={tab==="all" ? undefined : tab}/>}
         {tab==="stats"    && <StatsView/>}
         {tab==="feedback" && <FeedbackView/>}
       </div>
@@ -74,10 +75,17 @@ function AdminDashboard() {
   );
 }
 
-function BizList({ status }: { status: "pending"|"approved"|"rejected" }) {
+const STATUS_BADGE: Record<string, { label: string; bg: string; color: string }> = {
+  approved: { label: "aktywny",    bg: "#d1fae5", color: "#065f46" },
+  pending:  { label: "oczekuje",   bg: "#fef3c7", color: "#92400e" },
+  rejected: { label: "odrzucony",  bg: "#fee2e2", color: "#991b1b" },
+};
+
+function BizList({ status }: { status?: "pending"|"approved"|"rejected" }) {
   const [list, setList] = useState<BizRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<number|null>(null);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,56 +99,86 @@ function BizList({ status }: { status: "pending"|"approved"|"rejected" }) {
     try { await fn(); await load(); } finally { setBusy(null); }
   };
 
+  const filtered = search.trim()
+    ? list.filter(b =>
+        b.name.toLowerCase().includes(search.toLowerCase()) ||
+        b.ownerEmail.toLowerCase().includes(search.toLowerCase()) ||
+        (b.city||"").toLowerCase().includes(search.toLowerCase())
+      )
+    : list;
+
   if (loading) return <div style={S.empty}>…</div>;
-  if (!list.length) return <div style={S.empty}>Brak rekordów.</div>;
 
   return (
-    <div style={S.card}>
-      {list.map(b => (
-        <div key={b.id} style={S.row}>
-          <div style={{flex:1,minWidth:0}}>
-            <div style={{fontWeight:700,fontSize:14}}>{b.name}</div>
-            <div style={{fontSize:12.5,color:"#71717a"}}>{(b.categories||[b.category]).join(", ")} · {b.city || "—"}</div>
-            <div style={{fontSize:12,color:"#a8a2b0"}}>{b.ownerEmail}</div>
-            {b.slug && (
-              <a href={`/${b.slug}`} target="_blank" rel="noreferrer"
-                style={{fontSize:12,color:ACC,textDecoration:"none"}}>/{b.slug}</a>
-            )}
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
-            {b.verified
-              ? <button style={{...S.actBtn,color:"#71717a"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminUnverify(b.id))}>
-                  <BadgeX size={13}/> Cofnij weryfikację
+    <div>
+      <input
+        style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #efe9ee",fontSize:13.5,outline:"none",marginBottom:14,boxSizing:"border-box" as const,fontFamily:"inherit"}}
+        placeholder="Szukaj po nazwie, email, mieście…"
+        value={search} onChange={e=>setSearch(e.target.value)}
+      />
+      {!filtered.length && <div style={S.empty}>Brak rekordów.</div>}
+      <div style={S.card}>
+        {filtered.map(b => {
+          const badge = STATUS_BADGE[b.status] || STATUS_BADGE.pending;
+          return (
+            <div key={b.id} style={S.row}>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}>
+                  <span style={{fontWeight:700,fontSize:14}}>{b.name}</span>
+                  {!status && (
+                    <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:999,background:badge.bg,color:badge.color}}>{badge.label}</span>
+                  )}
+                  {b.verified && <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:999,background:"#ede9fe",color:ACC}}>✓ weryfikacja</span>}
+                  {!b.isVisible && <span style={{fontSize:11,fontWeight:700,padding:"2px 8px",borderRadius:999,background:"#f3f4f6",color:"#6b7280"}}>ukryty</span>}
+                </div>
+                <div style={{fontSize:12.5,color:"#71717a"}}>{(b.categories||[b.category]).join(", ")} · {b.city || "—"}</div>
+                <div style={{fontSize:12,color:"#a8a2b0"}}>{b.ownerEmail}</div>
+                <div style={{fontSize:11.5,color:"#c4bfca"}}>{new Date(b.createdAt).toLocaleDateString("pl-PL")}</div>
+                {b.slug && (
+                  <a href={`/${b.slug}`} target="_blank" rel="noreferrer"
+                    style={{fontSize:12,color:ACC,textDecoration:"none"}}>/{b.slug}</a>
+                )}
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end",flexShrink:0}}>
+                {b.verified
+                  ? <button style={{...S.actBtn,color:"#71717a"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminUnverify(b.id))}>
+                      <BadgeX size={13}/> Cofnij weryfikację
+                    </button>
+                  : <button style={{...S.actBtn,color:ACC}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminVerify(b.id))}>
+                      <BadgeCheck size={13}/> Weryfikuj
+                    </button>
+                }
+                {b.status !== "approved" && (
+                  <button style={{...S.actBtn,color:"#059669"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminApprove(b.id))}>
+                    <CheckCircle2 size={13}/> Zatwierdź
+                  </button>
+                )}
+                {b.status !== "rejected" && (
+                  <button style={{...S.actBtn,color:"#dc2626"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminReject(b.id))}>
+                    <XCircle size={13}/> Odrzuć / zablokuj
+                  </button>
+                )}
+                {b.isVisible !== false
+                  ? <button style={{...S.actBtn,color:"#71717a"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminHide(b.id))}>
+                      <EyeOff size={13}/> Ukryj w marketplace
+                    </button>
+                  : <button style={{...S.actBtn,color:"#059669"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminShow(b.id))}>
+                      <Eye size={13}/> Pokaż w marketplace
+                    </button>
+                }
+                <button style={{...S.actBtn,color:"#dc2626",borderColor:"#fca5a5"}} disabled={busy===b.id}
+                  onClick={()=>{ if(confirm(`Usunąć profil "${b.name}"?\n(konto właściciela pozostaje)`)) act(b.id,()=>api.adminDelete(b.id)); }}>
+                  <Trash2 size={13}/> Usuń profil
                 </button>
-              : <button style={{...S.actBtn,color:ACC}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminVerify(b.id))}>
-                  <BadgeCheck size={13}/> Weryfikuj
+                <button style={{...S.actBtn,color:"#7f1d1d",background:"#fee2e2",borderColor:"#fca5a5"}} disabled={busy===b.id}
+                  onClick={()=>{ if(confirm(`USUNĄĆ KONTO "${b.ownerEmail}"?\nTo usunie właściciela i cały jego profil!\nTej akcji nie można cofnąć.`)) act(b.id,()=>api.adminDeleteOwner(b.ownerId)); }}>
+                  <Trash2 size={13}/> Usuń konto właściciela
                 </button>
-            }
-            {status !== "approved" && (
-              <button style={{...S.actBtn,color:"#059669"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminApprove(b.id))}>
-                <CheckCircle2 size={13}/> Zatwierdź
-              </button>
-            )}
-            {status !== "rejected" && (
-              <button style={{...S.actBtn,color:"#dc2626"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminReject(b.id))}>
-                <XCircle size={13}/> Odrzuć
-              </button>
-            )}
-            {b.isVisible !== false
-              ? <button style={{...S.actBtn,color:"#71717a"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminHide(b.id))}>
-                  <EyeOff size={13}/> Ukryj w marketplace
-                </button>
-              : <button style={{...S.actBtn,color:"#059669"}} disabled={busy===b.id} onClick={()=>act(b.id,()=>api.adminShow(b.id))}>
-                  <Eye size={13}/> Pokaż w marketplace
-                </button>
-            }
-            <button style={{...S.actBtn,color:"#dc2626",borderColor:"#dc2626"}} disabled={busy===b.id}
-              onClick={()=>{ if(confirm(`Usunąć "${b.name}"?`)) act(b.id,()=>api.adminDelete(b.id)); }}>
-              <Trash2 size={13}/> Usuń
-            </button>
-          </div>
-        </div>
-      ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
