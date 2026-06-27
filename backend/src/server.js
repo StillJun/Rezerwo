@@ -1156,8 +1156,8 @@ app.get("/api/admin/businesses", requireAuth, requireAdmin, async (req, res) => 
     sql += " ORDER BY b.created_at DESC";
     const rows = await q(sql, params);
     res.json(rows.map(r => ({
-      id: Number(r.id), slug: r.slug, name: r.name, category: r.category,
-      categories: toCategories(r),
+      id: Number(r.id), ownerId: Number(r.owner_id), slug: r.slug, name: r.name,
+      category: r.category, categories: toCategories(r),
       city: r.city, status: r.status, verified: r.verified, isVisible: r.is_visible !== false,
       ownerEmail: r.owner_email, createdAt: r.created_at,
     })));
@@ -1190,6 +1190,14 @@ app.post("/api/admin/businesses/:id/hide", requireAuth, requireAdmin, ah(async (
 }));
 app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, ah(async (req, res) => {
   await q("DELETE FROM businesses WHERE id=$1", [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// Delete the owner account itself — business cascades via FK ON DELETE CASCADE
+app.delete("/api/admin/owners/:id", requireAuth, requireAdmin, ah(async (req, res) => {
+  const [owner] = await q("SELECT id FROM owners WHERE id=$1", [req.params.id]);
+  if (!owner) return res.status(404).json({ error: "Nie znaleziono właściciela" });
+  await q("DELETE FROM owners WHERE id=$1", [req.params.id]);
   res.json({ ok: true });
 }));
 
