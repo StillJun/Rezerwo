@@ -7,7 +7,7 @@ import rateLimit from "express-rate-limit";
 import { randomBytes } from "crypto";
 import { q, initDb } from "./db.js";
 import { hashPassword, verifyPassword, signToken, setAuthCookie, clearAuthCookie, requireAuth } from "./auth.js";
-import { startReminderScheduler, notifyOwnerNewBooking, sendVerificationEmail } from "./reminders.js";
+import { startReminderScheduler, notifyOwnerNewBooking, notifyClientBooking, sendVerificationEmail } from "./reminders.js";
 
 const app = express();
 
@@ -626,6 +626,9 @@ app.put("/api/appointments/:id", requireAuth, ah(async (req, res) => {
   if (!["pending","confirmed","cancelled","done","no_show"].includes(status))
     return res.status(400).json({ error: "Nieprawidłowy status" });
   const [row] = await q("UPDATE appointments SET status=$1 WHERE id=$2 RETURNING *", [status, a.id]);
+  if (status === "confirmed" || status === "cancelled") {
+    notifyClientBooking(row.id, status).catch(() => {});
+  }
   const [svc] = row.service_id ? await q("SELECT name, price FROM services WHERE id=$1", [row.service_id]) : [null];
   const [mst] = row.master_id ? await q("SELECT name FROM masters WHERE id=$1", [row.master_id]) : [null];
   res.json(apptClient({ ...row, service_name: svc?.name || null, service_price: svc?.price || null, master_name: mst?.name || null }));
@@ -657,6 +660,8 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
     INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, color)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed',$11) RETURNING *`,
     [b.id, service_id || null, mid, client_name, client_phone, client_email, comment, date, start_min, duration, color]);
+  notifyOwnerNewBooking(row.id).catch(() => {});
+  notifyClientBooking(row.id, "created").catch(() => {});
   const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
   const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
   res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
@@ -972,6 +977,7 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, status`,
       [b.id, service_id, client_name.trim(), client_phone.trim(), client_email.trim(), comment.trim(), date, start_min, svc.duration, status, assignedMasterId]);
     notifyOwnerNewBooking(appt.id).catch(() => {});
+    notifyClientBooking(appt.id, "created").catch(() => {});
     res.json({ id: Number(appt.id), status: appt.status, confirmRequired: b.confirm_required, businessName: b.name });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });

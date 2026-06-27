@@ -409,6 +409,7 @@ export const pl = {
   p_calNewTitle:           "Dodaj wizytę",
   p_calClientName:         "Imię i nazwisko klienta *",
   p_calClientPhone:        "Telefon klienta *",
+  p_calClientEmail:        "E-mail klienta (opcjonalnie)",
   p_calDate:               "Data *",
   p_calTime:               "Godzina *",
   p_calService:            "Usługa",

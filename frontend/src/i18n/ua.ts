@@ -377,6 +377,7 @@ export const ua: T = {
   p_calNewTitle:           "Додати запис",
   p_calClientName:         "Ім'я та прізвище клієнта *",
   p_calClientPhone:        "Телефон клієнта *",
+  p_calClientEmail:        "Email клієнта (необов'язково)",
   p_calDate:               "Дата *",
   p_calTime:               "Час *",
   p_calService:            "Послуга",

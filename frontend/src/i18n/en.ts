@@ -377,6 +377,7 @@ export const en: T = {
   p_calNewTitle:           "Add booking",
   p_calClientName:         "Client full name *",
   p_calClientPhone:        "Client phone *",
+  p_calClientEmail:        "Client email (optional)",
   p_calDate:               "Date *",
   p_calTime:               "Time *",
   p_calService:            "Service",

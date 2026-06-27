@@ -169,6 +169,86 @@ export async function notifyOwnerNewBooking(apptId) {
   }
 }
 
+// notify client on booking lifecycle events: 'created' | 'confirmed' | 'cancelled'
+export async function notifyClientBooking(apptId, event) {
+  if (!getResend()) return;
+  try {
+    const [appt] = await q(`
+      SELECT a.*, b.name AS business_name, b.address AS business_address, b.phone AS business_phone,
+             s.name AS service_name
+      FROM appointments a
+      JOIN businesses b ON b.id = a.business_id
+      LEFT JOIN services s ON s.id = a.service_id
+      WHERE a.id = $1
+    `, [apptId]);
+    if (!appt || !appt.client_email) return;
+
+    const date = String(appt.date).slice(0, 10);
+    const startT = minToTime(appt.start_min);
+    const endT   = minToTime(appt.start_min + appt.duration);
+    const bizName  = appt.business_name;
+    const bizAddr  = appt.business_address || "";
+    const bizPhone = appt.business_phone   || "";
+
+    const tableRows = [
+      ["Salon", bizName],
+      ["Usługa", appt.service_name || "—"],
+      ["Data", date],
+      ["Godzina", `${startT}–${endT}`],
+      ...(bizAddr  ? [["Adres", bizAddr]]           : []),
+      ...(bizPhone ? [["Telefon salonu", bizPhone]]  : []),
+    ];
+    const tbl = `<table style="width:100%;border-collapse:collapse;margin:16px 0">${
+      tableRows.map(([k, v], i) =>
+        `<tr${i % 2 ? ' style="background:#faf8fb"' : ""}>`+
+        `<td style="padding:8px;color:#71717a">${k}</td>`+
+        `<td style="padding:8px;font-weight:600">${v}</td></tr>`
+      ).join("")
+    }</table>`;
+
+    const wrap = body => `<div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+      ${body}
+      <hr style="border:none;border-top:1px solid #ece8f0;margin:20px 0"/>
+      <p style="color:#a8a2b0;font-size:12px">Rezerwo · <a href="https://getrezerwo.pl" style="color:#7c3aed">getrezerwo.pl</a></p>
+    </div>`;
+
+    let subject, html;
+    const hi = `<p>Cześć <strong>${appt.client_name}</strong>!</p>`;
+    const contact = bizPhone ? `: ${bizPhone}` : "";
+
+    if (event === "created") {
+      const isPending = appt.status === "pending";
+      subject = isPending ? `Rezerwacja przyjęta — ${bizName}` : `Rezerwacja potwierdzona — ${bizName}`;
+      html = wrap(isPending
+        ? `<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja przyjęta ⏳</h2>${hi}
+           <p>Twoja rezerwacja oczekuje na potwierdzenie przez salon.</p>${tbl}
+           <p style="color:#71717a;font-size:13px">Salon skontaktuje się z Tobą wkrótce${contact ? ". Pytania? Zadzwoń"+contact : ""}.</p>`
+        : `<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja potwierdzona ✅</h2>${hi}
+           <p>Twoja rezerwacja została przyjęta i potwierdzona!</p>${tbl}
+           <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>`
+      );
+    } else if (event === "confirmed") {
+      subject = `Rezerwacja potwierdzona ✅ — ${bizName}`;
+      html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja potwierdzona ✅</h2>${hi}
+        <p>Salon potwierdził Twoją rezerwację.</p>${tbl}
+        <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>`);
+    } else if (event === "cancelled") {
+      subject = `Rezerwacja anulowana — ${bizName}`;
+      html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja anulowana ❌</h2>${hi}
+        <p>Niestety, Twoja rezerwacja w <strong>${bizName}</strong> została anulowana.</p>${tbl}
+        <p style="color:#71717a;font-size:13px">Przepraszamy za niedogodności${contact ? ". Zadzwoń do salonu"+contact+" aby umówić nowy termin" : ""}.</p>`);
+    } else {
+      return;
+    }
+
+    const r = getResend();
+    await r.emails.send({ from: FROM, to: appt.client_email, subject, html });
+    console.log(`[email] client ${event} → ${appt.client_email} (appt ${apptId})`);
+  } catch (err) {
+    console.error(`[email] client notify (${event}) failed for appt ${apptId}:`, err.message);
+  }
+}
+
 export function startReminderScheduler() {
   // every 5 minutes
   cron.schedule("*/5 * * * *", () => {

@@ -377,6 +377,7 @@ export const ru: T = {
   p_calNewTitle:           "Добавить запись",
   p_calClientName:         "Имя и фамилия клиента *",
   p_calClientPhone:        "Телефон клиента *",
+  p_calClientEmail:        "Email клиента (необязательно)",
   p_calDate:               "Дата *",
   p_calTime:               "Время *",
   p_calService:            "Услуга",

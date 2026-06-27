@@ -1228,6 +1228,8 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
         <input style={S.input} value={clientName} onChange={e=>setClientName(e.target.value)} placeholder="Anna Kowalska" autoFocus/>
         <label style={S.lbl}>{t.p_calClientPhone}</label>
         <input style={S.input} value={clientPhone} onChange={e=>setClientPhone(e.target.value)} placeholder="+48 500 600 700"/>
+        <label style={S.lbl}>{t.p_calClientEmail}</label>
+        <input style={S.input} type="email" value={clientEmail} onChange={e=>setClientEmail(e.target.value)} placeholder="klient@email.com"/>
         <div style={{display:"flex",gap:10}}>
           <div style={{flex:1}}>
             <label style={S.lbl}>{t.p_calDate}</label>
