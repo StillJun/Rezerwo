@@ -31,18 +31,21 @@ const MESH = [
   "#fbf7f4",
 ].join(",");
 const BANNERS: Record<string, string> = {
-  violet:   "linear-gradient(135deg,#a18cd1,#fbc2eb)",
-  rose:     "linear-gradient(135deg,#ff9a9e,#fecfef)",
-  peach:    "linear-gradient(135deg,#ffecd2,#fcb69f)",
-  ink:      "linear-gradient(135deg,#302b3a,#5b4b6e)",
-  mint:     "linear-gradient(135deg,#a8edea,#fed6e3)",
-  gold:     "linear-gradient(135deg,#f6d365,#fda085)",
-  sage:     "linear-gradient(135deg,#84a98c,#cad2c5)",
-  teal:     "linear-gradient(135deg,#0d3b4a,#1b6ca8)",
-  slate:    "linear-gradient(135deg,#374151,#6b7280)",
-  burgundy: "linear-gradient(135deg,#6b1928,#9d174d)",
-  forest:   "linear-gradient(135deg,#1b4332,#40916c)",
-  sand:     "linear-gradient(135deg,#c9b99a,#ede0c8)",
+  brand:      "linear-gradient(135deg,#7c3aed,#d6409f,#ff7a59)",
+  rose:       "linear-gradient(135deg,#f43f5e,#fb7185,#fda4af)",
+  peach:      "linear-gradient(135deg,#fb923c,#f9a8a8,#fecaca)",
+  plum:       "linear-gradient(135deg,#6d28d9,#9333ea,#c084fc)",
+  ocean:      "linear-gradient(135deg,#0ea5e9,#38bdf8,#7dd3fc)",
+  teal:       "linear-gradient(135deg,#0d9488,#2dd4bf,#99f6e4)",
+  mint:       "linear-gradient(135deg,#10b981,#6ee7b7,#d1fae5)",
+  indigo:     "linear-gradient(135deg,#4f46e5,#818cf8,#c7d2fe)",
+  sunset:     "linear-gradient(135deg,#f59e0b,#fb923c,#fdba74)",
+  amber:      "linear-gradient(135deg,#d97706,#fbbf24,#fde68a)",
+  terracotta: "linear-gradient(135deg,#c2410c,#ea580c,#fdba74)",
+  graphite:   "linear-gradient(135deg,#1f2937,#374151,#6b7280)",
+  espresso:   "linear-gradient(135deg,#44403c,#78716c,#a8a29e)",
+  wine:       "linear-gradient(135deg,#881337,#be123c,#fb7185)",
+  lime:       "linear-gradient(135deg,#65a30d,#a3e635,#d9f99d)",
 };
 const TIME_OPTIONS: string[] = Array.from({length:48},(_,i)=>{
   const h = Math.floor(i/2).toString().padStart(2,"0");
@@ -1958,7 +1961,7 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       <h2 style={S.h2}>{t.p_profileTitle}</h2>
       <p style={S.muted}>{t.p_profileSub}</p>
 
-      <div style={{...S.bannerPrev,background:BANNERS[form.banner]||BANNERS.violet}}>
+      <div style={{...S.bannerPrev,background:BANNERS[form.banner]||BANNERS.brand}}>
         {form.verified && <span style={S.verTag}><BadgeCheck size={13}/> {t.p_verified}</span>}
       </div>
       <div style={S.bannerPick}>
@@ -2282,8 +2285,8 @@ const S: Record<string, CSSProperties> = {
 
   bannerPrev:  { height:110, borderRadius:20, position:"relative" as const, marginBottom:10, overflow:"hidden" },
   verTag:      { position:"absolute" as const, left:12, top:12, display:"flex", alignItems:"center", gap:4, background:"rgba(255,255,255,.9)", color:ACC, fontSize:11, fontWeight:700, padding:"4px 10px", borderRadius:999 },
-  bannerPick:  { display:"flex", gap:8, marginBottom:8 },
-  bannerSwatch:{ width:44, height:30, borderRadius:8, border:"none", cursor:"pointer", outlineOffset:2 },
+  bannerPick:  { display:"flex", flexWrap:"wrap" as const, gap:8, marginBottom:8 },
+  bannerSwatch:{ width:44, height:32, borderRadius:10, border:"none", cursor:"pointer", outlineOffset:3, flexShrink:0 },
 
   hoursGrid:{ background:"#fff", borderRadius:16, padding:"10px 14px", marginBottom:10, border:"1px solid #efe9ee" },
   hoursRow: { display:"flex", alignItems:"center", gap:10, padding:"7px 0", borderBottom:"1px solid #efe9ee" },
