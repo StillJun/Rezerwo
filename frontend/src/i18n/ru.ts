@@ -17,6 +17,11 @@ export const ru: T = {
   navLogin:    "Войти",
   searching: "Ищем…",
   pickCity: "Выберите город и нажмите Найти",
+  emptySearchTitle: "Где ищете салон?",
+  emptySearchSub:   "Выберите город — покажем доступные салоны и свободные слоты рядом.",
+  popularCities:    "Популярные города",
+  emptyHint:        "Здесь появятся салоны после выбора города",
+  noResultsCity:    "В этом городе пока нет салонов",
 
   back: "Rezerwo",
   hours: "Часы работы",

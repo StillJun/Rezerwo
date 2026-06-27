@@ -17,6 +17,11 @@ export const en: T = {
   navLogin:    "Sign in",
   searching: "Searching…",
   pickCity: "Choose a city and click Search",
+  emptySearchTitle: "Where are you looking?",
+  emptySearchSub:   "Choose a city and we'll show you available salons and open appointments nearby.",
+  popularCities:    "Popular cities",
+  emptyHint:        "Salons will appear here after choosing a city",
+  noResultsCity:    "No salons in this city yet",
 
   back: "Rezerwo",
   hours: "Working hours",

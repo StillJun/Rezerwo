@@ -16,6 +16,11 @@ export const pl = {
   navLogin:      "Zaloguj się",
   searching: "Szukam…",
   pickCity: "Wybierz miasto i kliknij Szukaj",
+  emptySearchTitle: "Gdzie szukasz salonu?",
+  emptySearchSub:   "Wybierz miasto, a pokażemy Ci dostępne salony i wolne terminy w okolicy.",
+  popularCities:    "Popularne miasta",
+  emptyHint:        "Tu pojawią się salony po wybraniu miasta",
+  noResultsCity:    "Brak salonów w tym mieście",
 
   // business page
   back: "Rezerwo",

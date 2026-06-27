@@ -17,6 +17,11 @@ export const ua: T = {
   navLogin:    "Увійти",
   searching: "Шукаємо…",
   pickCity: "Оберіть місто і натисніть Знайти",
+  emptySearchTitle: "Де шукаєте салон?",
+  emptySearchSub:   "Оберіть місто — покажемо доступні салони і вільні слоти поруч.",
+  popularCities:    "Популярні міста",
+  emptyHint:        "Тут з'являться салони після вибору міста",
+  noResultsCity:    "У цьому місті поки немає салонів",
 
   back: "Rezerwo",
   hours: "Години роботи",

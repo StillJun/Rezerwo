@@ -266,6 +266,12 @@ img, video { max-width: 100% }
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(26,19,32,.10) !important;
   }
+  .city-chip:hover {
+    background: #fdf2f8 !important;
+    border-color: #fbc2eb !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(224,57,158,.12) !important;
+  }
 }
 
 /* ═══════════ MOBILE ≤ 480px ═══════════ */

@@ -19,13 +19,24 @@ const MESH = [
 ].join(",");
 
 const BANNERS: Record<string, string> = {
-  violet: "linear-gradient(135deg,#a18cd1,#fbc2eb)",
-  rose:   "linear-gradient(135deg,#ff9a9e,#fecfef)",
-  peach:  "linear-gradient(135deg,#ffecd2,#fcb69f)",
-  ink:    "linear-gradient(135deg,#302b3a,#5b4b6e)",
-  mint:   "linear-gradient(135deg,#a8edea,#fed6e3)",
-  gold:   "linear-gradient(135deg,#f6d365,#fda085)",
+  brand:      "linear-gradient(135deg,#7c3aed,#d6409f,#ff7a59)",
+  rose:       "linear-gradient(135deg,#f43f5e,#fb7185,#fda4af)",
+  peach:      "linear-gradient(135deg,#fb923c,#f9a8a8,#fecaca)",
+  plum:       "linear-gradient(135deg,#6d28d9,#9333ea,#c084fc)",
+  ocean:      "linear-gradient(135deg,#0ea5e9,#38bdf8,#7dd3fc)",
+  teal:       "linear-gradient(135deg,#0d9488,#2dd4bf,#99f6e4)",
+  mint:       "linear-gradient(135deg,#10b981,#6ee7b7,#d1fae5)",
+  indigo:     "linear-gradient(135deg,#4f46e5,#818cf8,#c7d2fe)",
+  sunset:     "linear-gradient(135deg,#f59e0b,#fb923c,#fdba74)",
+  amber:      "linear-gradient(135deg,#d97706,#fbbf24,#fde68a)",
+  terracotta: "linear-gradient(135deg,#c2410c,#ea580c,#fdba74)",
+  graphite:   "linear-gradient(135deg,#1f2937,#374151,#6b7280)",
+  espresso:   "linear-gradient(135deg,#44403c,#78716c,#a8a29e)",
+  wine:       "linear-gradient(135deg,#881337,#be123c,#fb7185)",
+  lime:       "linear-gradient(135deg,#65a30d,#a3e635,#d9f99d)",
 };
+
+const POPULAR_CITIES = ["Wrocław","Warszawa","Kraków","Poznań","Gdańsk","Łódź"];
 
 export default function MarketplacePage() {
   const { t } = useTranslation();
@@ -56,6 +67,13 @@ export default function MarketplacePage() {
   };
 
   const handleKey = (e: React.KeyboardEvent) => { if (e.key === "Enter") search(); };
+  const pickCity = async (c: string) => {
+    setCity(c); setDistrict(""); setLoading(true); setSearched(true);
+    try {
+      const data = await api.publicBusinesses({ city: c, category: category||undefined, q: nameQ.trim()||undefined });
+      setResults(data);
+    } catch { setResults([]); } finally { setLoading(false); }
+  };
   const districts = city && meta?.cities ? (meta.cities[city] ?? []) : [];
 
   // Split title: last word gets gradient treatment
@@ -222,15 +240,42 @@ export default function MarketplacePage() {
         {!loading && searched && !results.length && (
           <div style={S.empty}>
             <div style={S.emptyIcon}>🔍</div>
-            <div style={S.emptyTitle}>{t.noResults}</div>
-            <div style={S.emptySub}>{t.noResultsSub}</div>
+            <div style={S.emptyTitle}>{city ? t.noResultsCity : t.noResults}</div>
+            {!city && <div style={S.emptySub}>{t.noResultsSub}</div>}
           </div>
         )}
 
         {!loading && !searched && (
-          <div style={S.empty}>
-            <div style={S.emptyIcon}>💅</div>
-            <div style={S.emptyTitle}>{t.pickCity}</div>
+          <div style={S.emptySearchWrap}>
+            <div style={S.emptyPinIcon}>
+              <MapPin size={30} color="#fff" strokeWidth={2.5}/>
+            </div>
+            <h2 style={S.emptySearchTitle}>{t.emptySearchTitle}</h2>
+            <p style={S.emptySearchSub}>{t.emptySearchSub}</p>
+
+            <p style={S.popularCitiesLabel}>{t.popularCities}</p>
+            <div style={S.cityChips}>
+              {POPULAR_CITIES.map(c => (
+                <button key={c} className="city-chip" style={S.cityChip} onClick={() => pickCity(c)}>
+                  <MapPin size={12} color="#e0399e" strokeWidth={2.5}/>
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            <div style={S.skelHintGrid}>
+              {[1,2].map(i => (
+                <div key={i} style={{...S.skelCard, opacity:0.45}}>
+                  <div className="skeleton-line" style={{height:70,borderRadius:"20px 20px 0 0"}}/>
+                  <div style={{padding:"12px 16px 14px"}}>
+                    <div className="skeleton-line" style={{height:12,width:"65%",marginBottom:7}}/>
+                    <div className="skeleton-line" style={{height:10,width:"40%",marginBottom:12}}/>
+                    <div className="skeleton-line" style={{height:28,borderRadius:999}}/>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p style={S.emptyHint}>{t.emptyHint}</p>
           </div>
         )}
 
@@ -269,7 +314,7 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
   return (
     <div className="biz-card" style={S.card} onClick={() => navigate(`/${biz.slug}`)}>
       {/* Banner */}
-      <div style={{ ...S.cardBanner, background: BANNERS[biz.banner] || BANNERS.violet }}>
+      <div style={{ ...S.cardBanner, background: BANNERS[biz.banner] || BANNERS.brand }}>
         {biz.verified && (
           <span style={S.verBadge}>
             <BadgeCheck size={12}/> Zweryfikowany
@@ -415,6 +460,17 @@ const S: Record<string, CSSProperties> = {
   emptyIcon:  { fontSize: 42, marginBottom: 14 },
   emptyTitle: { fontSize: 16, color: "#1a1320", fontWeight: 600, marginBottom: 6 },
   emptySub:   { fontSize: 13.5, color: "#8b8194" },
+
+  // Pre-search fancy empty state
+  emptySearchWrap:  { textAlign:"center" as const, padding:"40px 20px 40px", maxWidth:560, margin:"0 auto" },
+  emptyPinIcon:     { width:64, height:64, borderRadius:20, background:"linear-gradient(135deg,#7c3aed,#d6409f,#ff7a59)", display:"grid", placeItems:"center", margin:"0 auto 20px", boxShadow:"0 8px 24px rgba(124,58,237,.30)" },
+  emptySearchTitle: { fontSize:24, fontWeight:500, fontFamily:"'Fraunces',Georgia,serif", letterSpacing:"-0.03em", color:"#1a1320", margin:"0 0 10px" },
+  emptySearchSub:   { fontSize:14.5, color:"#8b8194", margin:"0 0 24px", lineHeight:1.6 },
+  popularCitiesLabel: { fontSize:11.5, fontWeight:700, color:"#a8a2b0", textTransform:"uppercase" as const, letterSpacing:"0.08em", margin:"0 0 10px" },
+  cityChips:        { display:"flex", flexWrap:"wrap" as const, gap:8, justifyContent:"center", marginBottom:28 },
+  cityChip:         { display:"flex", alignItems:"center", gap:6, padding:"8px 16px", borderRadius:999, background:"#fff", border:"1.5px solid #efe9ee", fontSize:13, fontWeight:600, color:"#1a1320", cursor:"pointer", fontFamily:"'Inter',system-ui,sans-serif", transition:"all .15s", boxShadow:"0 1px 4px rgba(26,19,32,.05)" },
+  skelHintGrid:     { display:"grid", gridTemplateColumns:"1fr 1fr", gap:14, maxWidth:440, margin:"0 auto 12px" },
+  emptyHint:        { fontSize:12.5, color:"#a8a2b0", margin:0 },
 
   // Business card
   card: {
