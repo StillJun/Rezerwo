@@ -83,6 +83,8 @@ export const api = {
     req<Appointment>(`/appointments/${id}`, { method: "PUT", body: JSON.stringify({ status }) }),
   rescheduleAppointment: (id: number, date: string, start_min: number) =>
     req<Appointment>(`/appointments/${id}`, { method: "PATCH", body: JSON.stringify({ date, start_min }) }),
+  resizeAppointment: (id: number, duration: number) =>
+    req<Appointment>(`/appointments/${id}`, { method: "PATCH", body: JSON.stringify({ duration }) }),
 
   /* blocked slots */
   blocked: (start_date: string, end_date: string) =>

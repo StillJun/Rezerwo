@@ -690,25 +690,39 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
   res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
 }));
 
-/* owner: reschedule appointment (update date/time) */
+/* owner: reschedule and/or resize appointment */
 app.patch("/api/appointments/:id", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const [a] = await q("SELECT * FROM appointments WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   if (!a) return res.status(404).json({ error: "Nie znaleziono" });
-  const { date, start_min } = req.body || {};
-  if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
+  const { date, start_min, duration } = req.body || {};
 
-  // Overlap check (exclude self, scoped to same master)
+  const hasMove   = date != null && start_min != null;
+  const hasResize = duration != null;
+  if (!hasMove && !hasResize) return res.status(400).json({ error: "Wymagane: data/godzina lub czas trwania." });
+
+  const newDate     = hasMove   ? date            : String(a.date).slice(0, 10);
+  const newStartMin = hasMove   ? Number(start_min) : Number(a.start_min);
+  const newDuration = hasResize ? Number(duration)  : Number(a.duration);
+
+  if (hasMove && (!Number.isInteger(newStartMin) || newStartMin < 0 || newStartMin > 1439))
+    return res.status(400).json({ error: "Nieprawidłowa godzina." });
+  if (hasResize && (!Number.isInteger(newDuration) || newDuration < 5 || newDuration > 480))
+    return res.status(400).json({ error: "Nieprawidłowy czas trwania." });
+
   const amid = a.master_id ? Number(a.master_id) : null;
   const [overlap] = await q(`
     SELECT id FROM appointments
     WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed') AND id != $5
       AND ($6::int IS NULL OR master_id = $6)
       AND NOT (start_min + duration <= $3 OR $3 + $4 <= start_min)`,
-    [b.id, date, start_min, a.duration, a.id, amid]);
+    [b.id, newDate, newStartMin, newDuration, a.id, amid]);
   if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
 
-  const [row] = await q("UPDATE appointments SET date=$1, start_min=$2 WHERE id=$3 RETURNING *", [date, start_min, a.id]);
+  const [row] = await q(
+    "UPDATE appointments SET date=$1, start_min=$2, duration=$3 WHERE id=$4 RETURNING *",
+    [newDate, newStartMin, newDuration, a.id]
+  );
   const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
   const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
   res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
