@@ -165,8 +165,10 @@ function nowMinPoland() {
 
 function calcSlots(hours, bookedAppts, serviceMin, dateStr, blockedIntervals = []) {
   const DAY_KEYS = ["sun","mon","tue","wed","thu","fri","sat"];
-  const date = new Date(dateStr + "T00:00:00");
-  const dayKey = DAY_KEYS[date.getDay()];
+  // Use noon UTC so the day-of-week is always correct for the Warsaw calendar date,
+  // even on a UTC server where T00:00:00 could be the previous day in some timezones.
+  const date = new Date(dateStr + "T12:00:00Z");
+  const dayKey = DAY_KEYS[date.getUTCDay()];
   const dayHours = hours?.[dayKey];
   if (!dayHours || !dayHours[0] || !dayHours[1]) return [];
 
