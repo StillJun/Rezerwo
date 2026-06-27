@@ -130,12 +130,15 @@ function formatPrice(price: number | null | undefined, t: T): string {
   if (!price) return t.p_priceOnSite;
   return `${price} zł`;
 }
-function todayStr() { return new Date().toISOString().slice(0,10); }
+function fmtLocalDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function todayStr() { return fmtLocalDate(new Date()); }
 function dateLabel(d: string, t: T): string {
   const today = todayStr();
   if (d === today) return t.p_apptToday;
   const tom = new Date(); tom.setDate(tom.getDate()+1);
-  if (d === tom.toISOString().slice(0,10)) return t.p_apptTomorrow;
+  if (d === fmtLocalDate(tom)) return t.p_apptTomorrow;
   return d.split("-").reverse().join(".");
 }
 
@@ -684,7 +687,7 @@ function weekStart(dateStr: string): Date {
 function addDays(dateStr: string, n: number): string {
   const d = new Date(dateStr + "T00:00:00");
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return fmtLocalDate(d);
 }
 
 const DAY_SHORT_PL = ["Nd","Pn","Wt","Śr","Cz","Pt","Sb"];
@@ -721,7 +724,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
     const mon = weekStart(dateStr);
     return Array.from({length:7}, (_,i) => {
       const d = new Date(mon); d.setDate(d.getDate()+i);
-      return d.toISOString().slice(0,10);
+      return fmtLocalDate(d);
     });
   }, [view, dateStr]);
 
@@ -922,6 +925,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
             const created = await api.createAppointment(data);
             setAppts(prev => [...prev, created]);
             setAddAppt(null);
+            reload();
           }}
         />, document.body
       )}
@@ -933,6 +937,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
             const created = await api.addBlocked(data);
             setBlocked(prev => [...prev, created]);
             setAddBlock(null);
+            reload();
           }}
         />, document.body
       )}
