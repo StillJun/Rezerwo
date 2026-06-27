@@ -33,7 +33,7 @@ const DAY_ORDER = ["mon","tue","wed","thu","fri","sat","sun"];
 function minToTime(m: number) {
   return `${String(Math.floor(m/60)).padStart(2,"0")}:${String(m%60).padStart(2,"0")}`;
 }
-function isoToday() { return new Date().toISOString().slice(0,10); }
+function isoToday() { return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" }); }
 /* ── Open/closed badge ── */
 const DAY_IDX = ["sun","mon","tue","wed","thu","fri","sat"] as const;
 function getOpenStatus(hours: Record<string, [string,string]>): { open: boolean; nextOpenTime?: string } {
@@ -81,7 +81,8 @@ function fmtPrice(price: number | null | undefined, onSite: string): string {
   return `${price} zł`;
 }
 function addDays(base: string, n: number) {
-  const d = new Date(base + "T00:00:00"); d.setDate(d.getDate()+n);
+  // Use noon UTC to avoid DST/timezone boundary issues with date arithmetic
+  const d = new Date(base + "T12:00:00Z"); d.setUTCDate(d.getUTCDate()+n);
   return d.toISOString().slice(0,10);
 }
 function formatDate(d: string, months: string[]) {
