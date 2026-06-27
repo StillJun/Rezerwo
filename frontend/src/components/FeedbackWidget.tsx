@@ -42,7 +42,7 @@ export function FeedbackWidget() {
   ];
 
   return (
-    <div ref={ref} style={S.wrap}>
+    <div ref={ref} className="feedback-widget-wrap">
       {open && (
         <div style={S.panel}>
           <div style={S.head}>
@@ -92,7 +92,7 @@ export function FeedbackWidget() {
 }
 
 const S: Record<string, CSSProperties> = {
-  wrap:       { position: "fixed", bottom: 20, right: 20, zIndex: 500, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 },
+  wrap:       { display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10 },
   fab:        { width: 48, height: 48, borderRadius: 999, border: "none", background: `linear-gradient(135deg,${ACC},#ec4899)`, cursor: "pointer", display: "grid", placeItems: "center", boxShadow: "0 4px 20px #7c3aed44" },
   panel:      { background: "#fff", borderRadius: 18, padding: "16px", boxShadow: "0 8px 40px #1b142022", width: 300, maxHeight: "80vh", overflowY: "auto" },
   head:       { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },

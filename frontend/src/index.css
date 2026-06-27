@@ -253,6 +253,18 @@ img, video { max-width: 100% }
   .panel-bottom-bar { display: flex; flex-direction: column }
 }
 
+/* ── Feedback widget ── */
+.feedback-widget-wrap { position: fixed; right: 20px; bottom: 20px; z-index: 500; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+@media (max-width: 768px) {
+  .feedback-widget-wrap { bottom: 76px; }
+}
+
+/* ── Calendar scroll area ── */
+.cal-scroll { max-height: calc(100vh - 330px); }
+@media (max-width: 768px) {
+  .cal-scroll { max-height: calc(100dvh - 240px); }
+}
+
 /* ───── Slot grid ───── */
 .slot-grid { display:grid; gap:8px }
 

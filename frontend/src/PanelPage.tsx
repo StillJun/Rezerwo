@@ -707,7 +707,7 @@ function fmtTimeMin(m: number): string {
 /* ========== CALENDAR VIEW ========== */
 function CalendarView({ biz, services, masters }: { biz: Business; services: Service[]; masters: PublicMaster[] }) {
   const { t } = useTranslation();
-  const [view, setView]         = useState<"day"|"week">("week");
+  const [view, setView]         = useState<"day"|"week">(() => window.innerWidth <= 768 ? "day" : "week");
   const [dateStr, setDateStr]   = useState(todayStr());
   const [appts, setAppts]       = useState<Appointment[]>([]);
   const [blocked, setBlocked]   = useState<BlockedSlot[]>([]);
@@ -718,6 +718,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
   const [selBlock, setSelBlock] = useState<BlockedSlot|null>(null);
   const [dragging, setDragging] = useState<{id:number;duration:number}|null>(null);
   const [dragOver, setDragOver] = useState<{date:string;startMin:number}|null>(null);
+  const gridScrollRef = React.useRef<HTMLDivElement>(null);
 
   const days = useMemo<string[]>(() => {
     if (view === "day") return [dateStr];
@@ -745,6 +746,15 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
   }, [start, end]);
 
   useEffect(() => { reload(); }, [reload]);
+
+  // Auto-scroll to current time on load and week/day change
+  useEffect(() => {
+    if (!gridScrollRef.current) return;
+    const now = new Date();
+    const curMin = now.getHours() * 60 + now.getMinutes();
+    const targetMin = Math.max(CAL_S * 60, curMin - 60);
+    gridScrollRef.current.scrollTop = calY(targetMin);
+  }, [days]);
 
   const nav = (dir: 1|-1) => {
     setDateStr(prev => addDays(prev, dir * (view === "day" ? 1 : 7)));
@@ -844,7 +854,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
         </div>
 
         {/* Scrollable time grid */}
-        <div style={{ display:"flex", overflowY:"auto", maxHeight:"calc(100vh - 330px)", position:"relative" }}
+        <div ref={gridScrollRef} style={{ display:"flex", overflowY:"auto", position:"relative" }}
           className="cal-scroll">
           {/* Time axis */}
           <div style={{ width:48, flexShrink:0, position:"relative", height:calHeight, borderRight:"1px solid #efe9ee" }}>
@@ -1027,15 +1037,23 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
       {/* Blocked slots */}
       {blocked.map(bl => {
         const bc = bl.color || "#8b5cf6";
+        const bh = Math.max(calH(bl.duration), 22);
         return (
           <div key={bl.id} onClick={e => { e.stopPropagation(); onBlockClick(bl); }}
             style={{ position:"absolute", left:2, right:2,
-              top: calY(bl.startMin), height: calH(bl.duration),
-              background: `repeating-linear-gradient(45deg,${bc}18,${bc}18 4px,${bc}30 4px,${bc}30 8px)`,
-              border:`1.5px solid ${bc}`, borderRadius:6,
-              display:"flex", alignItems:"center", padding:"0 6px",
+              top: calY(bl.startMin), height: bh,
+              background: `repeating-linear-gradient(45deg,${bc}12,${bc}12 5px,${bc}25 5px,${bc}25 10px)`,
+              border:`1.5px solid ${bc}55`, borderRadius:7,
+              display:"flex", flexDirection:"column", justifyContent:"center", padding:"2px 7px",
               cursor:"pointer", zIndex:2, overflow:"hidden" }}>
-            <span style={{ fontSize:10.5, color:bc, fontWeight:700 }}>🚫 {bl.label || "Zajęty"}</span>
+            {bh > 30 && (
+              <span style={{ fontSize:9.5, fontWeight:600, color:bc+"aa", lineHeight:1.2, whiteSpace:"nowrap" }}>
+                {fmtTimeMin(bl.startMin)}–{fmtTimeMin(bl.startMin + bl.duration)}
+              </span>
+            )}
+            <span style={{ fontSize:10.5, color:bc, fontWeight:700, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+              🚫 {bl.label || "Zajęty"}
+            </span>
           </div>
         );
       })}
@@ -1043,30 +1061,43 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
       {/* Appointment blocks */}
       {appts.map(a => {
         const top    = calY(a.startMin);
-        const height = calH(a.duration);
+        const h      = Math.max(calH(a.duration), 22);
         const color  = a.color || a.serviceColor || ACC;
-        const light  = color + "22";
         const isDone = a.status === "done" || a.status === "no_show";
         const isPend = a.status === "pending";
+        const bg       = isDone ? "#f3f4f6" : (isPend ? color + "25" : color);
+        const txtMain  = isDone ? "#52525b"  : (isPend ? color : "#fff");
+        const txtSub   = isDone ? "#9ca3af"  : (isPend ? color + "99" : "rgba(255,255,255,0.82)");
         return (
           <div key={a.id}
             draggable
             onDragStart={e => { e.dataTransfer.setData("apptId", String(a.id)); onDragStart(a.id, a.duration); }}
             onDragEnd={onDragCancel}
             onClick={e => { e.stopPropagation(); onApptClick(a); }}
-            style={{ position:"absolute", left:2, right:2, top, height: Math.max(height,22),
-              background: isDone ? "#f4f4f5" : light,
-              border: `2px ${isPend ? "dashed" : "solid"} ${isDone ? "#d1d5db" : color}`,
-              borderRadius:7, padding:"3px 6px", cursor:"pointer", overflow:"hidden",
+            style={{ position:"absolute", left:2, right:2, top, height: h,
+              background: bg,
+              border: isPend ? `2px dashed ${color}` : isDone ? "1px solid #e5e7eb" : "none",
+              borderRadius:8, padding:"3px 7px", cursor:"pointer", overflow:"hidden",
               opacity: isDone ? 0.65 : 1, zIndex:3,
-              boxShadow: a.status==="confirmed" ? `0 1px 6px ${color}33` : undefined }}>
-            <div style={{ fontSize:11, fontWeight:700, color: isDone ? "#71717a" : color, lineHeight:1.25, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-              {a.clientName}
-            </div>
-            {height > 28 && (
-              <div style={{ fontSize:10, color:"#8b8194", lineHeight:1.2, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-                {fmtTimeMin(a.startMin)} · {a.serviceName || "—"}
+              boxShadow: (!isDone && !isPend) ? `0 1px 6px ${color}44` : undefined }}>
+            {h <= 26 ? (
+              <div style={{ fontSize:10, fontWeight:700, color:txtMain, lineHeight:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+                {fmtTimeMin(a.startMin)} {a.clientName}
               </div>
+            ) : (
+              <>
+                <div style={{ fontSize:9.5, fontWeight:600, color:txtSub, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden" }}>
+                  {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + a.duration)}
+                </div>
+                <div style={{ fontSize:11, fontWeight:700, color:txtMain, lineHeight:1.3, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+                  {a.clientName}
+                </div>
+                {h > 44 && a.serviceName && (
+                  <div style={{ fontSize:9.5, color:txtSub, lineHeight:1.2, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+                    {a.serviceName}
+                  </div>
+                )}
+              </>
             )}
           </div>
         );
