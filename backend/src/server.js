@@ -662,7 +662,7 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
     INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, color)
     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed',$11) RETURNING *`,
     [b.id, service_id || null, mid, client_name, client_phone, client_email, comment, date, start_min, duration, color]);
-  notifyOwnerNewBooking(row.id).catch(() => {});
+  // Owner creates appointment manually — notify client only, not the owner themselves
   notifyClientBooking(row.id, "created").catch(() => {});
   const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
   const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
