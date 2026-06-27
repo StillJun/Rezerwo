@@ -156,6 +156,7 @@ export const ru: T = {
   p_tabProfile:        "Профиль",
   p_tabRequests:       "Запросы",
   p_tabWidget:         "Виджет",
+  p_navMore:           "Ещё",
 
   p_mastersTitle:       "Ваши специалисты",
   p_mastersSub:         "Управляйте специалистами, их расписанием и услугами.",

@@ -447,7 +447,7 @@ function BottomBar({ tab, setTab, t }: { tab: TabId; setTab: (id: TabId) => void
             onClick={() => setMoreOpen(o => !o)}
           >
             <MoreHorizontal size={21}/>
-            <span>Więcej</span>
+            <span>{t.p_navMore}</span>
           </button>
         </div>
       </nav>

@@ -156,6 +156,7 @@ export const en: T = {
   p_tabProfile:        "Profile",
   p_tabRequests:       "Requests",
   p_tabWidget:         "Widget",
+  p_navMore:           "More",
 
   p_mastersTitle:       "Your specialists",
   p_mastersSub:         "Manage specialists, their schedules and services.",

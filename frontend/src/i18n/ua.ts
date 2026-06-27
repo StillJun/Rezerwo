@@ -156,6 +156,7 @@ export const ua: T = {
   p_tabProfile:        "Профіль",
   p_tabRequests:       "Запити",
   p_tabWidget:         "Віджет",
+  p_navMore:           "Більше",
 
   p_mastersTitle:       "Ваші спеціалісти",
   p_mastersSub:         "Керуйте спеціалістами, їхнім розкладом та послугами.",

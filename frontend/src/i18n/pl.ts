@@ -170,6 +170,7 @@ export const pl = {
   p_tabProfile:        "Profil",
   p_tabRequests:       "Zapytania",
   p_tabWidget:         "Widget",
+  p_navMore:           "Więcej",
 
   // panel: masters
   p_mastersTitle:       "Twoi specjaliści",
