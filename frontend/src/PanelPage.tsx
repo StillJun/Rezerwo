@@ -1389,9 +1389,13 @@ function AppointmentsTab({ biz }: { biz: Business }) {
 
   useEffect(() => { load(); loadPending(); }, [load, loadPending]);
 
+  const [statusErr, setStatusErr] = useState("");
   const changeStatus = async (id: number, status: string) => {
-    await api.updateAppointment(id, status);
-    await Promise.all([load(), loadPending()]);
+    try {
+      setStatusErr("");
+      await api.updateAppointment(id, status);
+      await Promise.all([load(), loadPending()]);
+    } catch (e) { setStatusErr((e as Error).message); }
   };
 
   const shiftDate = (d: number) => {
@@ -1423,6 +1427,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
         <CalendarView biz={biz} services={services} masters={masters}/>
       )}
 
+      {statusErr && <div style={{background:"#fee2e2",color:"#991b1b",borderRadius:8,padding:"10px 14px",fontSize:13,marginBottom:10}}>{statusErr}</div>}
       {viewMode === "list" && (<>
       {/* ── Oczekujące section ── */}
       <div style={{marginBottom:20}}>
@@ -1552,9 +1557,13 @@ function ClientModal({ phone, onClose }: { phone: string; onClose: () => void })
   useEffect(() => {
     api.clientHistory(phone).then(d => { setHistory(d.history); setNote(d.note); }).catch(()=>{});
   }, [phone]);
+  const [noteErr, setNoteErr] = useState("");
   const saveNote = async () => {
-    await api.saveClientNote(phone, note);
-    setSaved(true); setTimeout(()=>setSaved(false),1500);
+    try {
+      setNoteErr("");
+      await api.saveClientNote(phone, note);
+      setSaved(true); setTimeout(()=>setSaved(false),1500);
+    } catch (e) { setNoteErr((e as Error).message); }
   };
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
@@ -1573,6 +1582,7 @@ function ClientModal({ phone, onClose }: { phone: string; onClose: () => void })
         <button style={{...S.primary,marginTop:8}} onClick={saveNote}>
           {saved?<><Check size={15}/> {t.p_clientSaved}</>:<><Save size={15}/> {t.p_clientSaveNote}</>}
         </button>
+        {noteErr && <div style={{color:"#dc2626",fontSize:12,marginTop:4}}>{noteErr}</div>}
 
         {history.length > 0 && (
           <>
@@ -1686,13 +1696,18 @@ function WaitlistTab() {
   const { t } = useTranslation();
   const [list, setList] = useState<{id:number;clientName:string;clientPhone:string;clientEmail:string;serviceName:string|null;preferredDate:string|null;createdAt:string}[]>([]);
 
+  const [waitErr, setWaitErr] = useState("");
   const load = useCallback(() => { api.waitlist().then(setList).catch(()=>{}); }, []);
   useEffect(() => { load(); }, [load]);
 
-  const notify = async (id: number) => { await api.notifyWaitlist(id); load(); };
+  const notify = async (id: number) => {
+    try { setWaitErr(""); await api.notifyWaitlist(id); load(); }
+    catch (e) { setWaitErr((e as Error).message); }
+  };
 
   return (
     <div className="rise">
+      {waitErr && <div style={{background:"#fee2e2",color:"#991b1b",borderRadius:8,padding:"10px 14px",fontSize:13,marginBottom:10}}>{waitErr}</div>}
       <div style={S.sectionHead} className="section-head">
         <div>
           <h2 style={S.h2}>{t.p_waitTitle}</h2>
