@@ -274,6 +274,30 @@ img, video { max-width: 100% }
   }
 }
 
+/* ═══════════ SEARCH BAR RESPONSIVE ═══════════ */
+@media (max-width: 620px) {
+  .search-bar            { flex-direction: column !important }
+  .search-bar .search-div{ width: calc(100% - 32px) !important; height: 1px !important; margin: 0 16px !important; align-self: auto !important }
+  .search-name-field     { padding: 14px 16px !important; width: 100% !important; box-sizing: border-box !important }
+  .search-loc-group      { width: 100% !important; border-bottom: 1px solid #efe9ee }
+  .city-trigger          { min-width: 0 !important; max-width: none !important; flex: 1 !important }
+  .search-btn            { margin: 6px !important; width: calc(100% - 12px) !important; justify-content: center !important; border-radius: 16px !important; box-sizing: border-box !important }
+}
+
+/* ═══════════ CATEGORY GRID RESPONSIVE ═══════════ */
+@media (max-width: 600px) {
+  .cat-grid { grid-template-columns: 1fr 1fr !important }
+}
+
+/* ═══════════ CAT CARD HOVER ═══════════ */
+@media (hover: hover) {
+  .cat-card:hover {
+    box-shadow: 0 4px 16px rgba(26,19,32,.08) !important;
+    transform: translateY(-1px);
+    border-color: #e0d7f5 !important;
+  }
+}
+
 /* ═══════════ MOBILE ≤ 480px ═══════════ */
 @media (max-width: 480px) {
   /* nav: hide register button, keep only login */
