@@ -31,13 +31,24 @@ const MESH = [
   "#fbf7f4",
 ].join(",");
 const BANNERS: Record<string, string> = {
-  violet: "linear-gradient(135deg,#a18cd1,#fbc2eb)",
-  rose:   "linear-gradient(135deg,#ff9a9e,#fecfef)",
-  peach:  "linear-gradient(135deg,#ffecd2,#fcb69f)",
-  ink:    "linear-gradient(135deg,#302b3a,#5b4b6e)",
-  mint:   "linear-gradient(135deg,#a8edea,#fed6e3)",
-  gold:   "linear-gradient(135deg,#f6d365,#fda085)",
+  violet:   "linear-gradient(135deg,#a18cd1,#fbc2eb)",
+  rose:     "linear-gradient(135deg,#ff9a9e,#fecfef)",
+  peach:    "linear-gradient(135deg,#ffecd2,#fcb69f)",
+  ink:      "linear-gradient(135deg,#302b3a,#5b4b6e)",
+  mint:     "linear-gradient(135deg,#a8edea,#fed6e3)",
+  gold:     "linear-gradient(135deg,#f6d365,#fda085)",
+  sage:     "linear-gradient(135deg,#84a98c,#cad2c5)",
+  teal:     "linear-gradient(135deg,#0d3b4a,#1b6ca8)",
+  slate:    "linear-gradient(135deg,#374151,#6b7280)",
+  burgundy: "linear-gradient(135deg,#6b1928,#9d174d)",
+  forest:   "linear-gradient(135deg,#1b4332,#40916c)",
+  sand:     "linear-gradient(135deg,#c9b99a,#ede0c8)",
 };
+const TIME_OPTIONS: string[] = Array.from({length:48},(_,i)=>{
+  const h = Math.floor(i/2).toString().padStart(2,"0");
+  const m = i%2===0?"00":"30";
+  return `${h}:${m}`;
+});
 const DAY_KEYS = ["mon","tue","wed","thu","fri","sat","sun"] as const;
 
 const SVC_COLORS = [
@@ -1880,6 +1891,8 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const [saveBusy, setSaveBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
+  const [bulkFrom, setBulkFrom] = useState("09:00");
+  const [bulkTo,   setBulkTo]   = useState("18:00");
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
   useEffect(() => { setForm(biz); }, [biz]);
   if (!form||!meta) return <div style={S.empty}>…</div>;
@@ -1915,6 +1928,11 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const toggleDay = (day: string) => {
     const hours = {...(form.hours||{})};
     if (hours[day]) { delete hours[day]; } else { hours[day] = ["09:00","18:00"]; }
+    set("hours", hours);
+  };
+  const applyAllHours = () => {
+    const hours = {} as Record<string,[string,string]>;
+    DAY_KEYS.forEach(k => { hours[k] = [bulkFrom, bulkTo]; });
     set("hours", hours);
   };
 
@@ -2019,6 +2037,17 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
         value={form.about} onChange={e=>set("about",e.target.value)} placeholder={t.p_aboutPh}/>
 
       <label style={S.lbl}>{t.p_workHours}</label>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,flexWrap:"wrap" as const}}>
+        <select style={S.timeInput} value={bulkFrom} onChange={e=>setBulkFrom(e.target.value)}>
+          {TIME_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+        </select>
+        <span style={{color:"#a8a2b0",fontSize:13}}>—</span>
+        <select style={S.timeInput} value={bulkTo} onChange={e=>setBulkTo(e.target.value)}>
+          {TIME_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+        </select>
+        <button style={{border:"none",borderRadius:10,padding:"6px 12px",fontSize:12,fontWeight:600,background:"#ede9f8",color:"#7c3aed",cursor:"pointer",fontFamily:font}}
+          onClick={applyAllHours}>{t.p_applyAllHours}</button>
+      </div>
       <div style={S.hoursGrid}>
         {DAY_KEYS.map(key => {
           const on = !!(form.hours?.[key]);
@@ -2032,9 +2061,13 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
               <span style={{width:28,fontSize:13,fontWeight:600,color:on?"#1b1420":"#a8a2b0"}}>{dayLabel}</span>
               {on ? (
                 <>
-                  <input style={S.timeInput} type="time" value={vals[0]} onChange={e=>setHour(key,0,e.target.value)}/>
+                  <select style={S.timeInput} value={vals[0]} onChange={e=>setHour(key,0,e.target.value)}>
+                    {TIME_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
                   <span style={{color:"#a8a2b0",fontSize:13}}>—</span>
-                  <input style={S.timeInput} type="time" value={vals[1]} onChange={e=>setHour(key,1,e.target.value)}/>
+                  <select style={S.timeInput} value={vals[1]} onChange={e=>setHour(key,1,e.target.value)}>
+                    {TIME_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                  </select>
                 </>
               ) : <span style={{fontSize:12,color:"#c4bece"}}>{t.p_closed}</span>}
             </div>
@@ -2254,7 +2287,7 @@ const S: Record<string, CSSProperties> = {
 
   hoursGrid:{ background:"#fff", borderRadius:16, padding:"10px 14px", marginBottom:10, border:"1px solid #efe9ee" },
   hoursRow: { display:"flex", alignItems:"center", gap:10, padding:"7px 0", borderBottom:"1px solid #efe9ee" },
-  timeInput:{ border:"1.5px solid #efe9ee", borderRadius:10, padding:"5px 8px", fontSize:13, fontFamily:font, background:"#fbf7f4", width:84, color:"#1a1320" },
+  timeInput:{ border:"1.5px solid #efe9ee", borderRadius:10, padding:"5px 8px", fontSize:13, fontFamily:font, background:"#fbf7f4", width:90, color:"#1a1320" },
 
   photoRow: { display:"flex", gap:8, flexWrap:"wrap" as const, marginBottom:8 },
   photoTile:{ position:"relative" as const, width:70, height:70, borderRadius:14, overflow:"hidden", background:"#f4f0f8" },
@@ -2887,9 +2920,13 @@ function MasterModal({ master, services, onClose, onSaved }:
                 <span style={{width:28,fontSize:13,fontWeight:600,color:on?"#1b1420":"#a8a2b0"}}>{dayLabel}</span>
                 {on ? (
                   <>
-                    <input style={S.timeInput} type="time" value={vals[0]} onChange={e=>setHour(key,0,e.target.value)}/>
+                    <select style={S.timeInput} value={vals[0]} onChange={e=>setHour(key,0,e.target.value)}>
+                      {TIME_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                    </select>
                     <span style={{color:"#a8a2b0",fontSize:13}}>—</span>
-                    <input style={S.timeInput} type="time" value={vals[1]} onChange={e=>setHour(key,1,e.target.value)}/>
+                    <select style={S.timeInput} value={vals[1]} onChange={e=>setHour(key,1,e.target.value)}>
+                      {TIME_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+                    </select>
                   </>
                 ) : <span style={{fontSize:12,color:"#c4bece"}}>{t.p_closed}</span>}
               </div>

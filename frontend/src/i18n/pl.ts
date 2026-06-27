@@ -281,6 +281,7 @@ export const pl = {
   p_aboutPh:           "Opisz swój salon…",
   p_workHours:         "Godziny pracy",
   p_closed:            "nieczynne",
+  p_applyAllHours:     "Zastosuj do wszystkich dni",
   p_portfolio:         "Portfolio (zdjęcia)",
   p_photoUrlPh:        "Wklej URL zdjęcia…",
   p_photoHint:         "Na start — przez URL. W kolejnym etapie dodamy upload plików (Cloudinary).",

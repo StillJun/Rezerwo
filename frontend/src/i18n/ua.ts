@@ -258,6 +258,7 @@ export const ua: T = {
   p_aboutPh:           "Опишіть ваш салон…",
   p_workHours:         "Години роботи",
   p_closed:            "зачинено",
+  p_applyAllHours:     "Застосувати до всіх днів",
   p_portfolio:         "Портфоліо (фото)",
   p_photoUrlPh:        "Вставте URL фото…",
   p_photoHint:         "Поки — через URL. На наступному етапі додамо завантаження файлів (Cloudinary).",

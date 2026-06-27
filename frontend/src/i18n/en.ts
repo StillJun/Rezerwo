@@ -258,6 +258,7 @@ export const en: T = {
   p_aboutPh:           "Describe your salon…",
   p_workHours:         "Working hours",
   p_closed:            "closed",
+  p_applyAllHours:     "Apply to all days",
   p_portfolio:         "Portfolio (photos)",
   p_photoUrlPh:        "Paste photo URL…",
   p_photoHint:         "For now — via URL. In the next stage we'll add file upload (Cloudinary).",
