@@ -10,6 +10,14 @@ function getResend() {
 }
 const FROM = process.env.FROM_EMAIL || "Rezerwo <onboarding@resend.dev>";
 
+function esc(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 function minToTime(min) {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
@@ -20,17 +28,17 @@ async function sendReminderEmail({ to, clientName, businessName, serviceName, da
   await r.emails.send({
     from: FROM,
     to,
-    subject: `Przypomnienie o wizycie — ${businessName}`,
+    subject: `Przypomnienie o wizycie — ${esc(businessName)}`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
         <h2 style="color:#7c3aed;margin-bottom:8px">Przypomnienie o wizycie</h2>
-        <p>Cześć <strong>${clientName}</strong>!</p>
+        <p>Cześć <strong>${esc(clientName)}</strong>!</p>
         <p>Masz zaplanowaną wizytę:</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">
-          <tr><td style="padding:8px;color:#71717a">Salon</td><td style="padding:8px;font-weight:600">${businessName}</td></tr>
-          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Usługa</td><td style="padding:8px;font-weight:600">${serviceName || "—"}</td></tr>
-          <tr><td style="padding:8px;color:#71717a">Data</td><td style="padding:8px;font-weight:600">${date}</td></tr>
-          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Godzina</td><td style="padding:8px;font-weight:600">${time}</td></tr>
+          <tr><td style="padding:8px;color:#71717a">Salon</td><td style="padding:8px;font-weight:600">${esc(businessName)}</td></tr>
+          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Usługa</td><td style="padding:8px;font-weight:600">${esc(serviceName || "—")}</td></tr>
+          <tr><td style="padding:8px;color:#71717a">Data</td><td style="padding:8px;font-weight:600">${esc(date)}</td></tr>
+          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Godzina</td><td style="padding:8px;font-weight:600">${esc(time)}</td></tr>
         </table>
         <p style="color:#71717a;font-size:13px">Jeśli chcesz odwołać wizytę, skontaktuj się z salonem.</p>
         <hr style="border:none;border-top:1px solid #ece8f0;margin:20px 0"/>
@@ -46,16 +54,16 @@ async function sendOwnerNotification({ to, businessName, clientName, clientPhone
   await r.emails.send({
     from: FROM,
     to,
-    subject: `Nowa rezerwacja — ${clientName} (${date} ${time})`,
+    subject: `Nowa rezerwacja — ${esc(clientName)} (${esc(date)} ${esc(time)})`,
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
-        <h2 style="color:#7c3aed;margin-bottom:8px">Nowa rezerwacja w ${businessName}</h2>
+        <h2 style="color:#7c3aed;margin-bottom:8px">Nowa rezerwacja w ${esc(businessName)}</h2>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">
-          <tr><td style="padding:8px;color:#71717a">Klient</td><td style="padding:8px;font-weight:600">${clientName}</td></tr>
-          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Telefon</td><td style="padding:8px;font-weight:600">${clientPhone}</td></tr>
-          <tr><td style="padding:8px;color:#71717a">Usługa</td><td style="padding:8px;font-weight:600">${serviceName || "—"}</td></tr>
-          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Data</td><td style="padding:8px;font-weight:600">${date}</td></tr>
-          <tr><td style="padding:8px;color:#71717a">Godzina</td><td style="padding:8px;font-weight:600">${time}</td></tr>
+          <tr><td style="padding:8px;color:#71717a">Klient</td><td style="padding:8px;font-weight:600">${esc(clientName)}</td></tr>
+          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Telefon</td><td style="padding:8px;font-weight:600">${esc(clientPhone)}</td></tr>
+          <tr><td style="padding:8px;color:#71717a">Usługa</td><td style="padding:8px;font-weight:600">${esc(serviceName || "—")}</td></tr>
+          <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Data</td><td style="padding:8px;font-weight:600">${esc(date)}</td></tr>
+          <tr><td style="padding:8px;color:#71717a">Godzina</td><td style="padding:8px;font-weight:600">${esc(time)}</td></tr>
         </table>
         <p style="color:#a8a2b0;font-size:12px">Zaloguj się do panelu Rezerwo, aby zarządzać rezerwacją.</p>
       </div>
@@ -191,12 +199,12 @@ export async function notifyClientBooking(apptId, event) {
     const bizPhone = appt.business_phone   || "";
 
     const tableRows = [
-      ["Salon", bizName],
-      ["Usługa", appt.service_name || "—"],
-      ["Data", date],
-      ["Godzina", `${startT}–${endT}`],
-      ...(bizAddr  ? [["Adres", bizAddr]]           : []),
-      ...(bizPhone ? [["Telefon salonu", bizPhone]]  : []),
+      ["Salon", esc(bizName)],
+      ["Usługa", esc(appt.service_name || "—")],
+      ["Data", esc(date)],
+      ["Godzina", esc(`${startT}–${endT}`)],
+      ...(bizAddr  ? [["Adres", esc(bizAddr)]]           : []),
+      ...(bizPhone ? [["Telefon salonu", esc(bizPhone)]]  : []),
     ];
     const tbl = `<table style="width:100%;border-collapse:collapse;margin:16px 0">${
       tableRows.map(([k, v], i) =>
@@ -213,12 +221,12 @@ export async function notifyClientBooking(apptId, event) {
     </div>`;
 
     let subject, html;
-    const hi = `<p>Cześć <strong>${appt.client_name}</strong>!</p>`;
-    const contact = bizPhone ? `: ${bizPhone}` : "";
+    const hi = `<p>Cześć <strong>${esc(appt.client_name)}</strong>!</p>`;
+    const contact = bizPhone ? `: ${esc(bizPhone)}` : "";
 
     if (event === "created") {
       const isPending = appt.status === "pending";
-      subject = isPending ? `Rezerwacja przyjęta — ${bizName}` : `Rezerwacja potwierdzona — ${bizName}`;
+      subject = isPending ? `Rezerwacja przyjęta — ${esc(bizName)}` : `Rezerwacja potwierdzona — ${esc(bizName)}`;
       html = wrap(isPending
         ? `<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja przyjęta ⏳</h2>${hi}
            <p>Twoja rezerwacja oczekuje na potwierdzenie przez salon.</p>${tbl}
@@ -228,14 +236,14 @@ export async function notifyClientBooking(apptId, event) {
            <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>`
       );
     } else if (event === "confirmed") {
-      subject = `Rezerwacja potwierdzona ✅ — ${bizName}`;
+      subject = `Rezerwacja potwierdzona ✅ — ${esc(bizName)}`;
       html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja potwierdzona ✅</h2>${hi}
         <p>Salon potwierdził Twoją rezerwację.</p>${tbl}
         <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>`);
     } else if (event === "cancelled") {
-      subject = `Rezerwacja anulowana — ${bizName}`;
+      subject = `Rezerwacja anulowana — ${esc(bizName)}`;
       html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja anulowana ❌</h2>${hi}
-        <p>Niestety, Twoja rezerwacja w <strong>${bizName}</strong> została anulowana.</p>${tbl}
+        <p>Niestety, Twoja rezerwacja w <strong>${esc(bizName)}</strong> została anulowana.</p>${tbl}
         <p style="color:#71717a;font-size:13px">Przepraszamy za niedogodności${contact ? ". Zadzwoń do salonu"+contact+" aby umówić nowy termin" : ""}.</p>`);
     } else {
       return;
