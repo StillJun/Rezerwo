@@ -21,6 +21,8 @@ import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
 import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
+import { DndContext, useDraggable, useSensor, useSensors, PointerSensor, TouchSensor } from "@dnd-kit/core";
+import type { DragStartEvent, DragMoveEvent, DragEndEvent } from "@dnd-kit/core";
 
 const ACC  = "#7c3aed";
 const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
@@ -718,7 +720,57 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
   const [selBlock, setSelBlock] = useState<BlockedSlot|null>(null);
   const [dragging, setDragging] = useState<{id:number;duration:number}|null>(null);
   const [dragOver, setDragOver] = useState<{date:string;startMin:number}|null>(null);
+  const [pendingReschedule, setPendingReschedule] = useState<{appt:Appointment;date:string;startMin:number}|null>(null);
   const gridScrollRef = React.useRef<HTMLDivElement>(null);
+  const colRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
+  );
+
+  const calcTargetFromPointer = (clientX: number, clientY: number) => {
+    for (const [day, el] of colRefsMap.current.entries()) {
+      const rect = el.getBoundingClientRect();
+      if (clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom) {
+        const y = clientY - rect.top;
+        const rawMin = CAL_S * 60 + y / PX_MIN;
+        const startMin = Math.max(CAL_S * 60, Math.min(CAL_E * 60 - 15, Math.round(rawMin / 5) * 5));
+        return { date: day, startMin };
+      }
+    }
+    return null;
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const appt = (event.active.data.current as { appt?: Appointment })?.appt;
+    if (appt) setDragging({ id: appt.id, duration: appt.duration });
+  };
+
+  const handleDragMove = (event: DragMoveEvent) => {
+    const ae = event.activatorEvent;
+    let initX = 0, initY = 0;
+    if ("changedTouches" in ae && (ae as TouchEvent).changedTouches.length > 0) {
+      initX = (ae as TouchEvent).changedTouches[0].clientX;
+      initY = (ae as TouchEvent).changedTouches[0].clientY;
+    } else if ("clientX" in ae) {
+      initX = (ae as PointerEvent).clientX;
+      initY = (ae as PointerEvent).clientY;
+    }
+    const target = calcTargetFromPointer(initX + event.delta.x, initY + event.delta.y);
+    if (target) setDragOver(target);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const appt = (event.active.data.current as { appt?: Appointment })?.appt;
+    setDragging(null);
+    if (!appt || !dragOver) { setDragOver(null); return; }
+    if (dragOver.date === appt.date && dragOver.startMin === appt.startMin) { setDragOver(null); return; }
+    setPendingReschedule({ appt, date: dragOver.date, startMin: dragOver.startMin });
+    setDragOver(null);
+  };
+
+  const handleDragCancel = () => { setDragging(null); setDragOver(null); };
 
   const days = useMemo<string[]>(() => {
     if (view === "day") return [dateStr];
@@ -783,14 +835,6 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
     e.preventDefault();
     const snapped = Math.floor(startMin / 15) * 15;
     setAddBlock({ date, startMin: snapped });
-  };
-
-  // Drop target hover
-  const getDropMin = (e: React.MouseEvent<HTMLDivElement>, colEl: HTMLDivElement) => {
-    const rect = colEl.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const rawMin = CAL_S * 60 + y / PX_MIN;
-    return Math.round(rawMin / 15) * 15;
   };
 
   const calHeight = (CAL_E - CAL_S) * HOUR_H;
@@ -885,34 +929,33 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
             </div>
 
             {/* Each day column */}
-            {days.map((day, di) => (
-              <DayColumn key={day}
-                day={day}
-                appts={dayAppts(day)}
-                blocked={dayBlocked(day)}
-                isFirst={di===0}
-                isToday={day===today}
-                nowMin={day===today ? nowMin : -1}
-                calHeight={calHeight}
-                onSlotClick={handleSlotClick}
-                onSlotRightClick={handleSlotRightClick}
-                onApptClick={setSelAppt}
-                onBlockClick={setSelBlock}
-                dragging={dragging}
-                onDragStart={(id, dur) => setDragging({id, duration:dur})}
-                onDragCancel={() => { setDragging(null); setDragOver(null); }}
-                onDragEnd={async (id, date, startMin) => {
-                  setDragging(null); setDragOver(null);
-                  try {
-                    const updated = await api.rescheduleAppointment(id, date, startMin);
-                    setAppts(prev => prev.map(a => a.id===id ? updated : a));
-                  } catch(e) { alert((e as Error).message); reload(); }
-                }}
-                dragOver={dragOver}
-                onDragOver={(date, startMin) => setDragOver({date, startMin})}
-                onDragLeave={() => setDragOver(null)}
-              />
-            ))}
+            <DndContext sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragMove={handleDragMove}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}>
+              {days.map((day, di) => (
+                <DayColumn key={day}
+                  day={day}
+                  appts={dayAppts(day)}
+                  blocked={dayBlocked(day)}
+                  isFirst={di===0}
+                  isToday={day===today}
+                  nowMin={day===today ? nowMin : -1}
+                  calHeight={calHeight}
+                  onSlotClick={handleSlotClick}
+                  onSlotRightClick={handleSlotRightClick}
+                  onApptClick={setSelAppt}
+                  onBlockClick={setSelBlock}
+                  dragging={dragging}
+                  dragOver={dragOver}
+                  onColRef={el => {
+                    if (el) colRefsMap.current.set(day, el);
+                    else colRefsMap.current.delete(day);
+                  }}
+                />
+              ))}
+            </DndContext>
           </div>
         </div>
       </div>
@@ -976,6 +1019,23 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
         </div>, document.body
       )}
 
+      {pendingReschedule && createPortal(
+        <RescheduleConfirmDialog
+          appt={pendingReschedule.appt}
+          date={pendingReschedule.date}
+          startMin={pendingReschedule.startMin}
+          onCancel={() => setPendingReschedule(null)}
+          onConfirm={async () => {
+            const { appt, date, startMin } = pendingReschedule;
+            setPendingReschedule(null);
+            try {
+              const updated = await api.rescheduleAppointment(appt.id, date, startMin);
+              setAppts(prev => prev.map(a => a.id === appt.id ? updated : a));
+            } catch(e) { alert((e as Error).message); reload(); }
+          }}
+        />, document.body
+      )}
+
       {loading && (
         <div style={{position:"absolute",top:8,right:8,fontSize:12,color:"#a8a2b0"}}>⏳</div>
       )}
@@ -983,8 +1043,87 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
   );
 }
 
+/* ── RescheduleConfirmDialog ── */
+function RescheduleConfirmDialog({ appt, date, startMin, onConfirm, onCancel }: {
+  appt: Appointment; date: string; startMin: number;
+  onConfirm: () => Promise<void>; onCancel: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const dateLabel = date.split("-").reverse().join(".");
+  const timeLabel = fmtTimeMin(startMin);
+  return (
+    <div style={S.overlay} onClick={e => e.target===e.currentTarget && onCancel()}>
+      <div style={{ ...S.modal, maxWidth:320, padding:"22px 24px" }} className="modal-sheet">
+        <div style={{ fontWeight:700, fontSize:16, color:"#1a1320", marginBottom:10 }}>Przenieść wizytę?</div>
+        <div style={{ fontSize:14, color:"#52525b", marginBottom:20, lineHeight:1.5 }}>
+          <strong>{appt.clientName}</strong>
+          <span style={{ color:"#a8a2b0" }}> → </span>
+          <strong>{dateLabel}, {timeLabel}</strong>
+        </div>
+        <div style={{ display:"flex", gap:10 }}>
+          <button style={{ ...S.primary, flex:1 }} disabled={busy}
+            onClick={async () => { setBusy(true); await onConfirm(); }}>Tak, przenieś</button>
+          <button style={{ ...S.primary, flex:1, background:"#f4f0f8", color:"#52525b", boxShadow:"none" }}
+            disabled={busy} onClick={onCancel}>Anuluj</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── DraggableApptBlock ── */
+function DraggableApptBlock({ a, onApptClick }: { a: Appointment; onApptClick: (a: Appointment) => void }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: a.id,
+    data: { appt: a },
+  });
+  const top   = calY(a.startMin);
+  const h     = Math.max(calH(a.duration), 22);
+  const color = a.color || a.serviceColor || ACC;
+  const isDone = a.status === "done" || a.status === "no_show";
+  const isPend = a.status === "pending";
+  const bg      = isDone ? "#f3f4f6" : (isPend ? color + "25" : color);
+  const txtMain = isDone ? "#52525b"  : (isPend ? color : "#fff");
+  const txtSub  = isDone ? "#9ca3af"  : (isPend ? color + "99" : "rgba(255,255,255,0.82)");
+  return (
+    <div ref={setNodeRef} {...attributes} {...listeners}
+      onClick={e => { e.stopPropagation(); onApptClick(a); }}
+      style={{ position:"absolute", left:2, right:2, top, height: h,
+        background: bg,
+        border: isPend ? `2px dashed ${color}` : isDone ? "1px solid #e5e7eb" : "none",
+        borderRadius:8, padding:"3px 7px",
+        cursor: isDragging ? "grabbing" : "grab",
+        overflow:"hidden",
+        opacity: isDragging ? 0.35 : (isDone ? 0.65 : 1),
+        zIndex: isDragging ? 20 : 3,
+        boxShadow: (!isDone && !isPend) ? `0 1px 6px ${color}44` : undefined,
+        touchAction: "none",
+        userSelect: "none" }}>
+      {h <= 26 ? (
+        <div style={{ fontSize:10, fontWeight:700, color:txtMain, lineHeight:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+          {fmtTimeMin(a.startMin)} {a.clientName}
+        </div>
+      ) : (
+        <>
+          <div style={{ fontSize:9.5, fontWeight:600, color:txtSub, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden" }}>
+            {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + a.duration)}
+          </div>
+          <div style={{ fontSize:11, fontWeight:700, color:txtMain, lineHeight:1.3, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+            {a.clientName}
+          </div>
+          {h > 44 && a.serviceName && (
+            <div style={{ fontSize:9.5, color:txtSub, lineHeight:1.2, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
+              {a.serviceName}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ── DayColumn ── */
-function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, onDragStart, onDragCancel, onDragEnd, dragOver, onDragOver, onDragLeave }: {
+function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, dragOver, onColRef }: {
   day: string; appts: Appointment[]; blocked: BlockedSlot[];
   isFirst: boolean; isToday: boolean; nowMin: number; calHeight: number;
   onSlotClick: (d: string, m: number) => void;
@@ -992,14 +1131,14 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
   onApptClick: (a: Appointment) => void;
   onBlockClick: (b: BlockedSlot) => void;
   dragging: {id:number;duration:number}|null;
-  onDragStart: (id:number, dur:number) => void;
-  onDragCancel: () => void;
-  onDragEnd: (id:number, date:string, startMin:number) => void;
   dragOver: {date:string;startMin:number}|null;
-  onDragOver: (d:string,m:number) => void;
-  onDragLeave: () => void;
+  onColRef: (el: HTMLDivElement | null) => void;
 }) {
   const colRef = React.useRef<HTMLDivElement>(null);
+  const colRefCb = React.useCallback((el: HTMLDivElement | null) => {
+    (colRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    onColRef(el);
+  }, [onColRef]);
 
   const getMin = (e: React.MouseEvent) => {
     const rect = colRef.current!.getBoundingClientRect();
@@ -1011,20 +1150,12 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
   const dragTop = isDragTarget ? calY(dragOver!.startMin) : -1;
 
   return (
-    <div ref={colRef}
+    <div ref={colRefCb}
       style={{ flex:1, position:"relative", height:calHeight, minWidth:0, cursor:"crosshair",
         borderLeft: !isFirst ? "1px solid #efe9ee" : undefined,
         background: isToday ? "rgba(124,58,237,.015)" : undefined }}
       onClick={e => { if ((e.target as HTMLElement).classList.contains("cal-col")) onSlotClick(day, getMin(e)); }}
       onContextMenu={e => { e.preventDefault(); onSlotRightClick(e, day, getMin(e)); }}
-      onDragOver={e => { e.preventDefault(); const m=getMin(e); onDragOver(day,m); }}
-      onDragLeave={onDragLeave}
-      onDrop={e => {
-        e.preventDefault();
-        const id = Number(e.dataTransfer.getData("apptId"));
-        if (!id || !dragOver) return;
-        onDragEnd(id, day, dragOver.startMin);
-      }}
       className="cal-col">
 
       {/* Drag target preview */}
@@ -1059,49 +1190,9 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
       })}
 
       {/* Appointment blocks */}
-      {appts.map(a => {
-        const top    = calY(a.startMin);
-        const h      = Math.max(calH(a.duration), 22);
-        const color  = a.color || a.serviceColor || ACC;
-        const isDone = a.status === "done" || a.status === "no_show";
-        const isPend = a.status === "pending";
-        const bg       = isDone ? "#f3f4f6" : (isPend ? color + "25" : color);
-        const txtMain  = isDone ? "#52525b"  : (isPend ? color : "#fff");
-        const txtSub   = isDone ? "#9ca3af"  : (isPend ? color + "99" : "rgba(255,255,255,0.82)");
-        return (
-          <div key={a.id}
-            draggable
-            onDragStart={e => { e.dataTransfer.setData("apptId", String(a.id)); onDragStart(a.id, a.duration); }}
-            onDragEnd={onDragCancel}
-            onClick={e => { e.stopPropagation(); onApptClick(a); }}
-            style={{ position:"absolute", left:2, right:2, top, height: h,
-              background: bg,
-              border: isPend ? `2px dashed ${color}` : isDone ? "1px solid #e5e7eb" : "none",
-              borderRadius:8, padding:"3px 7px", cursor:"pointer", overflow:"hidden",
-              opacity: isDone ? 0.65 : 1, zIndex:3,
-              boxShadow: (!isDone && !isPend) ? `0 1px 6px ${color}44` : undefined }}>
-            {h <= 26 ? (
-              <div style={{ fontSize:10, fontWeight:700, color:txtMain, lineHeight:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-                {fmtTimeMin(a.startMin)} {a.clientName}
-              </div>
-            ) : (
-              <>
-                <div style={{ fontSize:9.5, fontWeight:600, color:txtSub, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden" }}>
-                  {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + a.duration)}
-                </div>
-                <div style={{ fontSize:11, fontWeight:700, color:txtMain, lineHeight:1.3, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-                  {a.clientName}
-                </div>
-                {h > 44 && a.serviceName && (
-                  <div style={{ fontSize:9.5, color:txtSub, lineHeight:1.2, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
-                    {a.serviceName}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
+      {appts.map(a => (
+        <DraggableApptBlock key={a.id} a={a} onApptClick={onApptClick} />
+      ))}
     </div>
   );
 }
