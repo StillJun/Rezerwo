@@ -721,6 +721,9 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
   const [dragging, setDragging] = useState<{id:number;duration:number}|null>(null);
   const [dragOver, setDragOver] = useState<{date:string;startMin:number}|null>(null);
   const [pendingReschedule, setPendingReschedule] = useState<{appt:Appointment;date:string;startMin:number}|null>(null);
+  const [resizing, setResizing] = useState<{
+    id: number; date: string; startMin: number; originalDuration: number; currentDuration: number;
+  } | null>(null);
   const gridScrollRef = React.useRef<HTMLDivElement>(null);
   const colRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -728,6 +731,17 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   );
+
+  const isDragOverlap = useMemo(() => {
+    if (!dragging || !dragOver) return false;
+    return appts.some(a =>
+      a.id !== dragging.id &&
+      a.date === dragOver.date &&
+      a.status !== "cancelled" &&
+      dragOver.startMin < a.startMin + a.duration &&
+      a.startMin < dragOver.startMin + dragging.duration
+    );
+  }, [dragging, dragOver, appts]);
 
   const calcTargetFromPointer = (clientX: number, clientY: number) => {
     for (const [day, el] of colRefsMap.current.entries()) {
@@ -766,11 +780,49 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
     setDragging(null);
     if (!appt || !dragOver) { setDragOver(null); return; }
     if (dragOver.date === appt.date && dragOver.startMin === appt.startMin) { setDragOver(null); return; }
+    const hasOverlap = appts.some(a =>
+      a.id !== appt.id && a.date === dragOver.date && a.status !== "cancelled" &&
+      dragOver.startMin < a.startMin + a.duration && a.startMin < dragOver.startMin + appt.duration
+    );
+    if (hasOverlap) { setDragOver(null); return; }
     setPendingReschedule({ appt, date: dragOver.date, startMin: dragOver.startMin });
     setDragOver(null);
   };
 
   const handleDragCancel = () => { setDragging(null); setDragOver(null); };
+
+  const handleResizeStart = useCallback((e: React.PointerEvent, a: Appointment) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setResizing({ id: a.id, date: a.date, startMin: a.startMin, originalDuration: a.duration, currentDuration: a.duration });
+  }, []);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const { id, date, startMin, originalDuration } = resizing;
+    const getDur = (clientY: number) => {
+      const colEl = colRefsMap.current.get(date);
+      if (!colEl) return originalDuration;
+      const rect = colEl.getBoundingClientRect();
+      const endMin = Math.round((CAL_S * 60 + (clientY - rect.top) / PX_MIN) / 5) * 5;
+      return Math.max(15, Math.min(480, endMin - startMin));
+    };
+    const onMove = (e: PointerEvent) =>
+      setResizing(prev => prev ? { ...prev, currentDuration: getDur(e.clientY) } : null);
+    const onUp = async (e: PointerEvent) => {
+      const finalDur = getDur(e.clientY);
+      setResizing(null);
+      if (finalDur !== originalDuration) {
+        try {
+          const updated = await api.resizeAppointment(id, finalDur);
+          setAppts(prev => prev.map(a => a.id === id ? updated : a));
+        } catch { reload(); }
+      }
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
+    return () => { document.removeEventListener("pointermove", onMove); document.removeEventListener("pointerup", onUp); };
+  }, [resizing?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const days = useMemo<string[]>(() => {
     if (view === "day") return [dateStr];
@@ -949,6 +1001,9 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
                   onBlockClick={setSelBlock}
                   dragging={dragging}
                   dragOver={dragOver}
+                  isDragOverlap={isDragOverlap}
+                  resizing={resizing}
+                  onResizeStart={handleResizeStart}
                   onColRef={el => {
                     if (el) colRefsMap.current.set(day, el);
                     else colRefsMap.current.delete(day);
@@ -1072,31 +1127,38 @@ function RescheduleConfirmDialog({ appt, date, startMin, onConfirm, onCancel }: 
 }
 
 /* ── DraggableApptBlock ── */
-function DraggableApptBlock({ a, onApptClick }: { a: Appointment; onApptClick: (a: Appointment) => void }) {
+function DraggableApptBlock({ a, onApptClick, resizingDuration, onResizeStart }: {
+  a: Appointment;
+  onApptClick: (a: Appointment) => void;
+  resizingDuration?: number;
+  onResizeStart: (e: React.PointerEvent, a: Appointment) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: a.id,
     data: { appt: a },
   });
+  const displayDur = resizingDuration ?? a.duration;
   const top   = calY(a.startMin);
-  const h     = Math.max(calH(a.duration), 22);
+  const h     = Math.max(calH(displayDur), 22);
   const color = a.color || a.serviceColor || ACC;
   const isDone = a.status === "done" || a.status === "no_show";
   const isPend = a.status === "pending";
+  const isResizing = resizingDuration !== undefined;
   const bg      = isDone ? "#f3f4f6" : (isPend ? color + "25" : color);
   const txtMain = isDone ? "#52525b"  : (isPend ? color : "#fff");
   const txtSub  = isDone ? "#9ca3af"  : (isPend ? color + "99" : "rgba(255,255,255,0.82)");
   return (
     <div ref={setNodeRef} {...attributes} {...listeners}
-      onClick={e => { e.stopPropagation(); onApptClick(a); }}
+      onClick={e => { e.stopPropagation(); if (!isResizing) onApptClick(a); }}
       style={{ position:"absolute", left:2, right:2, top, height: h,
         background: bg,
-        border: isPend ? `2px dashed ${color}` : isDone ? "1px solid #e5e7eb" : "none",
+        border: isResizing ? `2px solid ${color}` : isPend ? `2px dashed ${color}` : isDone ? "1px solid #e5e7eb" : "none",
         borderRadius:8, padding:"3px 7px",
-        cursor: isDragging ? "grabbing" : "grab",
+        cursor: isDragging ? "grabbing" : isResizing ? "ns-resize" : "grab",
         overflow:"hidden",
         opacity: isDragging ? 0.35 : (isDone ? 0.65 : 1),
-        zIndex: isDragging ? 20 : 3,
-        boxShadow: (!isDone && !isPend) ? `0 1px 6px ${color}44` : undefined,
+        zIndex: isDragging || isResizing ? 20 : 3,
+        boxShadow: isResizing ? `0 2px 12px ${color}66` : (!isDone && !isPend) ? `0 1px 6px ${color}44` : undefined,
         touchAction: "none",
         userSelect: "none" }}>
       {h <= 26 ? (
@@ -1106,7 +1168,7 @@ function DraggableApptBlock({ a, onApptClick }: { a: Appointment; onApptClick: (
       ) : (
         <>
           <div style={{ fontSize:9.5, fontWeight:600, color:txtSub, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden" }}>
-            {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + a.duration)}
+            {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + displayDur)}
           </div>
           <div style={{ fontSize:11, fontWeight:700, color:txtMain, lineHeight:1.3, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
             {a.clientName}
@@ -1118,12 +1180,20 @@ function DraggableApptBlock({ a, onApptClick }: { a: Appointment; onApptClick: (
           )}
         </>
       )}
+      {/* Resize handle */}
+      <div
+        onPointerDown={e => { e.stopPropagation(); onResizeStart(e, a); }}
+        style={{ position:"absolute", bottom:0, left:0, right:0, height:10,
+          cursor:"ns-resize", touchAction:"none",
+          background: isResizing ? `${color}33` : "transparent",
+          borderRadius:"0 0 8px 8px" }}
+      />
     </div>
   );
 }
 
 /* ── DayColumn ── */
-function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, dragOver, onColRef }: {
+function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotClick, onSlotRightClick, onApptClick, onBlockClick, dragging, dragOver, isDragOverlap, resizing, onResizeStart, onColRef }: {
   day: string; appts: Appointment[]; blocked: BlockedSlot[];
   isFirst: boolean; isToday: boolean; nowMin: number; calHeight: number;
   onSlotClick: (d: string, m: number) => void;
@@ -1132,6 +1202,9 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
   onBlockClick: (b: BlockedSlot) => void;
   dragging: {id:number;duration:number}|null;
   dragOver: {date:string;startMin:number}|null;
+  isDragOverlap: boolean;
+  resizing: {id:number;date:string;startMin:number;originalDuration:number;currentDuration:number}|null;
+  onResizeStart: (e: React.PointerEvent, a: Appointment) => void;
   onColRef: (el: HTMLDivElement | null) => void;
 }) {
   const colRef = React.useRef<HTMLDivElement>(null);
@@ -1161,8 +1234,10 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
       {/* Drag target preview */}
       {isDragTarget && dragging && (
         <div style={{ position:"absolute", left:2, right:2, top: dragTop,
-          height: calH(dragging.duration), background:"rgba(124,58,237,.15)",
-          border:"2px dashed #7c3aed", borderRadius:8, zIndex:1, pointerEvents:"none" }}/>
+          height: calH(dragging.duration),
+          background: isDragOverlap ? "rgba(220,38,38,.15)" : "rgba(124,58,237,.15)",
+          border: `2px dashed ${isDragOverlap ? "#dc2626" : "#7c3aed"}`,
+          borderRadius:8, zIndex:1, pointerEvents:"none" }}/>
       )}
 
       {/* Blocked slots */}
@@ -1191,7 +1266,10 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
 
       {/* Appointment blocks */}
       {appts.map(a => (
-        <DraggableApptBlock key={a.id} a={a} onApptClick={onApptClick} />
+        <DraggableApptBlock key={a.id} a={a} onApptClick={onApptClick}
+          resizingDuration={resizing?.id === a.id ? resizing.currentDuration : undefined}
+          onResizeStart={onResizeStart}
+        />
       ))}
     </div>
   );
