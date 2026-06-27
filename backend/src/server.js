@@ -642,6 +642,10 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
   const { service_id, master_id, client_name, client_phone, client_email = "", comment = "", date, start_min, color = "" } = req.body || {};
   if (!client_name || !client_phone || !date || start_min == null)
     return res.status(400).json({ error: "Wymagane: imię klienta, telefon, data, godzina." });
+  if (!Number.isInteger(Number(start_min)) || Number(start_min) < 0 || Number(start_min) > 1439)
+    return res.status(400).json({ error: "Nieprawidłowa godzina." });
+  if (client_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email))
+    return res.status(400).json({ error: "Nieprawidłowy adres e-mail klienta." });
   if (typeof date !== "string" || date < todayPoland())
     return res.status(400).json({ error: "Nie można tworzyć wizyt w przeszłości." });
 
@@ -930,6 +934,10 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
     const phone = String(client_phone).replace(/\s/g, "");
     if (!/^\+?[\d]{7,15}$/.test(phone))
       return res.status(400).json({ error: "Podaj prawidłowy numer telefonu" });
+    if (!Number.isInteger(Number(start_min)) || Number(start_min) < 0 || Number(start_min) > 1439)
+      return res.status(400).json({ error: "Nieprawidłowa godzina." });
+    if (client_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email))
+      return res.status(400).json({ error: "Nieprawidłowy adres e-mail." });
     if (comment && comment.length > 500)
       return res.status(400).json({ error: "Komentarz zbyt długi (max 500 znaków)" });
     if (typeof date !== "string" || date < todayPoland())
