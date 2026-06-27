@@ -147,6 +147,27 @@ async function generateSlug(name, excludeId = null) {
     slug = `${base}-${i++}`;
   }
 }
+// Insert a business row with generated slug, retrying on rare concurrent-registration collisions.
+async function insertBusinessWithSlug(params, slug) {
+  try {
+    const [row] = await q(
+      "INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *",
+      [...params, slug]
+    );
+    return row;
+  } catch (e) {
+    if (e.code === "23505") {
+      // Unique slug collision from concurrent request — append random suffix and retry once
+      const retrySlug = `${slug}-${Math.floor(Math.random() * 9000 + 1000)}`;
+      const [row] = await q(
+        "INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *",
+        [...params, retrySlug]
+      );
+      return row;
+    }
+    throw e;
+  }
+}
 
 function minToTime(min) {
   const h = Math.floor(min / 60).toString().padStart(2, "0");
@@ -287,8 +308,7 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
       [email, hash, verToken]
     );
     const slug = await generateSlug(businessName);
-    await q("INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved')",
-      [owner.id, businessName, cats[0], cats, slug]);
+    await insertBusinessWithSlug([owner.id, businessName, cats[0], cats], slug);
     const safe = { id: Number(owner.id), email: owner.email };
     const token = signToken(safe);
     setAuthCookie(res, token);
@@ -388,10 +408,7 @@ app.post("/api/business", requireAuth, ah(async (req, res) => {
   const cats = rawCats.filter(c => typeof c === "string" && VALID_CAT_IDS.has(c));
   if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
   const slug = await generateSlug(name.trim());
-  const [row] = await q(
-    "INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *",
-    [req.user.id, name.trim(), cats[0], cats, slug]
-  );
+  const row = await insertBusinessWithSlug([req.user.id, name.trim(), cats[0], cats], slug);
   res.json(bizClient(row));
 }));
 
