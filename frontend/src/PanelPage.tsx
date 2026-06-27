@@ -1393,9 +1393,7 @@ function AppointmentsTab({ biz }: { biz: Business }) {
   };
 
   const shiftDate = (d: number) => {
-    const dt = new Date(date + "T00:00:00");
-    dt.setDate(dt.getDate() + d);
-    setDate(dt.toISOString().slice(0,10));
+    setDate(addDays(date, d));
   };
 
   const filterLabels: Record<string, string> = {

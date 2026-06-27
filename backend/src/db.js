@@ -1,5 +1,11 @@
 import pg from "pg";
 
+// Return DATE columns as plain "YYYY-MM-DD" strings instead of JS Date objects.
+// postgres-date (used by pg's type parser) creates new Date(year, month, day) which
+// becomes locale-dependent strings like "Sat Jun 27" via String() — breaking all
+// date comparisons in the frontend calendar (dayAppts filter never matches).
+pg.types.setTypeParser(1082, val => val);
+
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
   console.error("DATABASE_URL is not set. Create a .env file (see .env.example).");

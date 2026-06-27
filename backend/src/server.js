@@ -251,7 +251,9 @@ const apptClient = (a) => ({
   clientPhone: a.client_phone,
   clientEmail: a.client_email || "",
   comment: a.comment || "",
-  date: String(a.date).slice(0,10),
+  date: a.date instanceof Date
+    ? `${a.date.getFullYear()}-${String(a.date.getMonth()+1).padStart(2,"0")}-${String(a.date.getDate()).padStart(2,"0")}`
+    : String(a.date).slice(0,10),
   startMin: a.start_min,
   duration: a.duration,
   status: a.status,
@@ -695,9 +697,12 @@ app.get("/api/blocked", requireAuth, ah(async (req, res) => {
     params.push(start_date, end_date);
   }
   sql += " ORDER BY date, start_min";
+  const fmtDate = d => d instanceof Date
+    ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`
+    : String(d).slice(0,10);
   const mkBlock = (r) => ({
     id: Number(r.id), masterId: r.master_id ? Number(r.master_id) : null,
-    date: r.date.toISOString?.().slice(0,10) || String(r.date),
+    date: fmtDate(r.date),
     startMin: r.start_min, duration: r.duration, label: r.label || "", color: r.color || "",
   });
   res.json((await q(sql, params)).map(mkBlock));
@@ -714,8 +719,9 @@ app.post("/api/blocked", requireAuth, ah(async (req, res) => {
   const [row] = await q(
     `INSERT INTO blocked_slots (business_id, master_id, date, start_min, duration, label, color) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
     [b.id, master_id || null, date, start_min, duration, label, color]);
+  const _fd = d => d instanceof Date ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : String(d).slice(0,10);
   res.json({ id: Number(row.id), masterId: row.master_id ? Number(row.master_id) : null,
-    date: row.date.toISOString?.().slice(0,10) || String(row.date), startMin: row.start_min, duration: row.duration, label: row.label || "", color: row.color || "" });
+    date: _fd(row.date), startMin: row.start_min, duration: row.duration, label: row.label || "", color: row.color || "" });
 }));
 
 app.delete("/api/blocked/:id", requireAuth, ah(async (req, res) => {
@@ -1060,7 +1066,8 @@ app.get("/api/waitlist", requireAuth, ah(async (req, res) => {
      WHERE w.business_id=$1 AND w.notified=FALSE ORDER BY w.created_at DESC`,
     [b.id]
   );
-  res.json(rows.map(r => ({ id: Number(r.id), clientName: r.client_name, clientPhone: r.client_phone, clientEmail: r.client_email, serviceName: r.service_name, preferredDate: r.preferred_date ? String(r.preferred_date).slice(0,10) : null, createdAt: r.created_at })));
+  const _fd2 = d => !d ? null : (d instanceof Date ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}` : String(d).slice(0,10));
+  res.json(rows.map(r => ({ id: Number(r.id), clientName: r.client_name, clientPhone: r.client_phone, clientEmail: r.client_email, serviceName: r.service_name, preferredDate: _fd2(r.preferred_date), createdAt: r.created_at })));
 }));
 
 app.put("/api/waitlist/:id/notify", requireAuth, ah(async (req, res) => {
