@@ -77,7 +77,7 @@ export const api = {
     ).toString();
     return req<Appointment[]>(`/appointments${qs ? "?" + qs : ""}`);
   },
-  createAppointment: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number }) =>
+  createAppointment: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number; color?: string }) =>
     req<Appointment>("/appointments", { method: "POST", body: JSON.stringify(data) }),
   updateAppointment: (id: number, status: string) =>
     req<Appointment>(`/appointments/${id}`, { method: "PUT", body: JSON.stringify({ status }) }),
@@ -87,7 +87,7 @@ export const api = {
   /* blocked slots */
   blocked: (start_date: string, end_date: string) =>
     req<BlockedSlot[]>(`/blocked?start_date=${start_date}&end_date=${end_date}`),
-  addBlocked: (data: { master_id?: number; date: string; start_min: number; duration?: number; label?: string }) =>
+  addBlocked: (data: { master_id?: number; date: string; start_min: number; duration?: number; label?: string; color?: string }) =>
     req<BlockedSlot>("/blocked", { method: "POST", body: JSON.stringify(data) }),
   deleteBlocked: (id: number) =>
     req<{ ok: boolean }>(`/blocked/${id}`, { method: "DELETE" }),

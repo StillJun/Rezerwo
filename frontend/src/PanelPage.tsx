@@ -735,10 +735,12 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
     try {
       const [a, b] = await Promise.all([
         api.appointments({ start_date: start, end_date: end }),
-        api.blocked(start, end),
+        api.blocked(start, end).catch(() => [] as BlockedSlot[]),
       ]);
       setAppts(a);
       setBlocked(b);
+    } catch(e) {
+      console.error("Calendar reload error:", e);
     } finally { setLoading(false); }
   }, [start, end]);
 
@@ -1023,23 +1025,26 @@ function DayColumn({ day, appts, blocked, isFirst, isToday, calHeight, onSlotCli
       )}
 
       {/* Blocked slots */}
-      {blocked.map(bl => (
-        <div key={bl.id} onClick={e => { e.stopPropagation(); onBlockClick(bl); }}
-          style={{ position:"absolute", left:2, right:2,
-            top: calY(bl.startMin), height: calH(bl.duration),
-            background:"repeating-linear-gradient(45deg,#f4f0f8,#f4f0f8 4px,#ebe5f5 4px,#ebe5f5 8px)",
-            border:"1.5px solid #d8b4fe", borderRadius:6,
-            display:"flex", alignItems:"center", padding:"0 6px",
-            cursor:"pointer", zIndex:2, overflow:"hidden" }}>
-          <span style={{ fontSize:10.5, color:"#8b5cf6", fontWeight:700 }}>🚫 {bl.label || "Zajęty"}</span>
-        </div>
-      ))}
+      {blocked.map(bl => {
+        const bc = bl.color || "#8b5cf6";
+        return (
+          <div key={bl.id} onClick={e => { e.stopPropagation(); onBlockClick(bl); }}
+            style={{ position:"absolute", left:2, right:2,
+              top: calY(bl.startMin), height: calH(bl.duration),
+              background: `repeating-linear-gradient(45deg,${bc}18,${bc}18 4px,${bc}30 4px,${bc}30 8px)`,
+              border:`1.5px solid ${bc}`, borderRadius:6,
+              display:"flex", alignItems:"center", padding:"0 6px",
+              cursor:"pointer", zIndex:2, overflow:"hidden" }}>
+            <span style={{ fontSize:10.5, color:bc, fontWeight:700 }}>🚫 {bl.label || "Zajęty"}</span>
+          </div>
+        );
+      })}
 
       {/* Appointment blocks */}
       {appts.map(a => {
         const top    = calY(a.startMin);
         const height = calH(a.duration);
-        const color  = a.serviceColor || ACC;
+        const color  = a.color || a.serviceColor || ACC;
         const light  = color + "22";
         const isDone = a.status === "done" || a.status === "no_show";
         const isPend = a.status === "pending";
@@ -1146,7 +1151,7 @@ function ApptDetailModal({ appt, t, services, onClose, onStatus }: {
 function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }: {
   date: string; startMin: number; services: Service[]; masters: PublicMaster[]; t: T;
   onClose: () => void;
-  onSave: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number }) => Promise<void>;
+  onSave: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number; color?: string }) => Promise<void>;
 }) {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -1154,6 +1159,7 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
   const [comment, setComment] = useState("");
   const [svcId, setSvcId] = useState<number|"">(services[0]?.id || "");
   const [masterId, setMasterId] = useState<number|"">("");
+  const [apptColor, setApptColor] = useState("");
   const [dateVal, setDateVal] = useState(date);
   const [timeVal, setTimeVal] = useState(fmtTimeMin(startMin));
   const [err, setErr] = useState("");
@@ -1175,6 +1181,7 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
         comment: comment.trim() || undefined,
         date: dateVal,
         start_min: smIn,
+        color: apptColor || undefined,
       });
     } catch(e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
@@ -1220,8 +1227,24 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
         )}
         <label style={S.lbl}>{t.p_calComment}</label>
         <textarea style={{...S.input,resize:"vertical" as const,minHeight:52}} value={comment} onChange={e=>setComment(e.target.value)}/>
+        <label style={S.lbl}>{t.p_svcColor}</label>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+          {SVC_COLORS.map(c=>(
+            <button key={c} onClick={()=>setApptColor(apptColor===c?"":c)}
+              style={{width:26,height:26,borderRadius:"50%",background:c,border:"none",cursor:"pointer",
+                outline:apptColor===c?`3px solid ${c}`:"3px solid transparent",outlineOffset:2,
+                transform:apptColor===c?"scale(1.2)":"scale(1)",transition:"transform .12s,outline .12s",flexShrink:0}}/>
+          ))}
+          {apptColor && (
+            <button onClick={()=>setApptColor("")}
+              style={{width:26,height:26,borderRadius:"50%",background:"#f4f0f8",border:"none",cursor:"pointer",
+                display:"grid",placeItems:"center",flexShrink:0}}>
+              <X size={12} color="#8b8194"/>
+            </button>
+          )}
+        </div>
         {err && <div style={S.err}>{err}</div>}
-        <button style={{...S.primary,marginTop:12}} className="btn-primary" disabled={busy} onClick={submit}>
+        <button style={{...S.primary,marginTop:4}} className="btn-primary" disabled={busy} onClick={submit}>
           <Plus size={15}/> {busy?"…":t.p_calNewAppt}
         </button>
       </div>
@@ -1233,12 +1256,13 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
 function BlockModal({ date, startMin, t, onClose, onSave }: {
   date: string; startMin: number; t: T;
   onClose: () => void;
-  onSave: (data: {date:string;start_min:number;duration:number;label?:string}) => Promise<void>;
+  onSave: (data: {date:string;start_min:number;duration:number;label?:string;color?:string}) => Promise<void>;
 }) {
   const [dateVal, setDateVal] = useState(date);
   const [timeVal, setTimeVal] = useState(fmtTimeMin(startMin));
   const [dur, setDur]         = useState(60);
   const [label, setLabel]     = useState("");
+  const [blockColor, setBlockColor] = useState("#8b5cf6");
   const [err, setErr]         = useState("");
   const [busy, setBusy]       = useState(false);
 
@@ -1246,7 +1270,7 @@ function BlockModal({ date, startMin, t, onClose, onSave }: {
     const [hh,mm] = timeVal.split(":").map(Number);
     const sm = hh*60+(mm||0);
     setErr(""); setBusy(true);
-    try { await onSave({date:dateVal,start_min:sm,duration:dur,label:label.trim()||undefined}); }
+    try { await onSave({date:dateVal,start_min:sm,duration:dur,label:label.trim()||undefined,color:blockColor}); }
     catch(e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
 
@@ -1273,8 +1297,17 @@ function BlockModal({ date, startMin, t, onClose, onSave }: {
         <select style={S.input} value={dur} onChange={e=>setDur(Number(e.target.value))}>
           {[30,45,60,90,120,180,240,480].map(d=><option key={d} value={d}>{formatDuration(d,t)}</option>)}
         </select>
+        <label style={S.lbl}>{t.p_svcColor}</label>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+          {SVC_COLORS.map(c=>(
+            <button key={c} onClick={()=>setBlockColor(c)}
+              style={{width:26,height:26,borderRadius:"50%",background:c,border:"none",cursor:"pointer",
+                outline:blockColor===c?`3px solid ${c}`:"3px solid transparent",outlineOffset:2,
+                transform:blockColor===c?"scale(1.2)":"scale(1)",transition:"transform .12s,outline .12s",flexShrink:0}}/>
+          ))}
+        </div>
         {err && <div style={S.err}>{err}</div>}
-        <button style={{...S.primary,marginTop:12}} className="btn-primary" disabled={busy} onClick={submit}>
+        <button style={{...S.primary,marginTop:4}} className="btn-primary" disabled={busy} onClick={submit}>
           <Save size={15}/> {busy?"…":"Zapisz blokadę"}
         </button>
       </div>

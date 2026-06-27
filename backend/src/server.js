@@ -244,6 +244,7 @@ const apptClient = (a) => ({
   serviceName: a.service_name || null,
   servicePrice: a.service_price != null ? Number(a.service_price) : null,
   serviceColor: a.service_color || null,
+  color: a.color || "",
   masterId: a.master_id ? Number(a.master_id) : null,
   masterName: a.master_name || null,
   clientName: a.client_name,
@@ -631,7 +632,7 @@ app.put("/api/appointments/:id", requireAuth, ah(async (req, res) => {
 /* owner: create appointment from panel */
 app.post("/api/appointments", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { service_id, master_id, client_name, client_phone, client_email = "", comment = "", date, start_min } = req.body || {};
+  const { service_id, master_id, client_name, client_phone, client_email = "", comment = "", date, start_min, color = "" } = req.body || {};
   if (!client_name || !client_phone || !date || start_min == null)
     return res.status(400).json({ error: "Wymagane: imię klienta, telefon, data, godzina." });
   if (typeof date !== "string" || date < todayPoland())
@@ -651,9 +652,9 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
   if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
 
   const [row] = await q(`
-    INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed') RETURNING *`,
-    [b.id, service_id || null, mid, client_name, client_phone, client_email, comment, date, start_min, duration]);
+    INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, color)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed',$11) RETURNING *`,
+    [b.id, service_id || null, mid, client_name, client_phone, client_email, comment, date, start_min, duration, color]);
   const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
   const mstR = row.master_id  ? await q("SELECT name FROM masters WHERE id=$1",  [row.master_id])  : [];
   res.json(apptClient({ ...row, service_name: svcR[0]?.name||null, service_price: svcR[0]?.price||null, service_color: svcR[0]?.color||null, master_name: mstR[0]?.name||null }));
@@ -694,26 +695,27 @@ app.get("/api/blocked", requireAuth, ah(async (req, res) => {
     params.push(start_date, end_date);
   }
   sql += " ORDER BY date, start_min";
-  res.json((await q(sql, params)).map(r => ({
+  const mkBlock = (r) => ({
     id: Number(r.id), masterId: r.master_id ? Number(r.master_id) : null,
     date: r.date.toISOString?.().slice(0,10) || String(r.date),
-    startMin: r.start_min, duration: r.duration, label: r.label || "",
-  })));
+    startMin: r.start_min, duration: r.duration, label: r.label || "", color: r.color || "",
+  });
+  res.json((await q(sql, params)).map(mkBlock));
 }));
 
 app.post("/api/blocked", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { master_id, date, start_min, duration = 60, label = "" } = req.body || {};
+  const { master_id, date, start_min, duration = 60, label = "", color = "" } = req.body || {};
   if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
   if (master_id != null) {
     const [m] = await q("SELECT id FROM masters WHERE id=$1 AND business_id=$2", [master_id, b.id]);
     if (!m) return res.status(400).json({ error: "Nie znaleziono specjalisty." });
   }
   const [row] = await q(
-    `INSERT INTO blocked_slots (business_id, master_id, date, start_min, duration, label) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-    [b.id, master_id || null, date, start_min, duration, label]);
+    `INSERT INTO blocked_slots (business_id, master_id, date, start_min, duration, label, color) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+    [b.id, master_id || null, date, start_min, duration, label, color]);
   res.json({ id: Number(row.id), masterId: row.master_id ? Number(row.master_id) : null,
-    date: row.date.toISOString?.().slice(0,10) || String(row.date), startMin: row.start_min, duration: row.duration, label: row.label || "" });
+    date: row.date.toISOString?.().slice(0,10) || String(row.date), startMin: row.start_min, duration: row.duration, label: row.label || "", color: row.color || "" });
 }));
 
 app.delete("/api/blocked/:id", requireAuth, ah(async (req, res) => {

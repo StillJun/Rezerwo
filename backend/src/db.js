@@ -274,6 +274,10 @@ export async function initDb() {
   // ── service color (stage 4) ──────────────────────────────────────────────────
   await pool.query(`ALTER TABLE services ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT ''`).catch(() => {});
 
+  // ── appointment + blocked slot custom colors ─────────────────────────────────
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  await pool.query(`ALTER TABLE blocked_slots ADD COLUMN IF NOT EXISTS color TEXT NOT NULL DEFAULT ''`).catch(() => {});
+
   // ── clients table (stage 3: CRM contacts book) ──────────────────────────────
   await pool.query(`
     CREATE TABLE IF NOT EXISTS clients (
