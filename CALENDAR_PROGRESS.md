@@ -4,68 +4,73 @@
 
 | # | Описание | Статус | Коммит |
 |---|----------|--------|--------|
-| 1 | Drag&drop перенос записи (мышь + тач long-press) | ✅ Готово | — |
-| 2 | Overlap prevention во время drag | ⬜ | — |
-| 3 | Resize за нижний край (изменение длительности) | ⬜ | — |
-| 4 | Tap → actions menu (статус, удалить) | ⬜ | — |
-| 5 | Tap empty slot → create booking (время предзаполнено) | ⬜ | — |
+| 1 | Drag&drop перенос записи (мышь + тач long-press) | ✅ | `b5e4d52` |
+| 2 | Overlap prevention (красный ghost, запрет drop) | ✅ | `2039524` |
+| 3 | Resize за нижний край (изменение длительности) | ✅ | `24b58b1` |
+| 4 | Tap → actions (ApptDetailModal) | ✅ | уже было |
+| 5 | Click empty slot → create booking | ✅ | уже было |
 
 ---
 
-## Этап 1 — Drag&Drop перенос записи ✅
+## Этап 1 — Drag&Drop перенос ✅ `b5e4d52`
 
-**Библиотека:** `@dnd-kit/core` (`PointerSensor` + `TouchSensor`)
+**Библиотека:** `@dnd-kit/core`
 
-### Что сделано
-
-- Установлен `@dnd-kit/core` + `@dnd-kit/utilities`
-- Убран HTML5 drag (`draggable`, `onDragOver`, `onDrop`)
-- Добавлен компонент `DraggableApptBlock` (использует `useDraggable`)
-  - `PointerSensor` с `activationConstraint: { distance: 5 }` — мышь: drag начинается после 5px движения
-  - `TouchSensor` с `activationConstraint: { delay: 250, tolerance: 5 }` — тач: long-press 250ms
-  - `touchAction: 'none'` на блоке — обязательно для тач-drag
-  - Прозрачность 0.35 во время перетаскивания
-- Координаты указателя → столбец/время через `calcTargetFromPointer`
-  - Рефы столбцов хранятся в `colRefsMap` (Map), обновляются через `onColRef`
-  - Snap к 5-минутной сетке
-  - Ограничение: не раньше CAL_S, не позже CAL_E - 15 мин
-- Ghost preview на целевой позиции (фиолетовая рамка) — без изменений
-- После drop: диалог подтверждения `RescheduleConfirmDialog`
-  - "Przenieść wizytę? → {имя} → {дата}, {время}"
-  - [Tak, przenieś] → PATCH `/api/appointments/:id` → update state
-  - [Anuluj] → ничего
-  - Rollback при ошибке бэкенда: `alert` + `reload()`
+- `PointerSensor` `distance:5` — мышь, drag после 5px
+- `TouchSensor` `delay:250, tolerance:5` — long-press 250ms на тач
+- `DraggableApptBlock` с `useDraggable` + `touchAction: 'none'`
+- `colRefsMap` (Map `day → HTMLDivElement`) для вычисления координат
+- `calcTargetFromPointer(clientX, clientY)` → `{date, startMin}` (snap 5 мин)
+- `RescheduleConfirmDialog`: "Przenieść wizytę? → {имя}, {дата}, {время}"
+  - [Tak, przenieś] → PATCH `/api/appointments/:id {date, start_min}` → update state
+  - [Anuluj] → nothing
+  - Rollback при ошибке бэка
 - Если drop на то же время — диалог не показывается
 
-### Ключевые файлы
-
-- `frontend/src/PanelPage.tsx`:
-  - `DraggableApptBlock` (~line 1050) — draggable appointment block
-  - `RescheduleConfirmDialog` (~line 1030) — confirm dialog
-  - `CalendarView.colRefsMap` — refs для вычисления координат
-  - `CalendarView.calcTargetFromPointer` — конвертация clientX/Y → {date, startMin}
-  - `CalendarView.handleDragStart/Move/End/Cancel` — dnd-kit handlers
-
-### Известные ограничения
-
-- Нет auto-scroll при перетаскивании к краю (будет в следующих этапах или по необходимости)
-- При касании appointment block'а для scroll'а — scroll не работает (стандартное ограничение touch drag)
-  - Пользователь должен скроллить за пустые области колонки
+**Ограничение:** Скролл касанием блока записи недоступен (стандарт touch-drag).  
+Скроллить нужно за пустые области колонки.
 
 ---
 
-## Этап 2 — Overlap prevention ⬜
+## Этап 2 — Overlap prevention ✅ `2039524`
 
-Планируется: подсвечивать занятые слоты красным во время drag, блокировать drop если пересечение с другой записью.
+- `isDragOverlap` (useMemo): проверяет, пересекается ли `dragOver` с любой другой активной записью на той же дате
+- Условие: `newStart < existing.startMin + existing.duration && existing.startMin < newStart + dragging.duration`
+- Ghost preview: фиолетовый → красный при overlap
+- `handleDragEnd`: если overlap — Drop игнорируется, диалог не открывается
+- Исключает саму перетаскиваемую запись и отменённые записи
 
-## Этап 3 — Resize ⬜
+---
 
-Планируется: drag за нижний край appointment block'а → изменение `duration`.
+## Этап 3 — Resize за нижний край ✅ `24b58b1`
 
-## Этап 4 — Tap → Actions ⬜
+### Backend
+- `PATCH /api/appointments/:id` расширен: принимает опциональный `duration`
+- Три режима: `{date, start_min}` / `{duration}` / `{date, start_min, duration}`
+- Overlap check использует новую длительность
 
-Уже реализовано через `onApptClick → ApptDetailModal`. Если нужно отдельное action menu — добавить.
+### Frontend
+- `api.resizeAppointment(id, duration)` → PATCH `{duration}`
+- `resizing` state: `{id, date, startMin, originalDuration, currentDuration}`
+- `handleResizeStart(e, a)`: `e.stopPropagation()` → dnd-kit не активируется
+- `useEffect([resizing?.id])`: `document.addEventListener('pointermove'/'pointerup')`
+  - `pointermove`: пересчёт высоты из `clientY - colRect.top`, snap 5 мин, min 15 мин, max 480 мин
+  - `pointerup`: финальный размер, PATCH, update state
+- `DraggableApptBlock`:
+  - Отображает `resizingDuration` вместо `a.duration` во время resize
+  - 10px handle внизу блока, `cursor: ns-resize`
+  - Solid border + усиленная тень во время resize
 
-## Этап 5 — Create from slot ⬜
+---
 
-Уже реализовано через `onSlotClick → NewApptModal`. Работает.
+## Этап 4 — Tap → Actions ✅ (уже было)
+
+Быстрый тап (< 250ms) не активирует TouchSensor → `onClick` → `onApptClick(a)` → `ApptDetailModal`:
+- Статусы: Potwierdź / Odrzuć / Oznacz jako wykonane / No-show
+- Кнопка CRM, информация о записи
+
+---
+
+## Этап 5 — Create from empty slot ✅ (уже было)
+
+Клик на пустую область колонки (className `cal-col`) → `onSlotClick(day, getMin(e))` → `NewApptModal` с предзаполненными датой и временем (snap 15 мин). ПКМ → `NewBlockModal`.
