@@ -421,7 +421,7 @@ const S: Record<string, CSSProperties> = {
   searchCard: { background:"#fff", borderRadius:22, boxShadow:"0 4px 28px rgba(26,19,32,.09), 0 1px 0 rgba(255,255,255,.9) inset", border:"1px solid #efe9ee", maxWidth:780, margin:"0 auto" },
   searchBar:  { display:"flex", alignItems:"center" },
   nameField:  { display:"flex", alignItems:"center", gap:10, flex:1, padding:"16px 18px", minWidth:0 },
-  nameInput:  { border:"none", outline:"none", background:"transparent", fontSize:14, flex:1, color:"#1a1320", minWidth:0, fontFamily:"'Inter',system-ui,sans-serif" },
+  nameInput:  { border:"none", outline:"none", background:"transparent", fontSize:16, flex:1, color:"#1a1320", minWidth:0, fontFamily:"'Inter',system-ui,sans-serif" },
   clearBtn:   { border:"none", background:"none", cursor:"pointer", color:"#8b8194", padding:"0 4px", display:"flex", lineHeight:1, fontSize:18, flexShrink:0 },
   searchDiv:  { width:1, alignSelf:"stretch", background:"#efe9ee", flexShrink:0, margin:"10px 0" },
   locGroup:   { display:"flex", alignItems:"center", flexShrink:0 },
@@ -431,7 +431,7 @@ const S: Record<string, CSSProperties> = {
   cityLabel:      { fontSize:10, fontWeight:700, color:"#a8a2b0", textTransform:"uppercase" as const, letterSpacing:"0.08em", lineHeight:1 },
   cityVal:        { display:"flex", alignItems:"center", gap:4, marginTop:3, minWidth:0 },
   cityDropdown:   { position:"absolute" as const, top:"calc(100% + 6px)", left:0, minWidth:220, zIndex:300, background:"#fff", borderRadius:16, border:"1.5px solid #ece8f0", boxShadow:"0 8px 32px rgba(26,19,32,.12)", overflow:"hidden" },
-  citySearchInput:{ display:"block" as const, width:"100%", border:"none", borderBottom:"1px solid #f0ebf5", padding:"12px 16px", fontSize:13.5, fontFamily:"'Inter',system-ui,sans-serif", outline:"none", background:"#faf8fb", boxSizing:"border-box" as const },
+  citySearchInput:{ display:"block" as const, width:"100%", border:"none", borderBottom:"1px solid #f0ebf5", padding:"12px 16px", fontSize:16, fontFamily:"'Inter',system-ui,sans-serif", outline:"none", background:"#faf8fb", boxSizing:"border-box" as const },
   cityOptItem:    { padding:"10px 16px", fontSize:13.5, cursor:"pointer", color:"#1a1320", userSelect:"none" as const },
 
   // Search button

@@ -2530,7 +2530,7 @@ const S: Record<string, CSSProperties> = {
   svcDesc: { fontSize:12.5, color:"#8b8194", marginTop:3, lineHeight:1.4 },
   svcMeta: { display:"flex", alignItems:"center", gap:4, fontSize:11.5, color:"#8b8194", marginTop:5 },
   svcPrice:{ fontSize:15, fontWeight:700, color:ACC, flexShrink:0 },
-  miniBtn: { width:32, height:32, borderRadius:8, border:"none", background:"#f4f0f8", color:"#8b8194", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
+  miniBtn: { width:44, height:44, borderRadius:8, border:"none", background:"#f4f0f8", color:"#8b8194", cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
 
   overlay: { position:"fixed" as const, inset:0, background:"rgba(26,19,32,.52)", backdropFilter:"blur(4px)", WebkitBackdropFilter:"blur(4px)", display:"flex", alignItems:"flex-start", justifyContent:"center", overflowY:"auto" as const, padding:"20px 16px", zIndex:60 },
   modal:   { background:"#fff", borderRadius:22, width:"100%", maxWidth:440, padding:"20px 22px 26px", boxShadow:"0 24px 70px rgba(0,0,0,.22)", flexShrink:0 as const, margin:"auto 0" },
@@ -2543,7 +2543,7 @@ const S: Record<string, CSSProperties> = {
 
   hoursGrid:{ background:"#fff", borderRadius:16, padding:"10px 14px", marginBottom:10, border:"1px solid #efe9ee" },
   hoursRow: { display:"flex", alignItems:"center", gap:10, padding:"7px 0", borderBottom:"1px solid #efe9ee" },
-  timeInput:{ border:"1.5px solid #efe9ee", borderRadius:10, padding:"5px 8px", fontSize:13, fontFamily:font, background:"#fbf7f4", width:90, color:"#1a1320" },
+  timeInput:{ border:"1.5px solid #efe9ee", borderRadius:10, padding:"5px 8px", fontSize:16, fontFamily:font, background:"#fbf7f4", width:90, color:"#1a1320" },
 
   photoRow: { display:"flex", gap:8, flexWrap:"wrap" as const, marginBottom:8 },
   photoTile:{ position:"relative" as const, width:70, height:70, borderRadius:14, overflow:"hidden", background:"#f4f0f8" },
@@ -2571,9 +2571,9 @@ const S: Record<string, CSSProperties> = {
   catBtn:  { display:"flex", alignItems:"center", gap:8, padding:"11px 12px", borderRadius:14, border:"1.5px solid #efe9ee", background:"#fff", fontSize:13, fontWeight:600, color:"#52525b", cursor:"pointer", fontFamily:font },
   catBtnOn:{ borderColor:ACC, background:"rgba(124,58,237,.06)", color:ACC },
   fieldWrap:{ display:"flex", alignItems:"center", gap:9, background:"#fbf7f4", border:"1.5px solid #efe9ee", borderRadius:14, padding:"0 13px", marginBottom:10 },
-  fieldInput:{ border:"none", outline:"none", background:"transparent", fontSize:14.5, padding:"12px 0", flex:1, fontFamily:font, color:"#1a1320" },
+  fieldInput:{ border:"none", outline:"none", background:"transparent", fontSize:16, padding:"12px 0", flex:1, fontFamily:font, color:"#1a1320" },
   lbl:     { fontSize:12.5, fontWeight:600, color:"#52525b", display:"block", margin:"12px 0 6px" },
-  input:   { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:14.5, outline:"none", background:"#fbf7f4", marginBottom:10, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
+  input:   { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:16, outline:"none", background:"#fbf7f4", marginBottom:10, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
   err:     { background:"#fef2f2", color:"#dc2626", fontSize:13, padding:"11px 13px", borderRadius:10, marginTop:12, textAlign:"center" as const },
   primary: { width:"100%", marginTop:14, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 8px 22px rgba(124,58,237,.35)" },
   switch:  { textAlign:"center" as const, fontSize:13, color:"#8b8194", marginTop:16 },

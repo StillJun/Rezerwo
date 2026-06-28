@@ -117,7 +117,7 @@ const S: Record<string, CSSProperties> = {
   sub:        { fontSize:15, color:"#8b8194", margin:"0 0 24px" },
   card:       { background:"#fff", borderRadius:22, padding:"24px", boxShadow:"0 2px 8px rgba(26,19,32,.05)", border:"1px solid #efe9ee", marginBottom:32 },
   lbl:        { fontSize:12.5, fontWeight:600, color:"#52525b", display:"block", margin:"12px 0 6px" },
-  input:      { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:14.5, outline:"none", background:"#fbf7f4", marginBottom:4, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
+  input:      { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:16, outline:"none", background:"#fbf7f4", marginBottom:4, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
   err:        { background:"#fef2f2", color:"#dc2626", fontSize:13, padding:"10px 12px", borderRadius:10, marginBottom:8, textAlign:"center" as const },
   btn:        { width:"100%", marginTop:14, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 20px rgba(124,58,237,.35)" },
   successBox: { textAlign:"center" as const, padding:"40px 20px", background:"#fff", borderRadius:22, border:"1px solid #efe9ee", marginBottom:32 },

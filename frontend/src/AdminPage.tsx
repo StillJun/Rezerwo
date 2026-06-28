@@ -112,7 +112,7 @@ function BizList({ status }: { status?: "pending"|"approved"|"rejected" }) {
   return (
     <div>
       <input
-        style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #efe9ee",fontSize:13.5,outline:"none",marginBottom:14,boxSizing:"border-box" as const,fontFamily:"inherit"}}
+        style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid #efe9ee",fontSize:16,outline:"none",marginBottom:14,boxSizing:"border-box" as const,fontFamily:"inherit"}}
         placeholder="Szukaj po nazwie, email, mieście…"
         value={search} onChange={e=>setSearch(e.target.value)}
       />
@@ -250,7 +250,7 @@ const S: Record<string, CSSProperties> = {
   body:     { maxWidth:900, margin:"0 auto", padding:"22px 18px 60px" },
   card:     { background:"#fff", borderRadius:20, overflow:"hidden", border:"1px solid #efe9ee", boxShadow:"0 2px 8px rgba(26,19,32,.05)" },
   row:      { display:"flex", alignItems:"flex-start", gap:12, padding:"14px 18px", borderBottom:"1px solid #efe9ee" },
-  actBtn:   { display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:font, transition:"border-color .15s" },
+  actBtn:   { display:"flex", alignItems:"center", gap:5, padding:"8px 12px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:font, transition:"border-color .15s", minHeight:44 },
   empty:    { textAlign:"center" as const, color:"#8b8194", padding:"48px 0", fontSize:14, background:"#fff", borderRadius:20, border:"1px solid #efe9ee" },
   h2:       { fontSize:20, fontWeight:500, margin:"0 0 18px", letterSpacing:"-0.03em", fontFamily:"'Fraunces',Georgia,serif", color:"#1a1320" },
   statsGrid:{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(160px,1fr))", gap:14 },

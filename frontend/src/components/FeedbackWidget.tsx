@@ -101,7 +101,7 @@ const S: Record<string, CSSProperties> = {
   kindBtn:    { padding: "6px 12px", borderRadius: 8, border: "1.5px solid #ece8f0", background: "#faf8fb", fontSize: 12, fontWeight: 600, color: "#71717a", cursor: "pointer", fontFamily: font },
   kindBtnOn:  { background: ACC, color: "#fff", borderColor: ACC },
   lbl:        { fontSize: 12, fontWeight: 600, color: "#52525b", display: "block", marginBottom: 5 },
-  input:      { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #ece8f0", fontSize: 13.5, outline: "none", background: "#faf8fb", boxSizing: "border-box" as const, fontFamily: font, marginBottom: 8 },
+  input:      { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #ece8f0", fontSize: 16, outline: "none", background: "#faf8fb", boxSizing: "border-box" as const, fontFamily: font, marginBottom: 8 },
   err:        { fontSize: 12, color: "#dc2626", marginBottom: 8 },
   btn:        { width: "100%", padding: "11px", borderRadius: 10, border: "none", background: `linear-gradient(135deg,${ACC},#ec4899)`, color: "#fff", fontSize: 13.5, fontWeight: 700, cursor: "pointer", fontFamily: font, marginTop: 4 },
   successIcon:{ width: 44, height: 44, borderRadius: 999, background: `linear-gradient(135deg,${ACC},#ec4899)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto" },
