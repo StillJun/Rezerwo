@@ -2150,6 +2150,8 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
+  const bannerFileRef = useRef<HTMLInputElement>(null);
   const [bulkFrom, setBulkFrom] = useState("09:00");
   const [bulkTo,   setBulkTo]   = useState("18:00");
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
@@ -2217,14 +2219,46 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
       <h2 style={S.h2}>{t.p_profileTitle}</h2>
       <p style={S.muted}>{t.p_profileSub}</p>
 
-      <div style={{...S.bannerPrev,background:BANNERS[form.banner]||BANNERS.brand}}>
-        {form.verified && <span style={S.verTag}><BadgeCheck size={13}/> {t.p_verified}</span>}
-      </div>
-      <div style={S.bannerPick}>
+      {(() => {
+        const isPhoto = form.banner?.startsWith("http");
+        return (
+          <div style={{...S.bannerPrev,
+            background: isPhoto ? "#1a1320" : (BANNERS[form.banner]||BANNERS.brand),
+            backgroundImage: isPhoto ? `url(${form.banner})` : undefined,
+            backgroundSize: "cover", backgroundPosition: "center",
+          }}>
+            {form.verified && <span style={S.verTag}><BadgeCheck size={13}/> {t.p_verified}</span>}
+            {isPhoto && (
+              <button onClick={()=>set("banner","brand")}
+                style={{position:"absolute",right:10,top:10,background:"rgba(0,0,0,.5)",border:"none",borderRadius:999,color:"#fff",cursor:"pointer",padding:"4px 10px",fontSize:12,fontWeight:600,display:"flex",alignItems:"center",gap:4}}>
+                <X size={12}/> Usuń zdjęcie
+              </button>
+            )}
+          </div>
+        );
+      })()}
+      <div style={{...S.bannerPick,alignItems:"center"}}>
         {Object.keys(BANNERS).map(k => (
           <button key={k} style={{...S.bannerSwatch,background:BANNERS[k],outline:form.banner===k?`3px solid ${ACC}`:"none"}}
             onClick={()=>set("banner",k)}/>
         ))}
+        <button
+          onClick={()=>!uploadingBanner&&bannerFileRef.current?.click()}
+          disabled={uploadingBanner}
+          style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:10,border:"1.5px dashed #c4bdd0",background:"#fff",fontSize:12,fontWeight:600,color:"#8b8194",cursor:uploadingBanner?"wait":"pointer",fontFamily:font,flexShrink:0,height:32}}>
+          <Upload size={13}/>
+          {uploadingBanner ? "…" : "Własne zdjęcie"}
+        </button>
+        <input ref={bannerFileRef} type="file" accept="image/*" style={{display:"none"}}
+          onChange={async e => {
+            const file = e.target.files?.[0]; if (!file) return;
+            e.target.value = "";
+            setUploadingBanner(true);
+            try { set("banner", await uploadImage(file, "rezerwo/banners")); }
+            catch(err) { alert((err as Error).message || "Błąd przesyłania"); }
+            finally { setUploadingBanner(false); }
+          }}
+        />
       </div>
 
       <label style={S.lbl}>{t.p_fieldName}</label>
