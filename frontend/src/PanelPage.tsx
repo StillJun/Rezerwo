@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import React from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
@@ -9,10 +9,11 @@ import {
   ExternalLink, Star, BellRing, Flag, MessageSquarePlus, Code, Link, EyeOff, Users,
   Mail, Send, Globe, Navigation, Music, ParkingCircle, CreditCard,
   Accessibility, Sofa, Wind, Wifi, Smartphone, MoreHorizontal, BookUser, Search,
-  CalendarDays, ListChecks,
+  CalendarDays, ListChecks, Upload,
   type LucideIcon,
 } from "lucide-react";
 import { api, setToken, clearToken } from "./api";
+import { uploadImage } from "./lib/cloudinary";
 import { navigate } from "./App";
 import type { Business, BusinessContacts, Service, Meta, Appointment, Review, PublicMaster, Client, BlockedSlot } from "./types";
 import { useTranslation } from "./i18n";
@@ -2147,6 +2148,8 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
   const [saveBusy, setSaveBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoFileRef = useRef<HTMLInputElement>(null);
   const [bulkFrom, setBulkFrom] = useState("09:00");
   const [bulkTo,   setBulkTo]   = useState("18:00");
   useEffect(() => { api.meta().then(setMeta).catch(()=>{}); }, []);
@@ -2339,7 +2342,26 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
             <button style={S.photoDel} onClick={()=>set("photos",form.photos.filter((_,j)=>j!==i))}><X size={12}/></button>
           </div>
         ))}
-        <div style={S.photoAdd}><Image size={18} color="#a8a2b0"/></div>
+        <div style={{...S.photoAdd,cursor:uploadingPhoto?"wait":"pointer",opacity:uploadingPhoto?0.6:1}}
+          onClick={()=>!uploadingPhoto&&photoFileRef.current?.click()}
+          title="Dodaj zdjęcie">
+          {uploadingPhoto
+            ? <span style={{fontSize:10,color:"#a8a2b0"}}>...</span>
+            : <Upload size={18} color="#a8a2b0"/>}
+        </div>
+        <input ref={photoFileRef} type="file" accept="image/*" style={{display:"none"}}
+          onChange={async e => {
+            const file = e.target.files?.[0]; if (!file) return;
+            e.target.value = "";
+            setUploadingPhoto(true);
+            try {
+              const url = await uploadImage(file);
+              set("photos", [...form.photos, url]);
+            } catch(err) {
+              alert((err as Error).message || "Błąd przesyłania zdjęcia");
+            } finally { setUploadingPhoto(false); }
+          }}
+        />
       </div>
       <div style={{display:"flex",gap:8}}>
         <input style={{...S.input,marginBottom:0}} value={photoUrl} onChange={e=>setPhotoUrl(e.target.value)} placeholder={t.p_photoUrlPh}/>
@@ -3081,6 +3103,8 @@ function MasterModal({ master, services, onClose, onSaved }:
   const [serviceIds, setServiceIds] = useState<number[]>(master?.serviceIds || []);
   const [busy, setBusy] = useState(false);
   const [err, setErr]   = useState("");
+  const [uploadingMasterPhoto, setUploadingMasterPhoto] = useState(false);
+  const masterPhotoRef = useRef<HTMLInputElement>(null);
 
   const toggleDay = (day: string) => {
     setHours(prev => {
@@ -3144,7 +3168,33 @@ function MasterModal({ master, services, onClose, onSaved }:
         <input style={S.input} value={name} onChange={e=>setName(e.target.value)} autoFocus/>
 
         <label style={S.lbl}>{t.p_masterPhoto}</label>
-        <input style={S.input} value={photo} onChange={e=>setPhoto(e.target.value)} placeholder="https://…"/>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+          {photo ? (
+            <img src={photo} alt="" style={{width:48,height:48,borderRadius:999,objectFit:"cover",border:"2px solid #efe9ee",flexShrink:0}}
+              onError={e=>((e.target as HTMLImageElement).style.display="none")}/>
+          ) : (
+            <div style={{width:48,height:48,borderRadius:999,background:"#f4f0f8",display:"grid",placeItems:"center",flexShrink:0}}>
+              <User size={20} color="#a8a2b0"/>
+            </div>
+          )}
+          <button type="button" style={{display:"flex",alignItems:"center",gap:6,padding:"8px 14px",borderRadius:999,border:"1.5px solid #efe9ee",background:"#fff",fontSize:13,fontWeight:600,cursor:uploadingMasterPhoto?"wait":"pointer",color:"#52525b",fontFamily:font}}
+            onClick={()=>!uploadingMasterPhoto&&masterPhotoRef.current?.click()}
+            disabled={uploadingMasterPhoto}>
+            <Upload size={14}/>
+            {uploadingMasterPhoto ? "Przesyłanie…" : "Prześlij zdjęcie"}
+          </button>
+          <input ref={masterPhotoRef} type="file" accept="image/*" style={{display:"none"}}
+            onChange={async e => {
+              const file = e.target.files?.[0]; if (!file) return;
+              e.target.value = "";
+              setUploadingMasterPhoto(true);
+              try { setPhoto(await uploadImage(file)); }
+              catch(e2) { alert((e2 as Error).message || "Błąd przesyłania"); }
+              finally { setUploadingMasterPhoto(false); }
+            }}
+          />
+        </div>
+        <input style={S.input} value={photo} onChange={e=>setPhoto(e.target.value)} placeholder="https://… (lub prześlij powyżej)"/>
 
         <label style={S.lbl}>{t.p_masterBio}</label>
         <textarea style={{...S.input,minHeight:56,resize:"vertical" as const,fontFamily:font}}
