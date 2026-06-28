@@ -75,6 +75,7 @@ export async function initDb() {
       created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS idx_appt_biz_date ON appointments(business_id, date);
+    CREATE INDEX IF NOT EXISTS idx_appt_master_date ON appointments(master_id, date);
 
     CREATE TABLE IF NOT EXISTS service_requests (
       id           BIGSERIAL PRIMARY KEY,

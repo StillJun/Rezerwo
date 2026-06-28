@@ -416,6 +416,10 @@ app.put("/api/business", requireAuth, ah(async (req, res) => {
   const b = await myBusiness(req.user.id);
   if (!b) return res.status(404).json({ error: "Brak firmy" });
   const m = { ...bizClient(b), ...req.body };
+  if (!m.name || String(m.name).trim().length === 0) return res.status(400).json({ error: "Nazwa firmy jest wymagana." });
+  if (String(m.name).length > 100) return res.status(400).json({ error: "Nazwa firmy max 100 znaków." });
+  if (m.about && String(m.about).length > 3000) return res.status(400).json({ error: "Opis max 3000 znaków." });
+  if (m.address && String(m.address).length > 300) return res.status(400).json({ error: "Adres max 300 znaków." });
 
   // slug: use custom if provided and valid, otherwise regenerate on name change
   let slug = b.slug;
@@ -461,7 +465,9 @@ app.get("/api/services", requireAuth, ah(async (req, res) => {
 app.post("/api/services", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { grp = "", name, description = "", duration = 30, price = 0, sort = 0, color = "" } = req.body || {};
-  if (!name) return res.status(400).json({ error: "Nazwa usługi jest wymagana" });
+  if (!name || typeof name !== "string" || name.trim().length === 0) return res.status(400).json({ error: "Nazwa usługi jest wymagana" });
+  if (name.length > 200) return res.status(400).json({ error: "Nazwa usługi max 200 znaków." });
+  if (String(description).length > 2000) return res.status(400).json({ error: "Opis max 2000 znaków." });
   if (Number(duration) < 1 || Number(duration) > 1440) return res.status(400).json({ error: "Czas trwania musi wynosić od 1 do 1440 minut." });
   if (Number(price) < 0) return res.status(400).json({ error: "Cena nie może być ujemna." });
   const [row] = await q(`
@@ -476,6 +482,9 @@ app.put("/api/services/:id", requireAuth, ah(async (req, res) => {
   const [cur] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [req.params.id, b.id]);
   if (!cur) return res.status(404).json({ error: "Nie znaleziono" });
   const m = { ...svcClient(cur), ...req.body };
+  if (!m.name || String(m.name).trim().length === 0) return res.status(400).json({ error: "Nazwa usługi jest wymagana" });
+  if (String(m.name).length > 200) return res.status(400).json({ error: "Nazwa usługi max 200 znaków." });
+  if (String(m.description || "").length > 2000) return res.status(400).json({ error: "Opis max 2000 znaków." });
   if (Number(m.duration) < 1 || Number(m.duration) > 1440) return res.status(400).json({ error: "Czas trwania musi wynosić od 1 do 1440 minut." });
   if (Number(m.price) < 0) return res.status(400).json({ error: "Cena nie może być ujemna." });
   const [row] = await q(`
@@ -537,6 +546,8 @@ app.post("/api/masters", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { name, photo = null, bio = null, sort = 0 } = req.body || {};
   if (!name || !String(name).trim()) return res.status(400).json({ error: "Imię jest wymagane" });
+  if (String(name).length > 100) return res.status(400).json({ error: "Imię max 100 znaków." });
+  if (bio && String(bio).length > 500) return res.status(400).json({ error: "Bio max 500 znaków." });
   const [row] = await q(
     `INSERT INTO masters (business_id, name, photo, bio, sort, is_active, working_hours)
      VALUES ($1,$2,$3,$4,$5,TRUE,$6) RETURNING *`,
@@ -558,6 +569,8 @@ app.put("/api/masters/:id", requireAuth, ah(async (req, res) => {
   const rawActive = req.body.is_active !== undefined ? req.body.is_active : req.body.isActive;
   const isActive  = rawActive !== undefined ? Boolean(rawActive) : cur.is_active;
   if (!name) return res.status(400).json({ error: "Imię jest wymagane" });
+  if (name.length > 100) return res.status(400).json({ error: "Imię max 100 znaków." });
+  if (bio && String(bio).length > 500) return res.status(400).json({ error: "Bio max 500 znaków." });
   const [row] = await q(
     `UPDATE masters SET name=$1, photo=$2, bio=$3, sort=$4, is_active=$5
      WHERE id=$6 AND business_id=$7 RETURNING *`,
@@ -705,9 +718,9 @@ app.patch("/api/appointments/:id", requireAuth, ah(async (req, res) => {
   const newStartMin = hasMove   ? Number(start_min) : Number(a.start_min);
   const newDuration = hasResize ? Number(duration)  : Number(a.duration);
 
-  if (hasMove && (!Number.isInteger(newStartMin) || newStartMin < 0 || newStartMin > 1439))
+  if (hasMove && (!/^\d{4}-\d{2}-\d{2}$/.test(newDate) || !Number.isInteger(newStartMin) || newStartMin < 0 || newStartMin > 1439))
     return res.status(400).json({ error: "Nieprawidłowa godzina." });
-  if (hasResize && (!Number.isInteger(newDuration) || newDuration < 5 || newDuration > 480))
+  if (hasResize && (!Number.isInteger(newDuration) || newDuration < 5 || newDuration > 1440))
     return res.status(400).json({ error: "Nieprawidłowy czas trwania." });
 
   const amid = a.master_id ? Number(a.master_id) : null;
@@ -1124,7 +1137,7 @@ app.put("/api/waitlist/:id/notify", requireAuth, ah(async (req, res) => {
 }));
 
 /* ---------- public: feedback ---------- */
-app.post("/api/feedback", async (req, res) => {
+app.post("/api/feedback", supportLimiter, async (req, res) => {
   try {
     const { kind = "bug", message, email = "", page = "" } = req.body || {};
     if (!message || String(message).trim().length < 5)
@@ -1209,6 +1222,8 @@ app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, ah(async (req
 
 // Delete the owner account itself — business cascades via FK ON DELETE CASCADE
 app.delete("/api/admin/owners/:id", requireAuth, requireAdmin, ah(async (req, res) => {
+  if (Number(req.params.id) === req.user.id)
+    return res.status(400).json({ error: "Nie można usunąć własnego konta administratora." });
   const [owner] = await q("SELECT id FROM owners WHERE id=$1", [req.params.id]);
   if (!owner) return res.status(404).json({ error: "Nie znaleziono właściciela" });
   await q("DELETE FROM owners WHERE id=$1", [req.params.id]);
