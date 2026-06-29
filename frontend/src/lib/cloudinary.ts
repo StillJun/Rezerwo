@@ -3,6 +3,8 @@ const PRESET = import.meta.env.VITE_CLOUDINARY_PRESET     as string | undefined;
 
 export async function uploadImage(file: File, folder = "rezerwo"): Promise<string> {
   if (!CLOUD || !PRESET) throw new Error("Cloudinary nie jest skonfigurowany (brak env vars)");
+  if (!file.type.startsWith("image/")) throw new Error("Dozwolone są tylko pliki graficzne");
+  if (file.size > 8 * 1024 * 1024) throw new Error("Plik jest za duży (maks. 8 MB)");
   const fd = new FormData();
   fd.append("file", file);
   fd.append("upload_preset", PRESET);

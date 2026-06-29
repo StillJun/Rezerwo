@@ -75,7 +75,6 @@ export async function initDb() {
       created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     CREATE INDEX IF NOT EXISTS idx_appt_biz_date ON appointments(business_id, date);
-    CREATE INDEX IF NOT EXISTS idx_appt_master_date ON appointments(master_id, date);
 
     CREATE TABLE IF NOT EXISTS service_requests (
       id           BIGSERIAL PRIMARY KEY,
@@ -217,6 +216,7 @@ export async function initDb() {
 
   // Add master_id to appointments (nullable — NULL = any available master)
   await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS master_id BIGINT REFERENCES masters(id) ON DELETE SET NULL`).catch(() => {});
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_appt_master_date ON appointments(master_id, date)`).catch(() => {});
   // Assign existing appointments to their business default master
   await pool.query(`
     UPDATE appointments a

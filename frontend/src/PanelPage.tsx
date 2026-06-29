@@ -349,7 +349,7 @@ function Onboarding({ onCreated, onLogout }: { onCreated: (b: Business) => void;
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="np. Barber Kings"
-              style={{width:"100%",boxSizing:"border-box" as const,padding:"12px 14px",borderRadius:10,border:"1.5px solid #efe9ee",fontSize:15,fontFamily:font,outline:"none"}}
+              style={{width:"100%",boxSizing:"border-box" as const,padding:"12px 14px",borderRadius:10,border:"1.5px solid #efe9ee",fontSize:16,fontFamily:font,outline:"none"}}
               onKeyDown={e => e.key === "Enter" && submit()}
             />
           </div>
@@ -719,7 +719,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
   const [addAppt, setAddAppt]   = useState<{date:string;startMin:number}|null>(null);
   const [addBlock, setAddBlock] = useState<{date:string;startMin:number}|null>(null);
   const [selBlock, setSelBlock] = useState<BlockedSlot|null>(null);
-  const [dragging, setDragging] = useState<{id:number;duration:number}|null>(null);
+  const [dragging, setDragging] = useState<{id:number;duration:number;masterId:number|null}|null>(null);
   const [dragOver, setDragOver] = useState<{date:string;startMin:number}|null>(null);
   const [pendingReschedule, setPendingReschedule] = useState<{appt:Appointment;date:string;startMin:number}|null>(null);
   const [resizing, setResizing] = useState<{
@@ -739,6 +739,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
       a.id !== dragging.id &&
       a.date === dragOver.date &&
       a.status !== "cancelled" &&
+      (dragging.masterId == null || a.masterId == null || a.masterId === dragging.masterId) &&
       dragOver.startMin < a.startMin + a.duration &&
       a.startMin < dragOver.startMin + dragging.duration
     );
@@ -759,7 +760,7 @@ function CalendarView({ biz, services, masters }: { biz: Business; services: Ser
 
   const handleDragStart = (event: DragStartEvent) => {
     const appt = (event.active.data.current as { appt?: Appointment })?.appt;
-    if (appt) setDragging({ id: appt.id, duration: appt.duration });
+    if (appt) setDragging({ id: appt.id, duration: appt.duration, masterId: appt.masterId ?? null });
   };
 
   const handleDragMove = (event: DragMoveEvent) => {
@@ -2390,7 +2391,7 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
             setUploadingPhoto(true);
             try {
               const url = await uploadImage(file);
-              set("photos", [...form.photos, url]);
+              setForm(p => p ? { ...p, photos: [...p.photos, url] } : p);
             } catch(err) {
               alert((err as Error).message || "Błąd przesyłania zdjęcia");
             } finally { setUploadingPhoto(false); }

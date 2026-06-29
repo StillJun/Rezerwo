@@ -532,7 +532,7 @@ function ReviewsSection({ slug }: { slug: string }) {
       {!reviews.length && <div style={S.empty}>{t.noReviews}</div>}
 
       <div style={{display:"flex",flexDirection:"column" as const,gap:10,marginBottom:14}}>
-        {reviews.slice(0,5).map(r => (
+        {reviews.map(r => (
           <div key={r.id} style={{background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 2px 8px #1b142008"}}>
             <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
               <span style={{fontWeight:700,fontSize:14}}>{r.clientName}</span>

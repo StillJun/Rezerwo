@@ -766,7 +766,12 @@ app.get("/api/blocked", requireAuth, ah(async (req, res) => {
 app.post("/api/blocked", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
   const { master_id, date, start_min, duration = 60, label = "", color = "" } = req.body || {};
-  if (!date || start_min == null) return res.status(400).json({ error: "Wymagane: data i godzina." });
+  if (!date || typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date))
+    return res.status(400).json({ error: "Nieprawidłowy format daty." });
+  if (start_min == null || !Number.isInteger(Number(start_min)) || Number(start_min) < 0 || Number(start_min) > 1439)
+    return res.status(400).json({ error: "Nieprawidłowa godzina." });
+  if (!Number.isInteger(Number(duration)) || Number(duration) < 1 || Number(duration) > 1440)
+    return res.status(400).json({ error: "Nieprawidłowy czas trwania." });
   if (master_id != null) {
     const [m] = await q("SELECT id FROM masters WHERE id=$1 AND business_id=$2", [master_id, b.id]);
     if (!m) return res.status(400).json({ error: "Nie znaleziono specjalisty." });
@@ -984,7 +989,7 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
       return res.status(400).json({ error: "Nieprawidłowy adres e-mail." });
     if (comment && comment.length > 500)
       return res.status(400).json({ error: "Komentarz zbyt długi (max 500 znaków)" });
-    if (typeof date !== "string" || date < todayPoland())
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < todayPoland())
       return res.status(400).json({ error: "Nie można rezerwować terminów w przeszłości." });
     const [b] = await q("SELECT * FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
@@ -1092,7 +1097,8 @@ app.post("/api/reviews/:id/report", requireAuth, ah(async (req, res) => {
 }));
 
 /* ---------- public: support ticket ---------- */
-const supportLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele zgłoszeń. Spróbuj za godzinę." } });
+const supportLimiter  = rateLimit({ windowMs: 60 * 60 * 1000, max: 5,  standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele zgłoszeń. Spróbuj za godzinę." } });
+const feedbackLimiter = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Zbyt wiele wiadomości. Spróbuj za godzinę." } });
 app.post("/api/support", supportLimiter, async (req, res) => {
   try {
     const { email, subject, message } = req.body || {};
@@ -1137,7 +1143,7 @@ app.put("/api/waitlist/:id/notify", requireAuth, ah(async (req, res) => {
 }));
 
 /* ---------- public: feedback ---------- */
-app.post("/api/feedback", supportLimiter, async (req, res) => {
+app.post("/api/feedback", feedbackLimiter, async (req, res) => {
   try {
     const { kind = "bug", message, email = "", page = "" } = req.body || {};
     if (!message || String(message).trim().length < 5)
@@ -1168,9 +1174,11 @@ app.post("/api/public/businesses/:slug/service-request", bookLimiter, async (req
 /* ── Admin middleware ── */
 async function requireAdmin(req, res, next) {
   if (!req.user) return res.status(401).json({ error: "Nieautoryzowany" });
-  const [owner] = await q("SELECT role FROM owners WHERE id=$1", [req.user.id]);
-  if (!owner || owner.role !== "admin") return res.status(403).json({ error: "Brak uprawnień" });
-  next();
+  try {
+    const [owner] = await q("SELECT role FROM owners WHERE id=$1", [req.user.id]);
+    if (!owner || owner.role !== "admin") return res.status(403).json({ error: "Brak uprawnień" });
+    next();
+  } catch(e) { next(e); }
 }
 
 /* ── Admin routes ── */
@@ -1222,11 +1230,12 @@ app.delete("/api/admin/businesses/:id", requireAuth, requireAdmin, ah(async (req
 
 // Delete the owner account itself — business cascades via FK ON DELETE CASCADE
 app.delete("/api/admin/owners/:id", requireAuth, requireAdmin, ah(async (req, res) => {
-  if (Number(req.params.id) === req.user.id)
+  const targetId = parseInt(req.params.id, 10);
+  if (isNaN(targetId) || targetId === req.user.id)
     return res.status(400).json({ error: "Nie można usunąć własnego konta administratora." });
-  const [owner] = await q("SELECT id FROM owners WHERE id=$1", [req.params.id]);
+  const [owner] = await q("SELECT id FROM owners WHERE id=$1", [targetId]);
   if (!owner) return res.status(404).json({ error: "Nie znaleziono właściciela" });
-  await q("DELETE FROM owners WHERE id=$1", [req.params.id]);
+  await q("DELETE FROM owners WHERE id=$1", [targetId]);
   res.json({ ok: true });
 }));
 

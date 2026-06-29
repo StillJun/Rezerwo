@@ -157,7 +157,7 @@ export default function MarketplacePage() {
 
   const pickCategory = (id: string) => {
     setCategory(id);
-    if (searched) search({ category: id });
+    search({ category: id });
   };
 
   const districts = city && meta?.cities ? (meta.cities[city] ?? []) : [];
