@@ -1,8 +1,9 @@
 {
-  "name": "Rezerwo",
+  "name": "Rezerwo — rezerwacje online",
   "short_name": "Rezerwo",
-  "description": "Rezerwacje w salonach beauty online — barbershopy, manicure, fryzjerzy i więcej.",
+  "description": "Zarezerwuj wizytę w barbershopie, salonie manicure, fryzjerskim i więcej. Bez rejestracji, w 30 sekund.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#fbf7f4",
   "theme_color": "#7c3aed",
