@@ -168,9 +168,10 @@ export default function PanelPage() {
 function Auth({ onAuth }: { onAuth: () => void }) {
   const { t } = useTranslation();
   const initStep = new URLSearchParams(window.location.search).get("mode") === "login" ? "login" : "choice";
-  const [step, setStep] = useState<"choice"|"register"|"login"|"success">(initStep);
+  const [step, setStep] = useState<"choice"|"profile-type"|"register"|"login"|"success">(initStep);
   const [email, setEmail] = useState(""); const [pw, setPw] = useState("");
   const [biz, setBiz] = useState(""); const [cats, setCats] = useState<string[]>(["barber"]);
+  const [profileType, setProfileType] = useState<"salon"|"master">("salon");
   const [meta, setMeta] = useState<Meta|null>(null);
   const [err, setErr] = useState(""); const [busy, setBusy] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -182,7 +183,7 @@ function Auth({ onAuth }: { onAuth: () => void }) {
     setErr(""); setBusy(true);
     try {
       if (step === "register") {
-        const r = await api.register(email, pw, biz, cats);
+        const r = await api.register(email, pw, biz, cats, profileType);
         setToken(r.token);
         setStep("success");
       } else {
@@ -205,13 +206,54 @@ function Auth({ onAuth }: { onAuth: () => void }) {
         <h1 style={{...S.h1, textAlign:"center" as const, marginBottom:6}}>{t.p_authChoiceTitle}</h1>
         <p style={{...S.sub, textAlign:"center" as const, marginBottom:32}}>{t.p_authChoiceSub}</p>
         <button className="btn-primary" style={{...S.primary, marginBottom:12, display:"flex", justifyContent:"center", gap:8}}
-          onClick={() => switchStep("register")}>
+          onClick={() => { setErr(""); setStep("profile-type"); }}>
           <Store size={17}/> {t.p_authRegisterCompany}
         </button>
         <button style={{...S.primary, background:"transparent", color:ACC, border:`1.5px solid ${ACC}`,
           boxShadow:"none", display:"flex", justifyContent:"center", gap:8}}
           onClick={() => switchStep("login")}>
           {t.p_authAlreadyHave}
+        </button>
+      </div>
+    </div>
+  );
+
+  /* ── profile-type screen ── */
+  if (step === "profile-type") return (
+    <div style={S.authWrap}>
+      <button style={S.backLink} onClick={() => { setErr(""); setStep("choice"); }}>{t.p_authBack}</button>
+      <div style={{...S.authCard, maxWidth:420}} className="rise auth-card">
+        <div style={S.logoRow}>
+          <div style={S.logo}>R</div>
+          <span style={{ fontSize:20, fontWeight:800 }}>Rezerwo</span>
+          <span style={S.panelTag}>{t.p_panelTag}</span>
+        </div>
+        <h1 style={S.h1}>{t.p_profileTypeTitle}</h1>
+        <p style={S.sub}>{t.p_profileTypeSub}</p>
+        {([
+          { id: "salon",  label: t.p_profileTypeSalon,  sub: t.p_profileTypeSalonSub,  icon: <Store size={22}/> },
+          { id: "master", label: t.p_profileTypeMaster, sub: t.p_profileTypeMasterSub, icon: <User  size={22}/> },
+        ] as const).map(opt => {
+          const sel = profileType === opt.id;
+          return (
+            <button key={opt.id} onClick={() => setProfileType(opt.id)}
+              style={{ width:"100%", textAlign:"left" as const, background: sel ? "#f5f0fe" : "#fff",
+                border: `2px solid ${sel ? "#7c3aed" : "#efe9ee"}`, borderRadius:14,
+                padding:"14px 16px", marginBottom:12, cursor:"pointer",
+                display:"flex", alignItems:"center", gap:14,
+                transition:"border-color .15s,background .15s" }}>
+              <div style={{ color: sel ? "#7c3aed" : "#8b8194", flexShrink:0 }}>{opt.icon}</div>
+              <div>
+                <div style={{ fontWeight:700, fontSize:15, color: sel ? "#7c3aed" : "#1a1320" }}>{opt.label}</div>
+                <div style={{ fontSize:12.5, color:"#71717a", marginTop:2 }}>{opt.sub}</div>
+              </div>
+              {sel && <div style={{ marginLeft:"auto", color:"#7c3aed", fontSize:18, flexShrink:0 }}>✓</div>}
+            </button>
+          );
+        })}
+        <button className="btn-primary" style={{...S.primary, marginTop:4}}
+          onClick={() => switchStep("register")}>
+          Dalej →
         </button>
       </div>
     </div>
@@ -237,19 +279,19 @@ function Auth({ onAuth }: { onAuth: () => void }) {
   /* ── register / login form ── */
   return (
     <div style={S.authWrap}>
-      <button style={S.backLink} onClick={() => { setErr(""); setStep("choice"); }}>{t.p_authBackToChoice}</button>
+      <button style={S.backLink} onClick={() => { setErr(""); setStep(step === "register" ? "profile-type" : "choice"); }}>{t.p_authBackToChoice}</button>
       <div style={S.authCard} className="rise auth-card">
         <div style={S.logoRow}>
           <div style={S.logo}>R</div>
           <span style={{ fontSize:20, fontWeight:800 }}>Rezerwo</span>
           <span style={S.panelTag}>{t.p_panelTag}</span>
         </div>
-        <h1 style={S.h1}>{step === "register" ? t.p_authRegisterTitle : t.p_authLoginTitle}</h1>
+        <h1 style={S.h1}>{step === "register" ? (profileType === "master" ? t.p_authRegisterTitleMaster : t.p_authRegisterTitle) : t.p_authLoginTitle}</h1>
         <p style={S.sub}>{t.p_authSub}</p>
 
         {step === "register" && (
           <>
-            <Field icon={<Store size={15}/>} value={biz} onChange={setBiz} placeholder={t.p_bizNamePh}/>
+            <Field icon={<Store size={15}/>} value={biz} onChange={setBiz} placeholder={profileType === "master" ? t.p_bizNameMasterPh : t.p_bizNamePh}/>
             <label style={S.lbl}>{t.p_fieldCategory}</label>
             <div style={S.catGrid} className="cat-grid">
               {meta?.categories.map(c => {
@@ -2217,7 +2259,7 @@ function ProfileTab({ biz, setBiz }: { biz: Business|null; setBiz: (b: Business)
 
   return (
     <div className="rise">
-      <h2 style={S.h2}>{t.p_profileTitle}</h2>
+      <h2 style={S.h2}>{biz?.profileType === "master" ? t.p_profileTitleMaster : t.p_profileTitle}</h2>
       <p style={S.muted}>{t.p_profileSub}</p>
 
       {(() => {

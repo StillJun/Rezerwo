@@ -711,6 +711,13 @@ export default function BusinessPage({ slug }: { slug: string }) {
                 <div style={S.bizName}>
                   {biz.name}
                   {biz.verified && <span style={S.verBadge}><BadgeCheck size={16}/></span>}
+                  {biz.profileType === "master" && (
+                    <span style={{ display:"inline-flex", alignItems:"center", fontSize:11, fontWeight:700,
+                      padding:"3px 9px", borderRadius:999, background:"#f5f0fe", color:"#7c3aed",
+                      marginLeft:8, verticalAlign:"middle", letterSpacing:".02em" }}>
+                      Specjalista
+                    </span>
+                  )}
                   {openStatus && (
                     <span style={{
                       display:"inline-flex", alignItems:"center", gap:4,

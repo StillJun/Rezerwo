@@ -374,7 +374,16 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
         )}
       </div>
       <div style={S.cardBody}>
-        <div style={S.cardName}>{biz.name}</div>
+        <div style={S.cardName}>
+          {biz.name}
+          {biz.profileType === "master" && (
+            <span style={{ display:"inline-flex", alignItems:"center", fontSize:10.5, fontWeight:700,
+              padding:"2px 8px", borderRadius:999, background:"#f5f0fe", color:"#7c3aed",
+              marginLeft:7, verticalAlign:"middle", letterSpacing:".02em" }}>
+              Specjalista
+            </span>
+          )}
+        </div>
         <div style={S.cardMeta}>
           <CategoryIcon id={primaryCat} size={13} color="#8b8194"/>
           {" "}{t.catLabels[primaryCat] ?? primaryCat}
