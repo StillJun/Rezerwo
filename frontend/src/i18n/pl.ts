@@ -442,6 +442,18 @@ export const pl = {
   p_cliDeleteConfirm:      "Czy na pewno usunąć tego klienta z bazy?",
   p_cliNoRodo:             "Wymagana jest zgoda klienta na przetwarzanie danych (RODO).",
   p_cliAddTag:             "Dodaj tag",
+
+  // profile type: salon vs. specialist
+  p_profileTypeTitle:       "Kim jesteś?",
+  p_profileTypeSub:         "Wybierz typ swojego profilu. Możesz to zmienić później.",
+  p_profileTypeSalon:       "Salon / Firma",
+  p_profileTypeSalonSub:    "Prowadzisz salon, studio lub pracujesz z zespołem",
+  p_profileTypeMaster:      "Specjalista",
+  p_profileTypeMasterSub:   "Pracujesz sam/sama, prowadzisz jednoosobową działalność",
+  p_authRegisterTitleMaster:"Załóż konto specjalisty",
+  p_bizNameMasterPh:        "Twoje imię i nazwisko lub pseudonim",
+  p_profileTitleMaster:     "Twój profil",
+  p_badgeSpecjalista:       "Specjalista",
 };
 
 export type T = typeof pl;

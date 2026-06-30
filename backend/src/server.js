@@ -148,11 +148,12 @@ async function generateSlug(name, excludeId = null) {
   }
 }
 // Insert a business row with generated slug, retrying on rare concurrent-registration collisions.
-async function insertBusinessWithSlug(params, slug) {
+async function insertBusinessWithSlug(params, slug, profileType = "salon") {
+  const pt = profileType === "master" ? "master" : "salon";
   try {
     const [row] = await q(
-      "INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *",
-      [...params, slug]
+      "INSERT INTO businesses (owner_id, name, category, categories, slug, status, profile_type) VALUES ($1,$2,$3,$4,$5,'approved',$6) RETURNING *",
+      [...params, slug, pt]
     );
     return row;
   } catch (e) {
@@ -160,8 +161,8 @@ async function insertBusinessWithSlug(params, slug) {
       // Unique slug collision from concurrent request — append random suffix and retry once
       const retrySlug = `${slug}-${Math.floor(Math.random() * 9000 + 1000)}`;
       const [row] = await q(
-        "INSERT INTO businesses (owner_id, name, category, categories, slug, status) VALUES ($1,$2,$3,$4,$5,'approved') RETURNING *",
-        [...params, retrySlug]
+        "INSERT INTO businesses (owner_id, name, category, categories, slug, status, profile_type) VALUES ($1,$2,$3,$4,$5,'approved',$6) RETURNING *",
+        [...params, retrySlug, pt]
       );
       return row;
     }
@@ -245,6 +246,7 @@ const bizClient = (b) => ({
   contacts:  b.contacts  || {},
   amenities: b.amenities || [],
   languages: b.languages || [],
+  profileType: b.profile_type || "salon",
 });
 const publicBizClient = (b) => ({
   id: Number(b.id), slug: b.slug, name: b.name, category: b.category,
@@ -255,6 +257,7 @@ const publicBizClient = (b) => ({
   contacts:  b.contacts  || {},
   amenities: b.amenities || [],
   languages: b.languages || [],
+  profileType: b.profile_type || "salon",
 });
 const svcClient = (s) => ({
   id: Number(s.id), grp: s.grp, name: s.name, description: s.description,
@@ -286,7 +289,7 @@ const apptClient = (a) => ({
 /* ---------- auth ---------- */
 app.post("/api/auth/register", registerLimiter, async (req, res) => {
   try {
-    const { email, password, businessName, categories, category = "barber" } = req.body || {};
+    const { email, password, businessName, categories, category = "barber", profileType = "salon" } = req.body || {};
     if (!email || typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return res.status(400).json({ error: "Podaj prawidłowy email" });
     if (!businessName || typeof businessName !== "string" || businessName.trim().length < 2 || businessName.length > 100)
@@ -308,7 +311,7 @@ app.post("/api/auth/register", registerLimiter, async (req, res) => {
       [email, hash, verToken]
     );
     const slug = await generateSlug(businessName);
-    await insertBusinessWithSlug([owner.id, businessName, cats[0], cats], slug);
+    await insertBusinessWithSlug([owner.id, businessName, cats[0], cats], slug, profileType);
     const safe = { id: Number(owner.id), email: owner.email };
     const token = signToken(safe);
     setAuthCookie(res, token);
@@ -438,19 +441,20 @@ app.put("/api/business", requireAuth, ah(async (req, res) => {
   const cats = rawCats.filter(c => typeof c === "string" && c.trim().length > 0 && VALID_CAT_IDS.has(c));
   if (cats.length === 0) return res.status(400).json({ error: "Wybierz co najmniej jedną prawidłową kategorię." });
   if (cats.length > 10) return res.status(400).json({ error: "Maksymalnie 10 kategorii." });
-  const contacts  = typeof m.contacts  === "object" && m.contacts  !== null ? m.contacts  : {};
-  const amenities = Array.isArray(m.amenities) ? m.amenities : [];
-  const languages = Array.isArray(m.languages) ? m.languages : [];
+  const contacts   = typeof m.contacts  === "object" && m.contacts  !== null ? m.contacts  : {};
+  const amenities  = Array.isArray(m.amenities) ? m.amenities : [];
+  const languages  = Array.isArray(m.languages) ? m.languages : [];
+  const profileType = m.profileType === "master" ? "master" : "salon";
   const [row] = await q(`
     UPDATE businesses SET
       slug=$1, name=$2, category=$3, city=$4, district=$5, address=$6, phone=$7, instagram=$8,
       about=$9, banner=$10, hours=$11, photos=$12, confirm_required=$13, reminder_hours=$14, categories=$15,
-      contacts=$16, amenities=$17, languages=$18
-    WHERE owner_id=$19 RETURNING *`,
+      contacts=$16, amenities=$17, languages=$18, profile_type=$19
+    WHERE owner_id=$20 RETURNING *`,
     [slug, m.name, cats[0], m.city, m.district, m.address, m.phone, m.instagram, m.about, m.banner,
      JSON.stringify(m.hours || {}), JSON.stringify(m.photos || []),
      m.confirmRequired, JSON.stringify(m.reminderHours || [24,4]), cats,
-     JSON.stringify(contacts), amenities, languages,
+     JSON.stringify(contacts), amenities, languages, profileType,
      req.user.id]);
   res.json(bizClient(row));
 }));

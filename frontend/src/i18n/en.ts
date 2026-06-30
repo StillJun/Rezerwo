@@ -409,4 +409,16 @@ export const en: T = {
   p_cliDeleteConfirm:      "Are you sure you want to remove this client from the database?",
   p_cliNoRodo:             "Client's consent to personal data processing (GDPR) is required.",
   p_cliAddTag:             "Add tag",
+
+  // profile type: salon vs. specialist
+  p_profileTypeTitle:       "Who are you?",
+  p_profileTypeSub:         "Choose your profile type. You can change this later.",
+  p_profileTypeSalon:       "Salon / Company",
+  p_profileTypeSalonSub:    "You run a salon, studio or work with a team",
+  p_profileTypeMaster:      "Specialist",
+  p_profileTypeMasterSub:   "You work solo, run a one-person business",
+  p_authRegisterTitleMaster:"Create specialist account",
+  p_bizNameMasterPh:        "Your name or professional name",
+  p_profileTitleMaster:     "Your profile",
+  p_badgeSpecjalista:       "Specialist",
 };

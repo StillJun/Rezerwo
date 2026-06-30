@@ -42,8 +42,8 @@ type AuthOk = { user: User; token: string };
 
 export const api = {
   /* auth */
-  register: (email: string, password: string, businessName: string, categories: string[]) =>
-    req<AuthOk>("/auth/register", { method: "POST", body: JSON.stringify({ email, password, businessName, categories }) }),
+  register: (email: string, password: string, businessName: string, categories: string[], profileType: "salon" | "master" = "salon") =>
+    req<AuthOk>("/auth/register", { method: "POST", body: JSON.stringify({ email, password, businessName, categories, profileType }) }),
   login: (email: string, password: string) =>
     req<AuthOk>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
   logout: () => req<{ ok: boolean }>("/auth/logout", { method: "POST" }),

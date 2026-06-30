@@ -302,5 +302,8 @@ export async function initDb() {
   `).catch(() => {});
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_clients_biz ON clients(business_id)`).catch(() => {});
 
+  // ── profile type: salon vs. individual specialist ────────────────────────────
+  await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS profile_type TEXT NOT NULL DEFAULT 'salon'`).catch(() => {});
+
   console.log("Database ready (tables checked/created)");
 }

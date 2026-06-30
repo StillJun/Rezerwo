@@ -409,4 +409,16 @@ export const ua: T = {
   p_cliDeleteConfirm:      "Ви впевнені, що хочете видалити цього клієнта з бази?",
   p_cliNoRodo:             "Потрібна згода клієнта на обробку персональних даних (GDPR).",
   p_cliAddTag:             "Додати тег",
+
+  // profile type: salon vs. specialist
+  p_profileTypeTitle:       "Хто ви?",
+  p_profileTypeSub:         "Оберіть тип профілю. Це можна змінити пізніше.",
+  p_profileTypeSalon:       "Салон / Компанія",
+  p_profileTypeSalonSub:    "Ви керуєте салоном, студією або працюєте з командою",
+  p_profileTypeMaster:      "Спеціаліст",
+  p_profileTypeMasterSub:   "Ви працюєте самостійно, ведете приватну практику",
+  p_authRegisterTitleMaster:"Створити акаунт спеціаліста",
+  p_bizNameMasterPh:        "Ваше ім'я або псевдонім",
+  p_profileTitleMaster:     "Ваш профіль",
+  p_badgeSpecjalista:       "Specjalista",
 };

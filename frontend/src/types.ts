@@ -15,6 +15,7 @@ export interface Business {
   contacts?: BusinessContacts;
   amenities?: string[];
   languages?: string[];
+  profileType?: "salon" | "master";
 }
 
 export interface Service {
@@ -37,6 +38,7 @@ export interface PublicBusiness {
   contacts?: BusinessContacts;
   amenities?: string[];
   languages?: string[];
+  profileType?: "salon" | "master";
 }
 
 export interface PublicService {
