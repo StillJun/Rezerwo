@@ -24,6 +24,7 @@ import { Select } from "./components/Select";
 import type { SelectOption } from "./components/Select";
 import { DndContext, useDraggable, useSensor, useSensors, PointerSensor, TouchSensor } from "@dnd-kit/core";
 import type { DragStartEvent, DragMoveEvent, DragEndEvent } from "@dnd-kit/core";
+import { QRCodeCanvas } from "qrcode.react";
 
 const ACC  = "#7c3aed";
 const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
@@ -3005,8 +3006,10 @@ function WidgetTab({ biz }: { biz: Business }) {
   const { t } = useTranslation();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [copiedQr,   setCopiedQr]   = useState(false);
+  const qrRef = useRef<HTMLCanvasElement>(null);
 
-  const profileUrl = biz.slug ? `${window.location.origin}/${biz.slug}` : "";
+  const profileUrl = biz.slug ? `https://www.getrezerwo.pl/${biz.slug}` : "";
   const btnCode = profileUrl
     ? `<a href="${profileUrl}" style="display:inline-block;padding:12px 24px;background:linear-gradient(115deg,#7c3aed,#e0399e,#ff7a59);color:#fff;font-family:Inter,sans-serif;font-size:15px;font-weight:700;border-radius:999px;text-decoration:none;">📅 Zarezerwuj w Rezerwo</a>`
     : "";
@@ -3015,6 +3018,103 @@ function WidgetTab({ biz }: { biz: Business }) {
     navigator.clipboard.writeText(text)
       .then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); })
       .catch(() => { alert(text); });
+  };
+
+  const downloadQr = () => {
+    const canvas = qrRef.current;
+    if (!canvas) return;
+    const a = document.createElement("a");
+    a.download = `rezerwo-qr-${biz.slug || "salon"}.png`;
+    a.href = canvas.toDataURL("image/png");
+    a.click();
+  };
+
+  const downloadCard = () => {
+    const qrCanvas = qrRef.current;
+    if (!qrCanvas) return;
+
+    const W = 600, H = 700;
+    const c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+
+    // white background
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+
+    // top gradient band
+    const grad = ctx.createLinearGradient(0, 0, W, 0);
+    grad.addColorStop(0,   "#7c3aed");
+    grad.addColorStop(0.5, "#d6409f");
+    grad.addColorStop(1,   "#ff7a59");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, 10);
+
+    // QR code (220×220, centred)
+    const QR_SIZE = 220;
+    const QR_X = (W - QR_SIZE) / 2;
+    const QR_Y = 60;
+    ctx.drawImage(qrCanvas, QR_X, QR_Y, QR_SIZE, QR_SIZE);
+
+    // salon name
+    const name = biz.name || "";
+    ctx.font = "bold 32px 'Inter', system-ui, sans-serif";
+    ctx.fillStyle = "#1a1320";
+    ctx.textAlign = "center";
+    const MAX_NAME = W - 60;
+    let displayName = name;
+    while (ctx.measureText(displayName).width > MAX_NAME && displayName.length > 4) {
+      displayName = displayName.slice(0, -1);
+    }
+    if (displayName !== name) displayName += "…";
+    ctx.fillText(displayName, W / 2, QR_Y + QR_SIZE + 52);
+
+    // "Zarezerwuj online" text
+    ctx.font = "500 20px 'Inter', system-ui, sans-serif";
+    ctx.fillStyle = "#52525b";
+    ctx.fillText("Zarezerwuj online", W / 2, QR_Y + QR_SIZE + 88);
+
+    // URL text
+    ctx.font = "400 13px 'Inter', system-ui, sans-serif";
+    ctx.fillStyle = "#8b8194";
+    ctx.fillText(profileUrl, W / 2, QR_Y + QR_SIZE + 116);
+
+    // Rezerwo badge at bottom
+    const BADGE_Y = H - 60;
+    const BADGE_W = 130, BADGE_H = 36, BADGE_R = 18;
+    const bx = (W - BADGE_W) / 2;
+    const gradB = ctx.createLinearGradient(bx, 0, bx + BADGE_W, 0);
+    gradB.addColorStop(0, "#7c3aed"); gradB.addColorStop(1, "#d6409f");
+    ctx.fillStyle = gradB;
+    ctx.beginPath();
+    ctx.moveTo(bx + BADGE_R, BADGE_Y);
+    ctx.lineTo(bx + BADGE_W - BADGE_R, BADGE_Y);
+    ctx.quadraticCurveTo(bx + BADGE_W, BADGE_Y, bx + BADGE_W, BADGE_Y + BADGE_R);
+    ctx.lineTo(bx + BADGE_W, BADGE_Y + BADGE_H - BADGE_R);
+    ctx.quadraticCurveTo(bx + BADGE_W, BADGE_Y + BADGE_H, bx + BADGE_W - BADGE_R, BADGE_Y + BADGE_H);
+    ctx.lineTo(bx + BADGE_R, BADGE_Y + BADGE_H);
+    ctx.quadraticCurveTo(bx, BADGE_Y + BADGE_H, bx, BADGE_Y + BADGE_H - BADGE_R);
+    ctx.lineTo(bx, BADGE_Y + BADGE_R);
+    ctx.quadraticCurveTo(bx, BADGE_Y, bx + BADGE_R, BADGE_Y);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = "bold 15px 'Inter', system-ui, sans-serif";
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText("Rezerwo", W / 2, BADGE_Y + 23);
+
+    const a = document.createElement("a");
+    a.download = `rezerwo-karta-${biz.slug || "salon"}.png`;
+    a.href = c.toDataURL("image/png");
+    a.click();
+  };
+
+  const share = async () => {
+    if (typeof navigator.share === "function") {
+      try { await navigator.share({ title: biz.name, url: profileUrl }); } catch { /* user cancelled */ }
+    } else {
+      copy(profileUrl, setCopiedQr);
+    }
   };
 
   if (!profileUrl) return (
@@ -3042,6 +3142,68 @@ function WidgetTab({ biz }: { biz: Business }) {
           <a href={profileUrl} target="_blank" rel="noreferrer" style={WS.previewLink}>
             <ExternalLink size={14}/> {t.w_preview}
           </a>
+        </div>
+      </div>
+
+      {/* QR code */}
+      <div style={WS.section}>
+        <div style={WS.secHead}>
+          <span style={{ fontSize:18, lineHeight:1 }}>▦</span>
+          <span style={WS.secTitle}>{t.w_qrTitle}</span>
+        </div>
+        <p style={{ fontSize:13, color:"#71717a", margin:"0 0 16px" }}>{t.w_qrSub}</p>
+
+        {/* Hidden offscreen QR canvas used for download */}
+        <div style={{ position:"absolute", left:"-9999px", top:0 }} aria-hidden>
+          <QRCodeCanvas
+            ref={qrRef}
+            value={profileUrl}
+            size={400}
+            level="H"
+            bgColor="#ffffff"
+            fgColor="#1a1320"
+            imageSettings={{
+              src: "/favicon.svg",
+              x: undefined, y: undefined,
+              height: 64, width: 64,
+              excavate: true,
+            }}
+          />
+        </div>
+
+        {/* Visible QR */}
+        <div style={{ display:"flex", justifyContent:"center", marginBottom:16 }}>
+          <div style={{ background:"#fff", borderRadius:16, padding:16, boxShadow:"0 2px 12px #1b142012", border:"1px solid #efe9ee", display:"inline-flex" }}>
+            <QRCodeCanvas
+              value={profileUrl}
+              size={200}
+              level="H"
+              bgColor="#ffffff"
+              fgColor="#1a1320"
+              imageSettings={{
+                src: "/favicon.svg",
+                x: undefined, y: undefined,
+                height: 32, width: 32,
+                excavate: true,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* URL display */}
+        <div style={{ ...WS.codeBox, textAlign:"center" as const, fontSize:12, marginBottom:14 }}>{profileUrl}</div>
+
+        {/* Buttons */}
+        <div style={{ display:"flex", flexWrap:"wrap" as const, gap:8 }}>
+          <button onClick={downloadQr} style={WS.copyBtn}>
+            ⬇ {t.w_qrDownload}
+          </button>
+          <button onClick={downloadCard} style={{ ...WS.copyBtn, background:"#1a1320" }}>
+            🖨 {t.w_qrCard}
+          </button>
+          <button onClick={share} style={{ ...WS.copyBtn, background: copiedQr ? "#16a34a" : undefined }}>
+            {typeof navigator.share === "function" ? `↗ ${t.w_qrShare}` : copiedQr ? `✓ ${t.p_copied}` : `⎘ ${t.w_qrCopyLink}`}
+          </button>
         </div>
       </div>
 

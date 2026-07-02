@@ -291,6 +291,14 @@ export const en: T = {
   w_preview:           "Preview",
   w_btnPreview:        "Button preview:",
 
+  // widget: QR code
+  w_qrTitle:           "QR Code",
+  w_qrSub:             "Print or share with clients — one scan and they can book a visit.",
+  w_qrDownload:        "Download QR (PNG)",
+  w_qrCard:            "Download print card",
+  w_qrShare:           "Share",
+  w_qrCopyLink:        "Copy link",
+
   benefit1:    "Online booking 24/7",
   benefit1Sub: "Book anytime — the salon is always available",
   benefit2:    "Done in 30 seconds",

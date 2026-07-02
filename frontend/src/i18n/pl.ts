@@ -315,6 +315,14 @@ export const pl = {
   w_preview:           "Podgląd",
   w_btnPreview:        "Podgląd przycisku:",
 
+  // widget: QR code
+  w_qrTitle:           "Kod QR",
+  w_qrSub:             "Wydrukuj lub udostępnij klientom — jeden skan i mogą zarezerwować wizytę.",
+  w_qrDownload:        "Pobierz QR (PNG)",
+  w_qrCard:            "Pobierz kartę do druku",
+  w_qrShare:           "Udostępnij",
+  w_qrCopyLink:        "Kopiuj link",
+
   // marketplace: benefits
   benefit1:    "Rezerwacja online 24/7",
   benefit1Sub: "Rezerwuj kiedy chcesz — salon czeka o każdej porze",
