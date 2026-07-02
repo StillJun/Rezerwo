@@ -427,6 +427,17 @@ export const pl = {
   p_calConflict:           "Ten termin nakłada się na istniejącą rezerwację.",
   p_calNoHours:            "Godziny pracy nieustalone — uzupełnij profil.",
   p_calDeleteBlock:        "Usuń blokadę",
+  p_calDuration:           "Czas trwania (min)",
+  p_calVisitType:          "Typ wizyty",
+  p_calOwnerNote:          "Notatka prywatna",
+  p_calOwnerNotePh:        "Widoczna tylko dla Ciebie…",
+  p_calCustomPrice:        "Cena własna (zł)",
+  p_calCustomPricePh:      "Puste = cena usługi",
+  p_calVisitNormal:        "Standardowa",
+  p_calVisitVip:           "VIP",
+  p_calVisitModel:         "Modelka",
+  p_calVisitFree:          "Bezpłatna",
+  p_calSrcManual:          "Dodano ręcznie",
 
   // clients (CRM contacts book)
   p_tabClients:            "Klienci",

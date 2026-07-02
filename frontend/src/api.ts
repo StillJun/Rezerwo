@@ -77,7 +77,7 @@ export const api = {
     ).toString();
     return req<Appointment[]>(`/appointments${qs ? "?" + qs : ""}`);
   },
-  createAppointment: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number; color?: string }) =>
+  createAppointment: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number; color?: string; duration?: number; source?: string; visit_type?: string; owner_note?: string; custom_price?: number }) =>
     req<Appointment>("/appointments", { method: "POST", body: JSON.stringify(data) }),
   updateAppointment: (id: number, status: string) =>
     req<Appointment>(`/appointments/${id}`, { method: "PUT", body: JSON.stringify({ status }) }),

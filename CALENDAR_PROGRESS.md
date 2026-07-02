@@ -1,5 +1,37 @@
 # Calendar Drag&Drop — Progress
 
+---
+
+## Диагностика "Nowa wizyta" (Шаг 0) — результаты
+
+| # | Место | Проблема |
+|---|-------|----------|
+| 1 | `server.js:683` | `date < todayPoland()` блокирует прошедшие даты — нельзя занести walk-in |
+| 2 | `server.js:691` | Overlap-check при `master_id=null` проверяет ALL записи бизнеса — ложный 409 при нескольких мастерах |
+| 3 | `NewApptModal` | Нет поля `duration` — длительность не задаётся вручную |
+| 4 | Весь стек | Нет `source` (manual/online), `visit_type`, `owner_note`, `custom_price` |
+
+**Итог:** ошибка 400 («в прошлом») или 409 (overlap) отображается в `setErr`, форма не закрывается.
+
+### Новые колонки appointments
+```sql
+source       TEXT DEFAULT 'online'   -- 'online' | 'manual'
+visit_type   TEXT DEFAULT 'normal'   -- 'normal' | 'vip' | 'model' | 'free'
+owner_note   TEXT DEFAULT ''
+custom_price NUMERIC                 -- NULL = цена услуги
+```
+
+### Статус Шаг 1-4
+| Шаг | Описание | Статус |
+|-----|----------|--------|
+| 0 | Диагностика | ✅ |
+| 1 | Fix: source, duration, past-date для manual | ✅ |
+| 2 | Гибкое бронирование (visit_type, owner_note, custom_price) | ✅ |
+| 3 | Визуальная дифференциация в календаре | ✅ |
+| 4 | ApptDetailModal: показ новых полей | ✅ |
+
+---
+
 ## Этапы
 
 | # | Описание | Статус | Коммит |

@@ -305,5 +305,11 @@ export async function initDb() {
   // ── profile type: salon vs. individual specialist ────────────────────────────
   await pool.query(`ALTER TABLE businesses ADD COLUMN IF NOT EXISTS profile_type TEXT NOT NULL DEFAULT 'salon'`).catch(() => {});
 
+  // ── manual booking fields ─────────────────────────────────────────────────────
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'online'`).catch(() => {});
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS visit_type TEXT NOT NULL DEFAULT 'normal'`).catch(() => {});
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS owner_note TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS custom_price NUMERIC`).catch(() => {});
+
   console.log("Database ready (tables checked/created)");
 }

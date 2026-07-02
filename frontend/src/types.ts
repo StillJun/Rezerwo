@@ -62,6 +62,10 @@ export interface Appointment {
   clientName: string; clientPhone: string; clientEmail: string; comment: string;
   date: string; startMin: number; duration: number;
   status: "pending" | "confirmed" | "cancelled" | "done" | "no_show";
+  source?: "online" | "manual";
+  visitType?: "normal" | "vip" | "model" | "free";
+  ownerNote?: string;
+  customPrice?: number | null;
   createdAt: string;
 }
 

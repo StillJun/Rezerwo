@@ -1209,11 +1209,17 @@ function DraggableApptBlock({ a, onApptClick, resizingDuration, onResizeStart }:
       {h <= 26 ? (
         <div style={{ fontSize:10, fontWeight:700, color:txtMain, lineHeight:1, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
           {fmtTimeMin(a.startMin)} {a.clientName}
+          {a.source === "manual" && <span style={{ opacity:0.7 }}> ✍</span>}
         </div>
       ) : (
         <>
-          <div style={{ fontSize:9.5, fontWeight:600, color:txtSub, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden" }}>
-            {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + displayDur)}
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <div style={{ fontSize:9.5, fontWeight:600, color:txtSub, lineHeight:1.25, whiteSpace:"nowrap", overflow:"hidden" }}>
+              {fmtTimeMin(a.startMin)}–{fmtTimeMin(a.startMin + displayDur)}
+            </div>
+            {a.source === "manual" && (
+              <span title="Ręczna" style={{ fontSize:9, color:txtSub, flexShrink:0, marginLeft:2 }}>✍</span>
+            )}
           </div>
           <div style={{ fontSize:11, fontWeight:700, color:txtMain, lineHeight:1.3, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
             {a.clientName}
@@ -1221,6 +1227,13 @@ function DraggableApptBlock({ a, onApptClick, resizingDuration, onResizeStart }:
           {h > 44 && a.serviceName && (
             <div style={{ fontSize:9.5, color:txtSub, lineHeight:1.2, overflow:"hidden", whiteSpace:"nowrap", textOverflow:"ellipsis" }}>
               {a.serviceName}
+            </div>
+          )}
+          {h > 36 && a.visitType && a.visitType !== "normal" && (
+            <div style={{ fontSize:8, fontWeight:800, color:"#fff",
+              background: visitTypeBg(a.visitType), borderRadius:3, padding:"1px 4px",
+              display:"inline-block", marginTop:2, letterSpacing:"0.05em" }}>
+              {a.visitType.toUpperCase()}
             </div>
           )}
         </>
@@ -1346,18 +1359,33 @@ function ApptDetailModal({ appt, t, services, onClose, onStatus }: {
           <span style={{ ...S.statusBadge, background:"#f3f4f6", color:"#374151" }}>
             {appt.date.split("-").reverse().join(".")} {fmtTimeMin(appt.startMin)}–{fmtTimeMin(appt.startMin+appt.duration)}
           </span>
+          {appt.visitType && appt.visitType !== "normal" && (
+            <span style={{ ...S.statusBadge, background: visitTypeBg(appt.visitType), color:"#fff" }}>
+              {appt.visitType.toUpperCase()}
+            </span>
+          )}
+          {appt.source === "manual" && (
+            <span style={{ ...S.statusBadge, background:"#ede9fe", color:"#5b21b6" }}>✍ ręczna</span>
+          )}
         </div>
         {appt.serviceName && (
           <div style={{ fontSize:13.5, color:"#52525b", marginBottom:6 }}>
-            ✂️ {appt.serviceName}{appt.servicePrice ? ` · ${appt.servicePrice} zł` : ""}
+            ✂️ {appt.serviceName}
+            {appt.customPrice != null ? ` · ${appt.customPrice} zł` : appt.servicePrice ? ` · ${appt.servicePrice} zł` : ""}
+            {appt.visitType === "free" && <span style={{ color:"#10b981", fontWeight:700 }}> (bezpłatna)</span>}
           </div>
         )}
         {appt.masterName && (
           <div style={{ fontSize:13, color:"#52525b", marginBottom:6 }}>👤 {appt.masterName}</div>
         )}
         {appt.comment && (
-          <div style={{ background:"#f9f7fc", borderRadius:10, padding:"8px 12px", fontSize:13, color:"#52525b", marginBottom:14, lineHeight:1.5 }}>
+          <div style={{ background:"#f9f7fc", borderRadius:10, padding:"8px 12px", fontSize:13, color:"#52525b", marginBottom:8, lineHeight:1.5 }}>
             💬 {appt.comment}
+          </div>
+        )}
+        {appt.ownerNote && (
+          <div style={{ background:"#ede9fe", borderRadius:10, padding:"8px 12px", fontSize:13, color:"#5b21b6", marginBottom:8, lineHeight:1.5 }}>
+            🔒 {appt.ownerNote}
           </div>
         )}
         {appt.clientEmail && <div style={{ fontSize:13, color:"#8b8194", marginBottom:10 }}>✉️ {appt.clientEmail}</div>}
@@ -1393,10 +1421,17 @@ function ApptDetailModal({ appt, t, services, onClose, onStatus }: {
 }
 
 /* ── NewApptModal ── */
+function visitTypeBg(vt: string): string {
+  if (vt === "vip")   return "#f59e0b";
+  if (vt === "model") return "#ec4899";
+  if (vt === "free")  return "#10b981";
+  return "#8b5cf6";
+}
+
 function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }: {
   date: string; startMin: number; services: Service[]; masters: PublicMaster[]; t: T;
   onClose: () => void;
-  onSave: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number; color?: string }) => Promise<void>;
+  onSave: (data: { service_id?: number; master_id?: number; client_name: string; client_phone: string; client_email?: string; comment?: string; date: string; start_min: number; color?: string; duration?: number; source?: string; visit_type?: string; owner_note?: string; custom_price?: number }) => Promise<void>;
 }) {
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
@@ -1407,8 +1442,17 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
   const [apptColor, setApptColor] = useState("");
   const [dateVal, setDateVal] = useState(date);
   const [timeVal, setTimeVal] = useState(fmtTimeMin(startMin));
+  const [durVal, setDurVal] = useState<number>(services[0]?.duration || 60);
+  const [visitType, setVisitType] = useState<"normal"|"vip"|"model"|"free">("normal");
+  const [ownerNote, setOwnerNote] = useState("");
+  const [customPrice, setCustomPrice] = useState("");
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const svc = services.find(s => s.id === Number(svcId));
+    if (svc) setDurVal(svc.duration);
+  }, [svcId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
     if (!clientName.trim()) { setErr(t.p_calClientName.replace(" *","")+": wymagane"); return; }
@@ -1427,6 +1471,11 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
         date: dateVal,
         start_min: smIn,
         color: apptColor || undefined,
+        duration: durVal,
+        source: "manual",
+        visit_type: visitType !== "normal" ? visitType : undefined,
+        owner_note: ownerNote.trim() || undefined,
+        custom_price: customPrice ? Number(customPrice) : undefined,
       });
     } catch(e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
@@ -1453,6 +1502,11 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
             <label style={S.lbl}>{t.p_calTime}</label>
             <input type="time" style={S.input} value={timeVal} onChange={e=>setTimeVal(e.target.value)}/>
           </div>
+          <div style={{flex:"0 0 90px"}}>
+            <label style={S.lbl}>{t.p_calDuration}</label>
+            <input type="number" min={5} max={480} style={S.input} value={durVal}
+              onChange={e=>setDurVal(Math.max(5,Math.min(480,Number(e.target.value)||60)))}/>
+          </div>
         </div>
         {services.length > 0 && (
           <>
@@ -1472,8 +1526,27 @@ function NewApptModal({ date, startMin, services, masters, t, onClose, onSave }:
             </select>
           </>
         )}
+        <div style={{display:"flex",gap:10}}>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_calVisitType}</label>
+            <select style={S.input} value={visitType} onChange={e=>setVisitType(e.target.value as "normal"|"vip"|"model"|"free")}>
+              <option value="normal">{t.p_calVisitNormal}</option>
+              <option value="vip">{t.p_calVisitVip}</option>
+              <option value="model">{t.p_calVisitModel}</option>
+              <option value="free">{t.p_calVisitFree}</option>
+            </select>
+          </div>
+          <div style={{flex:1}}>
+            <label style={S.lbl}>{t.p_calCustomPrice}</label>
+            <input type="number" min={0} style={S.input} value={customPrice}
+              onChange={e=>setCustomPrice(e.target.value)} placeholder={t.p_calCustomPricePh}/>
+          </div>
+        </div>
         <label style={S.lbl}>{t.p_calComment}</label>
         <textarea style={{...S.input,resize:"vertical" as const,minHeight:52}} value={comment} onChange={e=>setComment(e.target.value)}/>
+        <label style={S.lbl}>{t.p_calOwnerNote}</label>
+        <textarea style={{...S.input,resize:"vertical" as const,minHeight:48,color:"#7c3aed"}} value={ownerNote}
+          onChange={e=>setOwnerNote(e.target.value)} placeholder={t.p_calOwnerNotePh}/>
         <label style={S.lbl}>{t.p_svcColor}</label>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
           {SVC_COLORS.map(c=>(

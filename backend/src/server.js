@@ -283,6 +283,10 @@ const apptClient = (a) => ({
   startMin: a.start_min,
   duration: a.duration,
   status: a.status,
+  source: a.source || "online",
+  visitType: a.visit_type || "normal",
+  ownerNote: a.owner_note || "",
+  customPrice: a.custom_price != null ? Number(a.custom_price) : null,
   createdAt: a.created_at,
 });
 
@@ -673,21 +677,31 @@ app.put("/api/appointments/:id", requireAuth, ah(async (req, res) => {
 /* owner: create appointment from panel */
 app.post("/api/appointments", requireAuth, ah(async (req, res) => {
   const b = await requireBusiness(req, res); if (!b) return;
-  const { service_id, master_id, client_name, client_phone, client_email = "", comment = "", date, start_min, color = "" } = req.body || {};
+  const {
+    service_id, master_id, client_name, client_phone, client_email = "", comment = "",
+    date, start_min, color = "",
+    source = "online", visit_type = "normal", owner_note = "", custom_price,
+    duration: durationOverride,
+  } = req.body || {};
   if (!client_name || !client_phone || !date || start_min == null)
     return res.status(400).json({ error: "Wymagane: imię klienta, telefon, data, godzina." });
   if (!Number.isInteger(Number(start_min)) || Number(start_min) < 0 || Number(start_min) > 1439)
     return res.status(400).json({ error: "Nieprawidłowa godzina." });
   if (client_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(client_email))
     return res.status(400).json({ error: "Nieprawidłowy adres e-mail klienta." });
-  if (typeof date !== "string" || date < todayPoland())
+  // Manual entries by the owner may be past dates (e.g., recording a walk-in after the fact)
+  if (typeof date !== "string" || (source !== "manual" && date < todayPoland()))
     return res.status(400).json({ error: "Nie można tworzyć wizyt w przeszłości." });
 
   const [svc] = service_id ? await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]) : [null];
-  const duration = svc?.duration || 60;
+  // Owner can override duration; otherwise use service duration or 60 min default
+  const duration = (durationOverride && Number.isInteger(Number(durationOverride)) && Number(durationOverride) >= 5)
+    ? Number(durationOverride)
+    : (svc?.duration || 60);
   const mid = master_id ? Number(master_id) : null;
 
-  // Overlap check scoped to the same master (or business-wide if no master)
+  // Overlap check: when master_id is set, check only that master's appointments;
+  // when null, check all business appointments (single-chair salon behaviour)
   const [overlap] = await q(`
     SELECT id FROM appointments
     WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')
@@ -696,10 +710,17 @@ app.post("/api/appointments", requireAuth, ah(async (req, res) => {
     [b.id, date, start_min, duration, mid]);
   if (overlap) return res.status(409).json({ error: "Ten termin nakłada się na istniejącą rezerwację." });
 
+  const safeSource    = ["online","manual"].includes(source) ? source : "online";
+  const safeVisitType = ["normal","vip","model","free"].includes(visit_type) ? visit_type : "normal";
+  const safePrice     = custom_price != null && !isNaN(Number(custom_price)) ? Number(custom_price) : null;
+
   const [row] = await q(`
-    INSERT INTO appointments (business_id, service_id, master_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, color)
-    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed',$11) RETURNING *`,
-    [b.id, service_id || null, mid, client_name, client_phone, client_email, comment, date, start_min, duration, color]);
+    INSERT INTO appointments
+      (business_id, service_id, master_id, client_name, client_phone, client_email, comment,
+       date, start_min, duration, status, color, source, visit_type, owner_note, custom_price)
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'confirmed',$11,$12,$13,$14,$15) RETURNING *`,
+    [b.id, service_id || null, mid, client_name, client_phone, client_email, comment,
+     date, start_min, duration, color, safeSource, safeVisitType, owner_note, safePrice]);
   // Owner creates appointment manually — notify client only, not the owner themselves
   notifyClientBooking(row.id, "created").catch(() => {});
   const svcR = row.service_id ? await q("SELECT name, price, color FROM services WHERE id=$1", [row.service_id]) : [];
