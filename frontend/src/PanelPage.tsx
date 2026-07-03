@@ -3274,7 +3274,7 @@ function WidgetTab({ biz }: { biz: Business }) {
           <button onClick={downloadCard} style={{ ...WS.copyBtn, background:"#1a1320" }}>
             🖨 {t.w_qrCard}
           </button>
-          <button onClick={share} style={{ ...WS.copyBtn, background: copiedQr ? "#16a34a" : undefined }}>
+          <button onClick={share} style={{ ...WS.copyBtn, background: copiedQr ? "#16a34a" : GRAD }}>
             {typeof navigator.share === "function" ? `↗ ${t.w_qrShare}` : copiedQr ? `✓ ${t.p_copied}` : `⎘ ${t.w_qrCopyLink}`}
           </button>
         </div>

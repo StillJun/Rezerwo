@@ -539,7 +539,7 @@ function ReviewsSection({ slug }: { slug: string }) {
               <Stars rating={r.rating}/>
             </div>
             {r.text && <p style={{fontSize:13.5,color:"#52525b",margin:0,lineHeight:1.5}}>{r.text}</p>}
-            <div style={{fontSize:11.5,color:"#c4bdd0",marginTop:6}}>{String(r.createdAt).slice(0,10)}</div>
+            <div style={{fontSize:11.5,color:"#c4bdd0",marginTop:6}}>{String(r.createdAt).slice(0,10).split("-").reverse().join(".")}</div>
           </div>
         ))}
       </div>
