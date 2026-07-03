@@ -356,6 +356,8 @@ export const ua: T = {
   p_contactMapsPh:         "https://maps.google.com/...",
   p_contactsSub:           "Порожні поля не будуть видні клієнтам.",
 
+  p_contactMap:            "Карта",
+
   p_openNow:               "Відкрито зараз",
   p_closedNow:             "Зачинено",
   p_openFrom:              (time: string) => `Відкривається о ${time}`,
@@ -439,5 +441,5 @@ export const ua: T = {
   p_authRegisterTitleMaster:"Створити акаунт спеціаліста",
   p_bizNameMasterPh:        "Ваше ім'я або псевдонім",
   p_profileTitleMaster:     "Ваш профіль",
-  p_badgeSpecjalista:       "Specjalista",
+  p_badgeSpecjalista:       "Спеціаліст",
 };

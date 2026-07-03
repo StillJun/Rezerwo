@@ -384,6 +384,9 @@ export const pl = {
   p_contactMapsPh:         "https://maps.google.com/...",
   p_contactsSub:           "Puste pola nie będą widoczne dla klientów.",
 
+  // profile: contact links
+  p_contactMap:            "Mapa",
+
   // profile: open/closed badge
   p_openNow:               "Otwarte teraz",
   p_closedNow:             "Zamknięte",

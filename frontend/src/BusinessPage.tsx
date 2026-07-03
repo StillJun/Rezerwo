@@ -174,7 +174,7 @@ function BookingWizard({ biz, initService, onClose }: {
 
   const services = biz.services || [];
   const groups: Record<string,PublicService[]> = {};
-  services.forEach(s => { (groups[s.grp||"Usługi"] ||= []).push(s); });
+  services.forEach(s => { (groups[s.grp||t.services] ||= []).push(s); });
 
   // Step numbering depends on whether master choice is available
   const stepNumMap: Record<WizardStep,number> = hasMasterChoice
@@ -669,7 +669,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
 
   const services = biz.services||[];
   const groups: Record<string,PublicService[]> = {};
-  services.forEach(s=>{ (groups[s.grp||"Usługi"]||=[]).push(s); });
+  services.forEach(s=>{ (groups[s.grp||t.services]||=[]).push(s); });
 
   const workingDays = DAY_ORDER.filter(d=>biz.hours?.[d]);
   const DAY_PL = t.days;
@@ -715,7 +715,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
                     <span style={{ display:"inline-flex", alignItems:"center", fontSize:11, fontWeight:700,
                       padding:"3px 9px", borderRadius:999, background:"#f5f0fe", color:"#7c3aed",
                       marginLeft:8, verticalAlign:"middle", letterSpacing:".02em" }}>
-                      Specjalista
+                      {t.p_badgeSpecjalista}
                     </span>
                   )}
                   {openStatus && (
@@ -780,7 +780,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
             { key:"facebook",   icon:<Globe size={13}/>,      label: "Facebook" },
             { key:"tiktok",     icon:<Music size={13}/>,      label: "TikTok" },
             { key:"website",    icon:<Link size={13}/>,       label: biz.contacts.website?.replace(/^https?:\/\//,"").split("/")[0] },
-            { key:"googleMaps", icon:<Navigation size={13}/>, label: "Mapa" },
+            { key:"googleMaps", icon:<Navigation size={13}/>, label: t.p_contactMap },
           ] as const).map(({ key, icon, label }) => {
             const val = biz.contacts![key as keyof typeof biz.contacts];
             if (!val) return null;
@@ -797,8 +797,13 @@ export default function BusinessPage({ slug }: { slug: string }) {
         {/* amenities */}
         {biz.amenities && biz.amenities.length > 0 && (() => {
           const ADEF: Record<string,string> = {
-            parking:"🅿️ Parking", card:"💳 Karta", disabled:"♿ Dostęp", waiting:"🛋️ Poczekalnia",
-            ac:"❄️ AC", wifi:"📶 WiFi", blik:"📱 BLIK",
+            parking: "🅿️ " + t.p_amenParking,
+            card:    "💳 " + t.p_amenCard,
+            disabled:"♿ " + t.p_amenDisabled,
+            waiting: "🛋️ " + t.p_amenWaiting,
+            ac:      "❄️ " + t.p_amenAC,
+            wifi:    "📶 " + t.p_amenWifi,
+            blik:    "📱 " + t.p_amenBlik,
           };
           return (
             <div style={{display:"flex",flexWrap:"wrap" as const,gap:6,marginBottom:16}}>

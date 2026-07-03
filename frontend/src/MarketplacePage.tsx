@@ -380,7 +380,7 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
             <span style={{ display:"inline-flex", alignItems:"center", fontSize:10.5, fontWeight:700,
               padding:"2px 8px", borderRadius:999, background:"#f5f0fe", color:"#7c3aed",
               marginLeft:7, verticalAlign:"middle", letterSpacing:".02em" }}>
-              Specjalista
+              {t.p_badgeSpecjalista}
             </span>
           )}
         </div>

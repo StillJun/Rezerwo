@@ -356,6 +356,8 @@ export const en: T = {
   p_contactMapsPh:         "https://maps.google.com/...",
   p_contactsSub:           "Empty fields will not be shown to clients.",
 
+  p_contactMap:            "Map",
+
   p_openNow:               "Open now",
   p_closedNow:             "Closed",
   p_openFrom:              (time: string) => `Opens at ${time}`,
