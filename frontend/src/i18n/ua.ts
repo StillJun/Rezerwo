@@ -408,6 +408,11 @@ export const ua: T = {
   p_calVisitModel:         "Модель",
   p_calVisitFree:          "Безкоштовно",
   p_calSrcManual:          "Додано вручну",
+  p_calBusyLabel:          "Зайнято",
+  p_calSaveBlock:          "Зберегти блок",
+  p_uploadPhoto:           "Завантажити фото",
+  p_uploadBanner:          "Власне фото",
+  p_uploading:             "Завантаження…",
 
   p_tabClients:            "Клієнти",
   p_cliTitle:              "База клієнтів",
@@ -442,4 +447,34 @@ export const ua: T = {
   p_bizNameMasterPh:        "Ваше ім'я або псевдонім",
   p_profileTitleMaster:     "Ваш профіль",
   p_badgeSpecjalista:       "Спеціаліст",
+
+  // marketplace: labels
+  cityFieldLabel:           "МІСТО",
+  districtFieldLabel:       "РАЙОН",
+  categoriesLabel:          "КАТЕГОРІЇ",
+  catCount:                 (n: number) => `${n} послуг`,
+  verified:                 "Перевірено",
+
+  // panel: onboarding & common
+  p_logout:                 "Вийти",
+  p_onboardTitle:           "Створіть профіль салону",
+  p_onboardSub:             "Заповніть кілька полів, щоб почати приймати бронювання.",
+  p_bizNameLabel:           "НАЗВА САЛОНУ",
+  p_onboardErrName:         "Назва повинна мати не менше 2 символів.",
+  p_onboardErrCats:         "Виберіть принаймні одну категорію.",
+  p_onboardCreating:        "Створення…",
+  p_onboardSubmit:          "Створити профіль",
+  p_rescheduleTitle:        "Перенести відвідування?",
+  p_rescheduleConfirm:      "Так, перенести",
+  p_profileLoadErr:         "Не вдалося завантажити профіль",
+  p_loadingPanel:           "Завантаження панелі…",
+  p_loadingPanelSub:        "Перший запуск може зайняти до 60 секунд.",
+
+  // email verification page
+  p_verifying:              "Перевірка…",
+  p_verifiedOk:             "Email підтверджено!",
+  p_verifiedOkSub:          "Ваш профіль тепер видно в каталозі Rezerwo.",
+  p_verifiedGo:             "Перейти до панелі",
+  p_verifiedBadLink:        "Недійсне посилання",
+  p_verifiedBadLinkSub:     "Посилання для підтвердження недійсне або вже використане. Увійдіть до панелі та надішліть посилання повторно.",
 };

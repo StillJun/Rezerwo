@@ -441,6 +441,11 @@ export const pl = {
   p_calVisitModel:         "Modelka",
   p_calVisitFree:          "Bezpłatna",
   p_calSrcManual:          "Dodano ręcznie",
+  p_calBusyLabel:          "Zajęty",
+  p_calSaveBlock:          "Zapisz blokadę",
+  p_uploadPhoto:           "Prześlij zdjęcie",
+  p_uploadBanner:          "Własne zdjęcie",
+  p_uploading:             "Przesyłanie…",
 
   // clients (CRM contacts book)
   p_tabClients:            "Klienci",
@@ -476,6 +481,36 @@ export const pl = {
   p_bizNameMasterPh:        "Twoje imię i nazwisko lub pseudonim",
   p_profileTitleMaster:     "Twój profil",
   p_badgeSpecjalista:       "Specjalista",
+
+  // marketplace: labels
+  cityFieldLabel:           "MIASTO",
+  districtFieldLabel:       "DZIELNICA",
+  categoriesLabel:          "KATEGORIE",
+  catCount:                 (n: number) => `${n} usług`,
+  verified:                 "Zweryfikowany",
+
+  // panel: onboarding & common
+  p_logout:                 "Wyloguj się",
+  p_onboardTitle:           "Stwórz profil swojego salonu",
+  p_onboardSub:             "Uzupełnij kilka danych, aby zacząć przyjmować rezerwacje.",
+  p_bizNameLabel:           "NAZWA SALONU",
+  p_onboardErrName:         "Nazwa musi mieć minimum 2 znaki.",
+  p_onboardErrCats:         "Wybierz co najmniej jedną kategorię.",
+  p_onboardCreating:        "Tworzenie…",
+  p_onboardSubmit:          "Stwórz profil",
+  p_rescheduleTitle:        "Przenieść wizytę?",
+  p_rescheduleConfirm:      "Tak, przenieś",
+  p_profileLoadErr:         "Nie można załadować profilu",
+  p_loadingPanel:           "Ładowanie panelu…",
+  p_loadingPanelSub:        "Pierwsze uruchomienie może potrwać do 60 sekund.",
+
+  // email verification page
+  p_verifying:              "Weryfikacja…",
+  p_verifiedOk:             "Email potwierdzony!",
+  p_verifiedOkSub:          "Twój profil jest teraz widoczny w wyszukiwarce Rezerwo.",
+  p_verifiedGo:             "Przejdź do panelu",
+  p_verifiedBadLink:        "Nieprawidłowy link",
+  p_verifiedBadLinkSub:     "Link weryfikacyjny jest nieprawidłowy lub już został wykorzystany. Zaloguj się do panelu i wyślij link ponownie.",
 };
 
 export type T = typeof pl;

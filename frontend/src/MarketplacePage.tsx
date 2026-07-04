@@ -62,6 +62,7 @@ function CityField({ label, value, placeholder, options, onChange, searchable }:
   options: { value: string; label: string }[];
   onChange: (v: string) => void; searchable?: boolean;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen]   = useState(false);
   const [q,    setQ]      = useState("");
   const ref      = useRef<HTMLDivElement>(null);
@@ -100,7 +101,7 @@ function CityField({ label, value, placeholder, options, onChange, searchable }:
         <div style={S.cityDropdown}>
           {searchable && (
             <input ref={inputRef} value={q} onChange={e => setQ(e.target.value)}
-              placeholder="Szukaj…" style={S.citySearchInput}/>
+              placeholder={t.selectSearch} style={S.citySearchInput}/>
           )}
           <div style={{ maxHeight:240, overflowY:"auto" as const }}>
             {filtered.map(o => (
@@ -221,12 +222,12 @@ export default function MarketplacePage() {
 
             {/* Location group */}
             <div style={S.locGroup} className="search-loc-group">
-              <CityField label="MIASTO" value={city} placeholder={t.allCities}
+              <CityField label={t.cityFieldLabel} value={city} placeholder={t.allCities}
                 options={cityOpts} onChange={v => { setCity(v); setDistrict(""); }} searchable/>
               {city && districts.length > 0 && (
                 <>
                   <div style={S.searchDiv} className="search-div"/>
-                  <CityField label="DZIELNICA" value={district} placeholder={t.allDistricts}
+                  <CityField label={t.districtFieldLabel} value={district} placeholder={t.allDistricts}
                     options={distOpts} onChange={setDistrict}/>
                 </>
               )}
@@ -246,8 +247,8 @@ export default function MarketplacePage() {
       {meta && (
         <section style={S.catSection}>
           <div style={S.catHeader}>
-            <span style={S.catHeaderLabel}>KATEGORIE</span>
-            <span style={S.catHeaderCount}>{catCount} usług</span>
+            <span style={S.catHeaderLabel}>{t.categoriesLabel}</span>
+            <span style={S.catHeaderCount}>{t.catCount(catCount)}</span>
           </div>
           <div style={S.catGrid} className="cat-grid">
             <button className="cat-card" style={{ ...S.catCard, ...(!category ? S.catCardActive : {}) }}
@@ -255,7 +256,7 @@ export default function MarketplacePage() {
               <div style={{ ...S.catBadge, background: !category ? "rgba(255,255,255,.28)":"rgba(124,58,237,.13)" }}>
                 <span style={{ fontSize:18 }}>✦</span>
               </div>
-              <span style={{ ...S.catCardLabel, color: !category ? "#fff":"#1a1320" }}>Wszystkie</span>
+              <span style={{ ...S.catCardLabel, color: !category ? "#fff":"#1a1320" }}>{t.allCategories}</span>
             </button>
             {meta.categories.map(c => {
               const cfg    = CAT_BY_ID[c.id];
@@ -269,7 +270,7 @@ export default function MarketplacePage() {
                     <span style={{ fontSize:18 }}>{c.emoji}</span>
                   </div>
                   <span style={{ ...S.catCardLabel, color: active ? "#fff":"#1a1320" }}>
-                    {cfg?.displayLabel ?? c.pl}
+                    {t.catLabels[c.id] ?? cfg?.displayLabel ?? c.pl}
                   </span>
                 </button>
               );
@@ -370,7 +371,7 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
     <div className="biz-card" style={S.card} onClick={() => navigate(`/${biz.slug}`)}>
       <div style={{ ...S.cardBanner, background: BANNERS[biz.banner] || BANNERS.brand }}>
         {biz.verified && (
-          <span style={S.verBadge}><BadgeCheck size={12}/> Zweryfikowany</span>
+          <span style={S.verBadge}><BadgeCheck size={12}/> {t.verified}</span>
         )}
       </div>
       <div style={S.cardBody}>

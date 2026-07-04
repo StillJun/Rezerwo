@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
 import { api } from "./api";
 import { navigate } from "./App";
+import { useTranslation } from "./i18n";
 
 export default function VerifyEmailPage() {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<"loading" | "ok" | "error">("loading");
 
   useEffect(() => {
@@ -22,28 +24,27 @@ export default function VerifyEmailPage() {
   return (
     <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: MESH, fontFamily: "'Inter',system-ui,sans-serif" }}>
       <div style={{ textAlign: "center", maxWidth: 420, padding: 32, background: "#fff", borderRadius: 26, border: "1px solid #efe9ee", boxShadow: "0 8px 40px rgba(26,19,32,.08)" }}>
-        {status === "loading" && <p style={{ color: "#8b8194", fontSize: 15 }}>Weryfikacja…</p>}
+        {status === "loading" && <p style={{ color: "#8b8194", fontSize: 15 }}>{t.p_verifying}</p>}
 
         {status === "ok" && (
           <>
             <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
-            <h1 style={{ color: "#7c3aed", fontSize: 24, marginBottom: 8, fontWeight: 500, fontFamily: "'Fraunces',Georgia,serif", letterSpacing: "-0.02em" }}>Email potwierdzony!</h1>
+            <h1 style={{ color: "#7c3aed", fontSize: 24, marginBottom: 8, fontWeight: 500, fontFamily: "'Fraunces',Georgia,serif", letterSpacing: "-0.02em" }}>{t.p_verifiedOk}</h1>
             <p style={{ color: "#52525b", marginBottom: 24, lineHeight: 1.6, fontSize: 15 }}>
-              Twój profil jest teraz widoczny w wyszukiwarce Rezerwo.
+              {t.p_verifiedOkSub}
             </p>
-            <button onClick={() => navigate("/panel")} style={btn}>Przejdź do panelu</button>
+            <button onClick={() => navigate("/panel")} style={btn}>{t.p_verifiedGo}</button>
           </>
         )}
 
         {status === "error" && (
           <>
             <div style={{ fontSize: 52, marginBottom: 16 }}>❌</div>
-            <h1 style={{ color: "#dc2626", fontSize: 24, marginBottom: 8, fontWeight: 500, fontFamily: "'Fraunces',Georgia,serif", letterSpacing: "-0.02em" }}>Nieprawidłowy link</h1>
+            <h1 style={{ color: "#dc2626", fontSize: 24, marginBottom: 8, fontWeight: 500, fontFamily: "'Fraunces',Georgia,serif", letterSpacing: "-0.02em" }}>{t.p_verifiedBadLink}</h1>
             <p style={{ color: "#52525b", marginBottom: 24, lineHeight: 1.6, fontSize: 15 }}>
-              Link weryfikacyjny jest nieprawidłowy lub już został wykorzystany.
-              Zaloguj się do panelu i wyślij link ponownie.
+              {t.p_verifiedBadLinkSub}
             </p>
-            <button onClick={() => navigate("/panel")} style={btn}>Panel właściciela</button>
+            <button onClick={() => navigate("/panel")} style={btn}>{t.p_ownerPanel}</button>
           </>
         )}
       </div>

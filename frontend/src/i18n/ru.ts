@@ -408,6 +408,11 @@ export const ru: T = {
   p_calVisitModel:         "Модель",
   p_calVisitFree:          "Бесплатно",
   p_calSrcManual:          "Добавлено вручную",
+  p_calBusyLabel:          "Занято",
+  p_calSaveBlock:          "Сохранить блок",
+  p_uploadPhoto:           "Загрузить фото",
+  p_uploadBanner:          "Своё фото",
+  p_uploading:             "Загрузка…",
 
   p_tabClients:            "Клиенты",
   p_cliTitle:              "База клиентов",
@@ -442,4 +447,34 @@ export const ru: T = {
   p_bizNameMasterPh:        "Ваше имя или псевдоним",
   p_profileTitleMaster:     "Ваш профиль",
   p_badgeSpecjalista:       "Специалист",
+
+  // marketplace: labels
+  cityFieldLabel:           "ГОРОД",
+  districtFieldLabel:       "РАЙОН",
+  categoriesLabel:          "КАТЕГОРИИ",
+  catCount:                 (n: number) => `${n} услуг`,
+  verified:                 "Проверен",
+
+  // panel: onboarding & common
+  p_logout:                 "Выйти",
+  p_onboardTitle:           "Создайте профиль салона",
+  p_onboardSub:             "Заполните несколько полей, чтобы начать принимать записи.",
+  p_bizNameLabel:           "НАЗВАНИЕ САЛОНА",
+  p_onboardErrName:         "Название должно быть не менее 2 символов.",
+  p_onboardErrCats:         "Выберите хотя бы одну категорию.",
+  p_onboardCreating:        "Создание…",
+  p_onboardSubmit:          "Создать профиль",
+  p_rescheduleTitle:        "Перенести запись?",
+  p_rescheduleConfirm:      "Да, перенести",
+  p_profileLoadErr:         "Не удалось загрузить профиль",
+  p_loadingPanel:           "Загрузка панели…",
+  p_loadingPanelSub:        "Первый запуск может занять до 60 секунд.",
+
+  // email verification page
+  p_verifying:              "Проверка…",
+  p_verifiedOk:             "Email подтверждён!",
+  p_verifiedOkSub:          "Ваш профиль теперь виден в каталоге Rezerwo.",
+  p_verifiedGo:             "Перейти в панель",
+  p_verifiedBadLink:        "Недействительная ссылка",
+  p_verifiedBadLinkSub:     "Ссылка для подтверждения недействительна или уже использована. Войдите в панель и отправьте ссылку повторно.",
 };

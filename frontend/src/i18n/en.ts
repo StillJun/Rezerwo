@@ -408,6 +408,11 @@ export const en: T = {
   p_calVisitModel:         "Model",
   p_calVisitFree:          "Free",
   p_calSrcManual:          "Added manually",
+  p_calBusyLabel:          "Busy",
+  p_calSaveBlock:          "Save block",
+  p_uploadPhoto:           "Upload photo",
+  p_uploadBanner:          "Custom image",
+  p_uploading:             "Uploading…",
 
   p_tabClients:            "Clients",
   p_cliTitle:              "Client database",
@@ -442,4 +447,34 @@ export const en: T = {
   p_bizNameMasterPh:        "Your name or professional name",
   p_profileTitleMaster:     "Your profile",
   p_badgeSpecjalista:       "Specialist",
+
+  // marketplace: labels
+  cityFieldLabel:           "CITY",
+  districtFieldLabel:       "DISTRICT",
+  categoriesLabel:          "CATEGORIES",
+  catCount:                 (n: number) => `${n} services`,
+  verified:                 "Verified",
+
+  // panel: onboarding & common
+  p_logout:                 "Log out",
+  p_onboardTitle:           "Create your salon profile",
+  p_onboardSub:             "Fill in a few details to start accepting bookings.",
+  p_bizNameLabel:           "SALON NAME",
+  p_onboardErrName:         "Name must be at least 2 characters.",
+  p_onboardErrCats:         "Select at least one category.",
+  p_onboardCreating:        "Creating…",
+  p_onboardSubmit:          "Create profile",
+  p_rescheduleTitle:        "Reschedule appointment?",
+  p_rescheduleConfirm:      "Yes, reschedule",
+  p_profileLoadErr:         "Could not load profile",
+  p_loadingPanel:           "Loading panel…",
+  p_loadingPanelSub:        "First launch may take up to 60 seconds.",
+
+  // email verification page
+  p_verifying:              "Verifying…",
+  p_verifiedOk:             "Email confirmed!",
+  p_verifiedOkSub:          "Your profile is now visible in the Rezerwo marketplace.",
+  p_verifiedGo:             "Go to panel",
+  p_verifiedBadLink:        "Invalid link",
+  p_verifiedBadLinkSub:     "The verification link is invalid or has already been used. Sign in to the panel and resend the link.",
 };
