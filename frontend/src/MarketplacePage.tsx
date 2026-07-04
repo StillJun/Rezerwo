@@ -440,7 +440,7 @@ const S: Record<string, CSSProperties> = {
   cityTrigger:    { display:"flex", flexDirection:"column", gap:2, padding:"10px 16px", background:"none", border:"none", cursor:"pointer", minWidth:120, maxWidth:170, fontFamily:"'Inter',system-ui,sans-serif", textAlign:"left" as const, width:"100%" },
   cityLabel:      { fontSize:10, fontWeight:700, color:"#a8a2b0", textTransform:"uppercase" as const, letterSpacing:"0.08em", lineHeight:1 },
   cityVal:        { display:"flex", alignItems:"center", gap:4, marginTop:3, minWidth:0 },
-  cityDropdown:   { position:"absolute" as const, top:"calc(100% + 6px)", left:0, minWidth:220, zIndex:300, background:"#fff", borderRadius:16, border:"1.5px solid #ece8f0", boxShadow:"0 8px 32px rgba(26,19,32,.12)", overflow:"hidden" },
+  cityDropdown:   { position:"absolute" as const, top:"calc(100% + 6px)", left:0, right:0, minWidth:"100%", zIndex:300, background:"#fff", borderRadius:16, border:"1.5px solid #ece8f0", boxShadow:"0 8px 32px rgba(26,19,32,.12)", overflow:"hidden" },
   citySearchInput:{ display:"block" as const, width:"100%", border:"none", borderBottom:"1px solid #f0ebf5", padding:"12px 16px", fontSize:16, fontFamily:"'Inter',system-ui,sans-serif", outline:"none", background:"#faf8fb", boxSizing:"border-box" as const },
   cityOptItem:    { padding:"10px 16px", fontSize:13.5, cursor:"pointer", color:"#1a1320", userSelect:"none" as const },
 
