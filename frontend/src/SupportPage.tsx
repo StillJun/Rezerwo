@@ -20,7 +20,7 @@ export default function SupportPage() {
 
   const send = async () => {
     if (!email.trim() || !subject.trim() || !message.trim()) {
-      setErr("Wypełnij wszystkie pola."); return;
+      setErr(t.supportErrRequired); return;
     }
     setBusy(true); setErr("");
     try {
@@ -45,14 +45,14 @@ export default function SupportPage() {
         ) : (
           <div style={S.card}>
             <label style={S.lbl}>{t.emailField}</label>
-            <input style={S.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="twoj@email.com" autoFocus/>
+            <input style={S.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder={t.supportEmailPh} autoFocus/>
 
             <label style={S.lbl}>{t.subject}</label>
-            <input style={S.input} value={subject} onChange={e => setSubject(e.target.value)} placeholder="np. Problem z rezerwacją"/>
+            <input style={S.input} value={subject} onChange={e => setSubject(e.target.value)} placeholder={t.supportSubjectPh}/>
 
             <label style={S.lbl}>{t.message}</label>
             <textarea style={{...S.input, minHeight:120, resize:"vertical" as const, fontFamily:font}}
-              value={message} onChange={e => setMessage(e.target.value)} placeholder="Opisz swój problem lub pytanie…"/>
+              value={message} onChange={e => setMessage(e.target.value)} placeholder={t.supportMessagePh}/>
 
             {err && <div style={S.err}>{err}</div>}
 
@@ -64,8 +64,14 @@ export default function SupportPage() {
 
         <div style={S.faq}>
           <h2 style={S.faqTitle}>FAQ</h2>
-          {FAQ.map((f, i) => (
-            <FaqItem key={i} q={f.q} a={f.a}/>
+          {([
+            [t.faqQ1, t.faqA1],
+            [t.faqQ2, t.faqA2],
+            [t.faqQ3, t.faqA3],
+            [t.faqQ4, t.faqA4],
+            [t.faqQ5, t.faqA5],
+          ] as [string, string][]).map(([q, a], i) => (
+            <FaqItem key={i} q={q} a={a}/>
           ))}
         </div>
       </div>
@@ -86,28 +92,6 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-const FAQ = [
-  {
-    q: "Jak anulować rezerwację?",
-    a: "Skontaktuj się telefonicznie lub przez Instagram bezpośrednio z salonem. Kontakt znajdziesz na stronie profilu salonu w Rezerwo.",
-  },
-  {
-    q: "Nie otrzymałem/am potwierdzenia wizity.",
-    a: "Salon może wymagać ręcznego potwierdzenia. Poczekaj na kontakt od salonu lub sprawdź, czy podałeś/aś prawidłowy numer telefonu.",
-  },
-  {
-    q: "Chcę usunąć swoje dane osobowe.",
-    a: "Napisz do nas na adres privacy@rezerwo.app z prośbą o usunięcie danych. Zrealizujemy żądanie w ciągu 30 dni.",
-  },
-  {
-    q: "Jak dodać mój salon do Rezerwo?",
-    a: "Kliknij 'Panel właściciela' na stronie głównej i załóż konto. Twój profil zostanie aktywowany natychmiast.",
-  },
-  {
-    q: "Czy Rezerwo jest płatne?",
-    a: "Rezerwo jest bezpłatne na etapie beta. W przyszłości pojawią się płatne funkcje premium, ale podstawowa wersja pozostanie darmowa.",
-  },
-];
 
 const S: Record<string, CSSProperties> = {
   page:       { minHeight:"100vh", background:"radial-gradient(ellipse 800px 500px at 15% 30%, rgba(124,58,237,.045) 0%, transparent 65%), #fbf7f4", fontFamily:font, padding:"0 20px 60px" },

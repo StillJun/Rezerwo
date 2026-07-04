@@ -154,7 +154,7 @@ function BookingWizard({ biz, initService, onClose }: {
 
   const book = async () => {
     if (!state.service || state.slot == null || !state.name.trim() || !state.phone.trim()) {
-      setErr("Wypełnij wszystkie wymagane pola."); return;
+      setErr(t.bookingErrRequired); return;
     }
     setBusy(true); setErr("");
     try {
@@ -367,7 +367,7 @@ function BookingWizard({ biz, initService, onClose }: {
 
             <label style={S.lbl}>{t.fullName}</label>
             <input style={S.input} value={state.name} onChange={e=>set("name",e.target.value)}
-              placeholder="Jan Kowalski" autoFocus/>
+              placeholder={t.namePlaceholder} autoFocus/>
 
             <label style={S.lbl}>{t.phone}</label>
             <input style={S.input} value={state.phone} onChange={e=>set("phone",e.target.value)}
@@ -390,11 +390,11 @@ function BookingWizard({ biz, initService, onClose }: {
                 style={{marginTop:3,accentColor:"#7c3aed",flexShrink:0,width:16,height:16}}
               />
               <span style={{fontSize:12.5,color:"#52525b",lineHeight:1.6}}>
-                Akceptuję{" "}
-                <a href="/regulamin" target="_blank" rel="noopener noreferrer" style={{color:"#7c3aed",fontWeight:600}}>Regulamin</a>
-                {" "}i{" "}
-                <a href="/polityka-prywatnosci" target="_blank" rel="noopener noreferrer" style={{color:"#7c3aed",fontWeight:600}}>Politykę prywatności</a>.
-                {" "}Przyjmuję do wiadomości, że moje dane (imię, numer telefonu i szczegóły rezerwacji) zostaną przekazane wybranemu usługodawcy w celu realizacji wizyty.
+                {t.bookingTermsAccept}{" "}
+                <a href="/regulamin" target="_blank" rel="noopener noreferrer" style={{color:"#7c3aed",fontWeight:600}}>{t.terms}</a>
+                {" "}{t.bookingTermsAnd}{" "}
+                <a href="/polityka-prywatnosci" target="_blank" rel="noopener noreferrer" style={{color:"#7c3aed",fontWeight:600}}>{t.privacy}</a>
+                {t.bookingTermsData}
               </span>
             </label>
 
@@ -507,7 +507,7 @@ function ReviewsSection({ slug }: { slug: string }) {
   }, [slug]);
 
   const submit = async () => {
-    if (!name.trim()) { setErr("Podaj swoje imię."); return; }
+    if (!name.trim()) { setErr(t.reviewErrName); return; }
     setErr("");
     try {
       await api.addReview(slug, { client_name: name.trim(), rating, text: text.trim() });
@@ -562,7 +562,7 @@ function ReviewsSection({ slug }: { slug: string }) {
             ))}
           </div>
           <label style={S.lbl}>{t.firstName}</label>
-          <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder="Jan K."/>
+          <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder={t.nameShortPh}/>
           <label style={S.lbl}>{t.comment}</label>
           <textarea style={{...S.input,minHeight:64,resize:"vertical" as const,fontFamily:font}}
             value={text} onChange={e=>setText(e.target.value)} placeholder={t.commentPlaceholder}/>
@@ -592,7 +592,7 @@ function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service
   const [err, setErr] = useState("");
 
   const send = async () => {
-    if (!name.trim() || !phone.trim()) { setErr("Imię i telefon są wymagane."); return; }
+    if (!name.trim() || !phone.trim()) { setErr(t.waitlistErrRequired); return; }
     setErr("");
     try {
       await api.joinWaitlist(biz.slug, {
@@ -623,7 +623,7 @@ function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service
           <>
             <p style={{fontSize:13.5,color:"#71717a",margin:"0 0 14px"}}>{t.waitlistSub(service?.name)}</p>
             <label style={S.lbl}>{t.fullName}</label>
-            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder="Jan Kowalski" autoFocus/>
+            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder={t.namePlaceholder} autoFocus/>
             <label style={S.lbl}>{t.phone}</label>
             <input style={S.input} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 600 700" type="tel"/>
             <label style={S.lbl}>{t.email}</label>
