@@ -96,35 +96,28 @@ Backend: `slotsForDate()` вынесен как общий хелпер; `/slots
 
 ---
 
-## Этап UX-3 — Управление записью клиентом (magic-link)
+## Этап UX-3 — Управление записью клиентом (magic-link) ✅
 
-**Самый крупный пробел сейчас: клиент не может отменить/перенести запись — только звонком.**
-Это бьёт по no-show и по нагрузке на владельца.
+Клиент теперь может сам отменить/перенести запись по ссылке из письма — без аккаунта.
 
-- [ ] **3.1 · Токен записи (M)**
-  - БД: `appointments.manage_token TEXT` (генерить при создании, случайный 32+ символа).
-    Идемпотентная миграция `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` в `initDb()`.
-  - Backend: возвращать `manageToken` в `BookingResult`; НЕ отдавать в списках владельца/публичных.
+**Сделано** (коммит `feat: UX-3`).
 
-- [ ] **3.2 · Публичная страница «Moja wizyta» (L)**
-  - Роут фронта: `/wizyta/:token` (добавить в `App.tsx` роутер).
-  - Backend: `GET /public/appointments/:token` → детали записи (салон, услуга, мастер, дата, время, статус).
-    `POST /public/appointments/:token/cancel` → `status='cancelled'` (+ письмо владельцу).
-    `POST /public/appointments/:token/reschedule` → проверка overlap через ту же логику слотов.
-  - Rate limiting на эти роуты. Нельзя отменить запись, которая уже прошла / `done` / `cancelled`.
-  - i18n: целый блок `t.myVisit*` (4 языка).
+- [x] **3.1 · Токен записи** — `appointments.manage_token TEXT` + partial unique index (миграция в `db.js`).
+  `randomBytes(24).hex` генерится в `/book`, возвращается в `BookingResult.manageToken`.
+  В списках владельца/публичных не отдаётся.
+- [x] **3.2 · Страница `/wizyta/:token`** — `ManageBookingPage.tsx` (маршрут в `App.tsx`).
+  Backend: `GET /public/appointments/:token`, `POST .../cancel`, `POST .../reschedule`
+  (все с `bookLimiter`; reschedule переиспользует `isSlotFree`, исключая саму запись из проверки;
+  нельзя менять `done`/`cancelled`/прошедшие). Reschedule сбрасывает статус в `pending`,
+  если `confirm_required`.
+- [x] **3.3 · Ссылка в письмах** — `manageButton(token)` в `reminders.js`: в письмах `created`,
+  `confirmed`, `rescheduled` и в reminder-письме. Использует `CLIENT_URL` (см. HANDOFF §2).
+  Новый `notifyOwnerBookingChange()` — владельцу об отмене/переносе клиентом.
+- [x] **3.4 · «Записаться снова»** — кнопка на `/wizyta/:token` (статус cancelled/done) → `/{slug}`.
+  Ссылка «перенести · отменить» на экране `done` мастера бронирования.
 
-- [ ] **3.3 · Ссылка в письмах (S, после 3.2)**
-  - Что: в `notifyClientBooking` и во всех reminder-письмах — кнопка «Zarządzaj wizytą» → `/wizyta/:token`.
-  - Где: `backend/src/reminders.js` (шаблоны писем — не забыть `esc()`).
-  - Зачем: отмена в один тап из напоминания резко снижает no-show.
-
-- [ ] **3.4 · «Повторить запись» (S)**
-  - Что: на странице `/wizyta/:token` и в письме после визита — кнопка «Записаться снова» →
-    открывает `BookingWizard` c той же услугой и мастером.
-
-**Backend UX-3:** новая колонка `manage_token`, 3 публичных роута, письма. Всё owner-scope не трогает
-(клиентские роуты по токену).
+**Backend UX-3:** колонка `manage_token`, 3 публичных роута, `notifyOwnerBookingChange`,
+`rescheduled` в `notifyClientBooking`. Owner-scope не затронут. **i18n:** блок `mv_*` в pl/en/ru/ua.
 
 ---
 

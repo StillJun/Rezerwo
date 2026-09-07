@@ -108,6 +108,25 @@ export const pl = {
   slotsEvening:          "Wieczór",
   confirmRequiredNotice: "Ten salon potwierdza rezerwacje ręcznie — zwykle w ciągu kilku godzin.",
 
+  // UX: manage a booking (magic-link page /wizyta/:token)
+  mv_title:            "Twoja wizyta",
+  mv_notFound:         "Nie znaleziono rezerwacji",
+  mv_notFoundSub:      "Link jest nieprawidłowy lub rezerwacja została usunięta.",
+  mv_past:             "Ta wizyta już się odbyła.",
+  mv_when:             "Termin",
+  mv_service:          "Usługa",
+  mv_specialist:       "Specjalista",
+  mv_salon:            "Salon",
+  mv_cancelBtn:        "Odwołaj wizytę",
+  mv_cancelConfirm:    "Czy na pewno chcesz odwołać tę wizytę?",
+  mv_cancelledMsg:     "Wizyta została odwołana. Salon otrzymał powiadomienie.",
+  mv_rescheduleBtn:    "Zmień termin",
+  mv_rescheduleTitle:  "Wybierz nowy termin",
+  mv_rescheduledMsg:   "Termin wizyty został zmieniony.",
+  mv_bookAgain:        "Zarezerwuj ponownie",
+  mv_salonPage:        "Strona salonu",
+  mv_keepBtn:          "Zostaw bez zmian",
+
   // waitlist
   waitlistTitle: "Lista oczekujących",
   waitlistSub: (svc?: string) => svc ? `Brak wolnych terminów na ${svc}? Zostaw dane — powiadomimy Cię, gdy pojawi się wolne miejsce.` : "Salon jest zajęty? Zostaw dane — powiadomimy Cię.",

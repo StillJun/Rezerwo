@@ -7,7 +7,7 @@ import rateLimit from "express-rate-limit";
 import { randomBytes } from "crypto";
 import { q, initDb } from "./db.js";
 import { hashPassword, verifyPassword, signToken, setAuthCookie, clearAuthCookie, requireAuth } from "./auth.js";
-import { startReminderScheduler, notifyOwnerNewBooking, notifyClientBooking, sendVerificationEmail } from "./reminders.js";
+import { startReminderScheduler, notifyOwnerNewBooking, notifyOwnerBookingChange, notifyClientBooking, sendVerificationEmail } from "./reminders.js";
 
 const app = express();
 
@@ -1088,13 +1088,106 @@ app.post("/api/public/businesses/:slug/book", bookLimiter, async (req, res) => {
     }
 
     const status = b.confirm_required ? "pending" : "confirmed";
+    const manageToken = randomBytes(24).toString("hex");
     const [appt] = await q(`
-      INSERT INTO appointments (business_id, service_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, master_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id, status`,
-      [b.id, service_id, client_name.trim(), client_phone.trim(), client_email.trim(), comment.trim(), date, start_min, svc.duration, status, assignedMasterId]);
+      INSERT INTO appointments (business_id, service_id, client_name, client_phone, client_email, comment, date, start_min, duration, status, master_id, manage_token)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id, status`,
+      [b.id, service_id, client_name.trim(), client_phone.trim(), client_email.trim(), comment.trim(), date, start_min, svc.duration, status, assignedMasterId, manageToken]);
     notifyOwnerNewBooking(appt.id).catch(() => {});
     notifyClientBooking(appt.id, "created").catch(() => {});
-    res.json({ id: Number(appt.id), status: appt.status, confirmRequired: b.confirm_required, businessName: b.name });
+    res.json({ id: Number(appt.id), status: appt.status, confirmRequired: b.confirm_required, businessName: b.name, manageToken });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+/* ---------- public: manage a booking by magic-link token (no account) ---------- */
+async function loadApptByToken(token) {
+  if (!token || !/^[a-f0-9]{16,64}$/.test(token)) return null;
+  const [appt] = await q(`
+    SELECT a.*, b.name AS business_name, b.slug AS business_slug, b.address AS business_address,
+           b.phone AS business_phone, b.confirm_required, b.hours AS business_hours,
+           s.name AS service_name, s.duration AS service_duration,
+           m.name AS master_name, m.working_hours AS master_hours
+    FROM appointments a
+    JOIN businesses b ON b.id = a.business_id
+    LEFT JOIN services s ON s.id = a.service_id
+    LEFT JOIN masters m ON m.id = a.master_id
+    WHERE a.manage_token = $1`, [token]);
+  return appt || null;
+}
+
+const apptTokenView = (a) => ({
+  status: a.status,
+  businessName: a.business_name,
+  businessSlug: a.business_slug,
+  address: a.business_address || "",
+  phone: a.business_phone || "",
+  serviceName: a.service_name || null,
+  serviceId: a.service_id ? Number(a.service_id) : null,
+  masterId: a.master_id ? Number(a.master_id) : null,
+  masterName: a.master_name || null,
+  date: String(a.date).slice(0, 10),
+  startMin: a.start_min,
+  duration: a.duration,
+  isPast: new Date(`${String(a.date).slice(0,10)}T${minToTime(a.start_min)}:00`) < new Date(`${todayPoland()}T${minToTime(nowMinPoland())}:00`),
+  canModify: ["pending", "confirmed"].includes(a.status),
+});
+
+app.get("/api/public/appointments/:token", async (req, res) => {
+  try {
+    const appt = await loadApptByToken(req.params.token);
+    if (!appt) return res.status(404).json({ error: "Nie znaleziono rezerwacji" });
+    res.json(apptTokenView(appt));
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+app.post("/api/public/appointments/:token/cancel", bookLimiter, async (req, res) => {
+  try {
+    const appt = await loadApptByToken(req.params.token);
+    if (!appt) return res.status(404).json({ error: "Nie znaleziono rezerwacji" });
+    if (!["pending", "confirmed"].includes(appt.status))
+      return res.status(409).json({ error: "Tej rezerwacji nie można już anulować." });
+    await q("UPDATE appointments SET status='cancelled' WHERE id=$1", [appt.id]);
+    notifyClientBooking(appt.id, "cancelled").catch(() => {});
+    notifyOwnerBookingChange(appt.id, "cancelled").catch(() => {});
+    res.json({ ok: true });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+app.post("/api/public/appointments/:token/reschedule", bookLimiter, async (req, res) => {
+  try {
+    const { date, start_min } = req.body || {};
+    const appt = await loadApptByToken(req.params.token);
+    if (!appt) return res.status(404).json({ error: "Nie znaleziono rezerwacji" });
+    if (!["pending", "confirmed"].includes(appt.status))
+      return res.status(409).json({ error: "Tej rezerwacji nie można już zmienić." });
+    if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < todayPoland())
+      return res.status(400).json({ error: "Nieprawidłowa data." });
+    if (!Number.isInteger(Number(start_min)) || Number(start_min) < 0 || Number(start_min) > 1439)
+      return res.status(400).json({ error: "Nieprawidłowa godzina." });
+
+    const dur = appt.duration;
+    const exclude = appt.id;
+    let free;
+    if (appt.master_id) {
+      const [appts, blockedRows] = await Promise.all([
+        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND id<>$4 AND status IN ('pending','confirmed')", [appt.business_id, date, appt.master_id, exclude]),
+        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND (master_id=$3 OR master_id IS NULL)", [appt.business_id, date, appt.master_id]),
+      ]);
+      free = isSlotFree(appt.master_hours, appts, dur, date, Number(start_min), blockedRows);
+    } else {
+      const [appts, blockedRows] = await Promise.all([
+        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND id<>$3 AND status IN ('pending','confirmed')", [appt.business_id, date, exclude]),
+        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND master_id IS NULL", [appt.business_id, date]),
+      ]);
+      free = isSlotFree(appt.business_hours, appts, dur, date, Number(start_min), blockedRows);
+    }
+    if (!free) return res.status(409).json({ error: "Ten termin jest już zajęty. Wybierz inny." });
+
+    const newStatus = appt.confirm_required ? "pending" : "confirmed";
+    await q("UPDATE appointments SET date=$1, start_min=$2, status=$3 WHERE id=$4", [date, Number(start_min), newStatus, appt.id]);
+    notifyClientBooking(appt.id, "rescheduled").catch(() => {});
+    notifyOwnerBookingChange(appt.id, "rescheduled").catch(() => {});
+    res.json({ ok: true, status: newStatus });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 

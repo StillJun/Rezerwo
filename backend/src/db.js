@@ -311,5 +311,9 @@ export async function initDb() {
   await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS owner_note TEXT NOT NULL DEFAULT ''`).catch(() => {});
   await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS custom_price NUMERIC`).catch(() => {});
 
+  // ── client self-service: magic-link token to view / cancel / reschedule a booking ─
+  await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS manage_token TEXT`).catch(() => {});
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_appt_manage_token ON appointments(manage_token) WHERE manage_token IS NOT NULL`).catch(() => {});
+
   console.log("Database ready (tables checked/created)");
 }

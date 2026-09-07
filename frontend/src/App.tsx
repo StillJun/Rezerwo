@@ -35,6 +35,7 @@ const SupportPage               = lazy(() => import("./SupportPage"));
 const VerifyEmailPage           = lazy(() => import("./VerifyEmailPage"));
 const RegulaminPage             = lazy(() => import("./RegulaminPage"));
 const PolitykaPrywatnosciPage   = lazy(() => import("./PolitykaPrywatnosciPage"));
+const ManageBookingPage         = lazy(() => import("./ManageBookingPage"));
 
 export function navigate(to: string) {
   history.pushState(null, "", to);
@@ -62,6 +63,7 @@ export default function App() {
          path === "/polityka-prywatnosci"    ? <PolitykaPrywatnosciPage /> :
          path === "/prywatnosc"              ? <PrivacyPage /> :
          path === "/pomoc"                   ? <SupportPage /> :
+         path.startsWith("/wizyta/")         ? <ManageBookingPage token={decodeURIComponent(path.slice(8))} /> :
          (() => {
            const slug = path.slice(1);
            return slug && !slug.includes("/") ? <BusinessPage slug={slug} /> : <MarketplacePage />;

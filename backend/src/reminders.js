@@ -22,7 +22,17 @@ function minToTime(min) {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
-async function sendReminderEmail({ to, clientName, businessName, serviceName, date, startMin }) {
+const APP_URL = () => (process.env.CLIENT_URL || "http://localhost:5173").replace(/\/$/, "");
+
+// "Manage your visit" button for client emails — reschedule / cancel without an account
+function manageButton(token) {
+  if (!token) return "";
+  const url = `${APP_URL()}/wizyta/${token}`;
+  return `<p style="margin:18px 0"><a href="${url}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:700;font-size:14px">Zarządzaj wizytą</a></p>
+    <p style="color:#a8a2b0;font-size:12px">Przełóż lub odwołaj wizytę: <a href="${url}" style="color:#7c3aed">${esc(url)}</a></p>`;
+}
+
+async function sendReminderEmail({ to, clientName, businessName, serviceName, date, startMin, manageToken }) {
   const r = getResend(); if (!r) return;
   const time = minToTime(startMin);
   await r.emails.send({
@@ -40,7 +50,7 @@ async function sendReminderEmail({ to, clientName, businessName, serviceName, da
           <tr><td style="padding:8px;color:#71717a">Data</td><td style="padding:8px;font-weight:600">${esc(date)}</td></tr>
           <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">Godzina</td><td style="padding:8px;font-weight:600">${esc(time)}</td></tr>
         </table>
-        <p style="color:#71717a;font-size:13px">Jeśli chcesz odwołać wizytę, skontaktuj się z salonem.</p>
+        ${manageButton(manageToken)}
         <hr style="border:none;border-top:1px solid #ece8f0;margin:20px 0"/>
         <p style="color:#a8a2b0;font-size:12px">Rezerwo · platforma rezerwacji online</p>
       </div>
@@ -128,6 +138,7 @@ async function runReminders() {
           serviceName: appt.service_name,
           date: String(appt.date).slice(0, 10),
           startMin: appt.start_min,
+          manageToken: appt.manage_token,
         });
         await q(
           "INSERT INTO reminders_sent (appointment_id, hours_before) VALUES ($1,$2) ON CONFLICT DO NOTHING",
@@ -189,7 +200,44 @@ export async function notifyOwnerNewBooking(apptId) {
   }
 }
 
-// notify client on booking lifecycle events: 'created' | 'confirmed' | 'cancelled'
+// notify owner when the client changes their own booking: 'cancelled' | 'rescheduled'
+export async function notifyOwnerBookingChange(apptId, event) {
+  const r = getResend(); if (!r) return;
+  try {
+    const [appt] = await q(`
+      SELECT a.*, b.name AS business_name, s.name AS service_name, o.email AS owner_email
+      FROM appointments a
+      JOIN businesses b ON b.id = a.business_id
+      JOIN owners o ON o.id = b.owner_id
+      LEFT JOIN services s ON s.id = a.service_id
+      WHERE a.id = $1`, [apptId]);
+    if (!appt) return;
+    const date = String(appt.date).slice(0, 10);
+    const time = minToTime(appt.start_min);
+    const verb = event === "cancelled" ? "anulował(a)" : "przełożył(a)";
+    const head = event === "cancelled" ? "Klient anulował wizytę ❌" : "Klient przełożył wizytę 🗓️";
+    await r.emails.send({
+      from: FROM,
+      to: appt.owner_email,
+      subject: `${event === "cancelled" ? "Anulacja" : "Zmiana terminu"} — ${esc(appt.client_name)} (${esc(date)} ${esc(time)})`,
+      html: `
+        <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+          <h2 style="color:#7c3aed;margin-bottom:8px">${head}</h2>
+          <p><strong>${esc(appt.client_name)}</strong> (${esc(appt.client_phone)}) ${verb} wizytę w ${esc(appt.business_name)}.</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0">
+            <tr><td style="padding:8px;color:#71717a">Usługa</td><td style="padding:8px;font-weight:600">${esc(appt.service_name || "—")}</td></tr>
+            <tr style="background:#faf8fb"><td style="padding:8px;color:#71717a">${event === "cancelled" ? "Termin" : "Nowy termin"}</td><td style="padding:8px;font-weight:600">${esc(date)} ${esc(time)}</td></tr>
+          </table>
+          <p style="color:#a8a2b0;font-size:12px">Zaloguj się do panelu Rezerwo, aby zarządzać rezerwacjami.</p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error(`[email] owner change notify (${event}) failed for appt ${apptId}:`, err.message);
+  }
+}
+
+// notify client on booking lifecycle events: 'created' | 'confirmed' | 'cancelled' | 'rescheduled'
 export async function notifyClientBooking(apptId, event) {
   if (!getResend()) return;
   try {
@@ -239,19 +287,24 @@ export async function notifyClientBooking(apptId, event) {
     if (event === "created") {
       const isPending = appt.status === "pending";
       subject = isPending ? `Rezerwacja przyjęta — ${esc(bizName)}` : `Rezerwacja potwierdzona — ${esc(bizName)}`;
-      html = wrap(isPending
+      html = wrap((isPending
         ? `<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja przyjęta ⏳</h2>${hi}
            <p>Twoja rezerwacja oczekuje na potwierdzenie przez salon.</p>${tbl}
            <p style="color:#71717a;font-size:13px">Salon skontaktuje się z Tobą wkrótce${contact ? ". Pytania? Zadzwoń"+contact : ""}.</p>`
         : `<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja potwierdzona ✅</h2>${hi}
            <p>Twoja rezerwacja została przyjęta i potwierdzona!</p>${tbl}
            <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>`
-      );
+      ) + manageButton(appt.manage_token));
     } else if (event === "confirmed") {
       subject = `Rezerwacja potwierdzona ✅ — ${esc(bizName)}`;
       html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja potwierdzona ✅</h2>${hi}
         <p>Salon potwierdził Twoją rezerwację.</p>${tbl}
-        <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>`);
+        <p style="color:#71717a;font-size:13px">Do zobaczenia!</p>` + manageButton(appt.manage_token));
+    } else if (event === "rescheduled") {
+      subject = `Wizyta przełożona — ${esc(bizName)}`;
+      html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Wizyta przełożona 🗓️</h2>${hi}
+        <p>Twoja wizyta została przełożona na nowy termin:</p>${tbl}
+        <p style="color:#71717a;font-size:13px">${appt.status === "pending" ? "Nowy termin oczekuje na potwierdzenie salonu." : "Do zobaczenia!"}</p>` + manageButton(appt.manage_token));
     } else if (event === "cancelled") {
       subject = `Rezerwacja anulowana — ${esc(bizName)}`;
       html = wrap(`<h2 style="color:#7c3aed;margin-bottom:8px">Rezerwacja anulowana ❌</h2>${hi}

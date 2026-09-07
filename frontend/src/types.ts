@@ -77,6 +77,16 @@ export interface BlockedSlot {
 
 export interface BookingResult {
   id: number; status: string; confirmRequired: boolean; businessName: string;
+  manageToken?: string;
+}
+
+export interface ManagedBooking {
+  status: "pending" | "confirmed" | "cancelled" | "done" | "no_show";
+  businessName: string; businessSlug: string; address: string; phone: string;
+  serviceName: string | null; serviceId: number | null;
+  masterId: number | null; masterName: string | null;
+  date: string; startMin: number; duration: number;
+  isPast: boolean; canModify: boolean;
 }
 
 export interface Review {

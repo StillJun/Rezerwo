@@ -1,4 +1,4 @@
-import type { Business, Service, Meta, User, PublicBusiness, PublicMaster, Appointment, BookingResult, Review, Client, BlockedSlot } from "./types";
+import type { Business, Service, Meta, User, PublicBusiness, PublicMaster, Appointment, BookingResult, ManagedBooking, Review, Client, BlockedSlot } from "./types";
 
 const BASE = (import.meta.env.VITE_API_URL || "") + "/api";
 const TOKEN = "rz_token";
@@ -146,6 +146,14 @@ export const api = {
   }) => req<BookingResult>(`/public/businesses/${slug}/book`, { method: "POST", body: JSON.stringify(data) }),
   serviceRequest: (slug: string, data: { client_phone: string; text: string }) =>
     req<{ ok: boolean }>(`/public/businesses/${slug}/service-request`, { method: "POST", body: JSON.stringify(data) }),
+
+  /* public: manage a booking by magic-link token */
+  managedBooking: (token: string) =>
+    req<ManagedBooking>(`/public/appointments/${encodeURIComponent(token)}`),
+  cancelManagedBooking: (token: string) =>
+    req<{ ok: boolean }>(`/public/appointments/${encodeURIComponent(token)}/cancel`, { method: "POST" }),
+  rescheduleManagedBooking: (token: string, date: string, start_min: number) =>
+    req<{ ok: boolean; status: string }>(`/public/appointments/${encodeURIComponent(token)}/reschedule`, { method: "POST", body: JSON.stringify({ date, start_min }) }),
 
   /* public: reviews */
   reviews: (slug: string) =>

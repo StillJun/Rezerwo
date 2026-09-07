@@ -572,6 +572,11 @@ function BookingWizard({ biz, initService, onClose }: {
               </div>
             )}
             <button style={{...S.primary,marginTop:20}} onClick={onClose}>{t.backToProfile}</button>
+            {result.manageToken && (
+              <a href={`/wizyta/${result.manageToken}`} style={{display:"block",marginTop:12,fontSize:13,color:ACC,fontWeight:600}}>
+                {t.mv_rescheduleBtn} · {t.mv_cancelBtn}
+              </a>
+            )}
           </div>
         )}
       </div>
