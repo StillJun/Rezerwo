@@ -137,6 +137,14 @@ export const ru: T = {
   filtersBtn:      "Фильтры",
   clearFilters:    "Сбросить",
 
+  // UX: business page — gallery, specialists, nav
+  portfolio:       "Портфолио",
+  specialists:     "Специалисты",
+  contactNav:      "Контакты",
+  bookWith:        "Записаться",
+  dayOff:          "Выходной",
+  closingSoon:     (time: string) => `Закрывается в ${time}`,
+
   waitlistTitle: "Лист ожидания",
   waitlistSub: (svc?: string) => svc ? `Нет свободного времени на ${svc}? Оставьте данные — мы уведомим вас.` : "Салон занят? Оставьте данные — мы уведомим вас.",
   waitlistSuccess: "Вы добавлены в лист ожидания. Мы уведомим вас, когда появится свободное время.",

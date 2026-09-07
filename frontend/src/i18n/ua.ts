@@ -137,6 +137,14 @@ export const ua: T = {
   filtersBtn:      "Фільтри",
   clearFilters:    "Очистити",
 
+  // UX: business page — gallery, specialists, nav
+  portfolio:       "Портфоліо",
+  specialists:     "Спеціалісти",
+  contactNav:      "Контакти",
+  bookWith:        "Записатися",
+  dayOff:          "Вихідний",
+  closingSoon:     (time: string) => `Зачиняється о ${time}`,
+
   waitlistTitle: "Список очікування",
   waitlistSub: (svc?: string) => svc ? `Немає вільного часу для ${svc}? Залиште дані — ми повідомимо вас.` : "Салон зайнятий? Залиште дані — ми повідомимо вас.",
   waitlistSuccess: "Вас додано до списку очікування. Ми повідомимо вас, коли з'явиться вільний час.",

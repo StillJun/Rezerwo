@@ -42,7 +42,7 @@ function minToTime(m: number) {
 function isoToday() { return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" }); }
 /* ── Open/closed badge ── */
 const DAY_IDX = ["sun","mon","tue","wed","thu","fri","sat"] as const;
-function getOpenStatus(hours: Record<string, [string,string]>): { open: boolean; nextOpenTime?: string } {
+function getOpenStatus(hours: Record<string, [string,string]>): { open: boolean; nextOpenTime?: string; closesAt?: string } {
   try {
     const warsawStr = new Date().toLocaleString("en-US", { timeZone: "Europe/Warsaw" });
     const w = new Date(warsawStr);
@@ -52,7 +52,9 @@ function getOpenStatus(hours: Record<string, [string,string]>): { open: boolean;
     if (todayH) {
       const [oh, om] = todayH[0].split(":").map(Number);
       const [ch, cm] = todayH[1].split(":").map(Number);
-      if (curMin >= oh * 60 + om && curMin < ch * 60 + cm) return { open: true };
+      const closeMin = ch * 60 + cm;
+      if (curMin >= oh * 60 + om && curMin < closeMin)
+        return { open: true, ...(closeMin - curMin <= 60 ? { closesAt: todayH[1] } : {}) };
       if (curMin < oh * 60 + om) return { open: false, nextOpenTime: todayH[0] };
     }
     for (let i = 1; i <= 7; i++) {
@@ -817,6 +819,37 @@ function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service
   );
 }
 
+/* ========== PHOTO LIGHTBOX ========== */
+function PhotoLightbox({ photos, index, onClose }: { photos: string[]; index: number; onClose: () => void }) {
+  const [i, setI] = useState(index);
+  const prev = () => setI(x => (x - 1 + photos.length) % photos.length);
+  const next = () => setI(x => (x + 1) % photos.length);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+      if (e.key === "ArrowLeft") prev();
+      if (e.key === "ArrowRight") next();
+    };
+    document.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prevOverflow; };
+  }, []);
+  return (
+    <div style={S.lbOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <button style={{...S.lbBtn, top:14, right:14}} onClick={onClose} aria-label="Close"><X size={22}/></button>
+      {photos.length > 1 && (
+        <>
+          <button style={{...S.lbBtn, left:10, top:"50%", transform:"translateY(-50%)"}} onClick={e=>{e.stopPropagation();prev();}} aria-label="Previous"><ChevronLeft size={26}/></button>
+          <button style={{...S.lbBtn, right:10, top:"50%", transform:"translateY(-50%)"}} onClick={e=>{e.stopPropagation();next();}} aria-label="Next"><ChevronLeft size={26} style={{transform:"rotate(180deg)"}}/></button>
+        </>
+      )}
+      <img src={photos[i]} alt="" style={S.lbImg} onClick={e=>e.stopPropagation()}/>
+      {photos.length > 1 && <div style={S.lbCount}>{i + 1} / {photos.length}</div>}
+    </div>
+  );
+}
+
 /* ========== LOADING SKELETON ========== */
 function BizSkeleton() {
   return (
@@ -846,6 +879,8 @@ export default function BusinessPage({ slug }: { slug: string }) {
   const [serviceReq, setServiceReq] = useState(false);
   const [waitlist, setWaitlist] = useState<PublicService|null|"open">(null);
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [lightbox, setLightbox] = useState<number|null>(null);
+  const [masters, setMasters] = useState<PublicMaster[]>([]);
 
   useEffect(() => {
     api.publicBusiness(slug)
@@ -854,6 +889,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
         pushRecent({ slug: d.slug, name: d.name, city: d.city });
       })
       .catch(()=>{ setNotFound(true); setLoading(false); });
+    api.publicMasters(slug).then(setMasters).catch(() => {});
   }, [slug]);
 
   if (loading) return <BizSkeleton/>;
@@ -901,7 +937,8 @@ export default function BusinessPage({ slug }: { slug: string }) {
       {/* banner */}
       <div className="biz-banner" style={{...S.banner,background:BANNERS[biz.banner]||BANNERS.violet}}>
         {biz.photos && biz.photos.length>0 && (
-          <img src={biz.photos[photoIdx]} alt="" style={S.bannerPhoto}
+          <img src={biz.photos[photoIdx]} alt="" style={{...S.bannerPhoto,cursor:"zoom-in"}}
+            onClick={()=>setLightbox(photoIdx)}
             onError={e=>(e.currentTarget.style.display="none")}/>
         )}
         {biz.photos && biz.photos.length>1 && (
@@ -939,7 +976,9 @@ export default function BusinessPage({ slug }: { slug: string }) {
                       marginLeft:8, verticalAlign:"middle",
                     }}>
                       <span style={{width:6,height:6,borderRadius:"50%",background:openStatus.open?"#16a34a":"#9ca3af",display:"inline-block"}}/>
-                      {openStatus.open ? t.p_openNow : openStatus.nextOpenTime ? t.p_openFrom(openStatus.nextOpenTime) : t.p_closedNow}
+                      {openStatus.open
+                        ? (openStatus.closesAt ? t.closingSoon(openStatus.closesAt) : t.p_openNow)
+                        : openStatus.nextOpenTime ? t.p_openFrom(openStatus.nextOpenTime) : t.p_closedNow}
                     </span>
                   )}
                 </div>
@@ -966,11 +1005,32 @@ export default function BusinessPage({ slug }: { slug: string }) {
           );
         })()}
 
+        {/* anchor nav */}
+        {(() => {
+          const links: [string, string][] = [
+            [t.services, "biz-services"],
+            ...(masters.filter(m=>m.isActive).length ? [[t.specialists, "biz-specialists"] as [string,string]] : []),
+            ...((biz.photos?.length ?? 0) ? [[t.portfolio, "biz-portfolio"] as [string,string]] : []),
+            [t.reviews, "biz-reviews"],
+            [t.contactNav, "biz-contact"],
+          ];
+          return (
+            <div style={S.anchorNav}>
+              {links.map(([label, id]) => (
+                <button key={id} style={S.anchorLink}
+                  onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" })}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
         {/* about */}
         {biz.about && <p style={S.about}>{biz.about}</p>}
 
         {/* contact info — existing + extended */}
-        <div style={S.infoRow}>
+        <div id="biz-contact" style={S.infoRow}>
           {biz.address && (
             <div style={S.infoChip}><MapPin size={13}/> {biz.address}</div>
           )}
@@ -1028,17 +1088,32 @@ export default function BusinessPage({ slug }: { slug: string }) {
           );
         })()}
 
-        {/* working hours */}
+        {/* portfolio gallery */}
+        {biz.photos && biz.photos.length > 0 && (
+          <div id="biz-portfolio" style={{marginBottom:22}}>
+            <div style={S.sectionTitle}>{t.portfolio}</div>
+            <div style={S.galleryGrid}>
+              {biz.photos.map((p,i)=>(
+                <button key={i} style={S.galleryThumb} onClick={()=>setLightbox(i)} aria-label={`${t.portfolio} ${i+1}`}>
+                  <img src={p} alt="" loading="lazy" style={S.galleryImg}
+                    onError={e=>{ (e.currentTarget.parentElement as HTMLElement).style.display="none"; }}/>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* working hours — all 7 days, closed days shown explicitly */}
         {workingDays.length>0 && (
           <div style={S.hoursBox}>
             <div style={S.sectionTitle}>{t.hours}</div>
             <div style={S.hoursGrid}>
-              {workingDays.map(d=>{
-                const h = biz.hours[d] as [string,string];
+              {DAY_ORDER.map(d=>{
+                const h = biz.hours?.[d] as [string,string] | undefined;
                 return (
                   <div key={d} style={S.hoursRow}>
                     <span style={{fontWeight:600,minWidth:28}}>{DAY_PL[d as keyof typeof DAY_PL]}</span>
-                    <span style={{color:"#52525b"}}>{h[0]} — {h[1]}</span>
+                    <span style={{color: h ? "#52525b" : "#a8a2b0"}}>{h ? `${h[0]} — ${h[1]}` : t.dayOff}</span>
                   </div>
                 );
               })}
@@ -1047,7 +1122,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
         )}
 
         {/* services */}
-        <div style={S.sectionTitle}>{t.services}</div>
+        <div id="biz-services" style={S.sectionTitle}>{t.services}</div>
         {!services.length && (
           <div style={S.empty}>{t.noServices}</div>
         )}
@@ -1074,6 +1149,29 @@ export default function BusinessPage({ slug }: { slug: string }) {
           </div>
         ))}
 
+        {/* specialists */}
+        {masters.filter(m=>m.isActive).length > 0 && (
+          <div id="biz-specialists" style={{marginTop:8,marginBottom:8}}>
+            <div style={S.sectionTitle}>{t.specialists}</div>
+            <div style={{display:"flex",flexDirection:"column" as const,gap:10}}>
+              {masters.filter(m=>m.isActive).map(m=>(
+                <div key={m.id} style={S.masterRow}>
+                  <div style={S.masterRowAvatar}>
+                    {m.photo
+                      ? <img src={m.photo} alt="" style={S.masterAvatarImg} onError={e=>{(e.currentTarget as HTMLImageElement).style.display="none";}}/>
+                      : <span style={S.masterInitialsStyle}>{masterInitials(m.name)}</span>}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700}}>{m.name}</div>
+                    {m.bio && <div style={{fontSize:12.5,color:"#71717a",marginTop:2,lineHeight:1.45}}>{m.bio}</div>}
+                  </div>
+                  <button style={S.bookBtn} onClick={()=>setBooking("open")}>{t.bookWith}</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* CTA + service request + waitlist */}
         <div style={S.ctaBox}>
           <button className="btn-primary" style={S.ctaMain} onClick={()=>setBooking("open")}>
@@ -1088,10 +1186,13 @@ export default function BusinessPage({ slug }: { slug: string }) {
         </div>
 
         {/* reviews */}
-        <ReviewsSection slug={slug}/>
+        <div id="biz-reviews"><ReviewsSection slug={slug}/></div>
       </div>
 
       {/* modals */}
+      {lightbox!==null && biz.photos && (
+        <PhotoLightbox photos={biz.photos} index={lightbox} onClose={()=>setLightbox(null)}/>
+      )}
       {booking!==null && (
         <BookingWizard
           biz={biz}
@@ -1141,6 +1242,21 @@ const S: Record<string, CSSProperties> = {
   hoursBox: { background:"#fff", borderRadius:20, padding:"16px 18px", marginBottom:22, boxShadow:"0 2px 8px rgba(26,19,32,.05)", border:"1px solid #efe9ee" },
   hoursGrid:{ display:"flex", flexDirection:"column" as const, gap:7, marginTop:10 },
   hoursRow: { display:"flex", gap:14, fontSize:13, color:"#52525b" },
+
+  anchorNav:  { display:"flex", gap:6, overflowX:"auto" as const, position:"sticky" as const, top:52, zIndex:15, background:"rgba(251,247,244,.92)", backdropFilter:"blur(10px)", WebkitBackdropFilter:"blur(10px)", margin:"0 -18px 16px", padding:"8px 18px", borderBottom:"1px solid rgba(239,233,238,.6)" },
+  anchorLink: { flexShrink:0, border:"none", background:"transparent", color:"#52525b", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:font, padding:"4px 8px", borderRadius:8 },
+
+  galleryGrid: { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(96px,1fr))", gap:8, marginTop:10 },
+  galleryThumb:{ aspectRatio:"1 / 1", borderRadius:12, overflow:"hidden", border:"none", padding:0, cursor:"zoom-in", background:"#efe9ee" },
+  galleryImg:  { width:"100%", height:"100%", objectFit:"cover" as const, display:"block" },
+
+  masterRow:       { display:"flex", alignItems:"center", gap:12, background:"#fff", borderRadius:16, padding:"12px 14px", border:"1px solid #efe9ee", boxShadow:"0 2px 8px rgba(26,19,32,.04)" },
+  masterRowAvatar: { width:46, height:46, borderRadius:999, background:"#efe9ee", overflow:"hidden", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0, position:"relative" as const },
+
+  lbOverlay: { position:"fixed" as const, inset:0, background:"rgba(10,7,14,.92)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:80, padding:20 },
+  lbImg:     { maxWidth:"94vw", maxHeight:"88vh", objectFit:"contain" as const, borderRadius:8 },
+  lbBtn:     { position:"absolute" as const, width:42, height:42, borderRadius:999, border:"none", background:"rgba(255,255,255,.14)", color:"#fff", display:"grid", placeItems:"center", cursor:"pointer" },
+  lbCount:   { position:"absolute" as const, bottom:20, left:0, right:0, textAlign:"center" as const, color:"#fff", fontSize:13, fontWeight:600 },
 
   sectionTitle:{ fontSize:11, fontWeight:700, color:ACC, textTransform:"uppercase" as const, letterSpacing:1, marginBottom:12 },
   grpLabel:    { fontSize:11, fontWeight:700, color:"#8b8194", textTransform:"uppercase" as const, letterSpacing:0.8, marginBottom:8 },

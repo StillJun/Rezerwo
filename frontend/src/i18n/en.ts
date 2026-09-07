@@ -137,6 +137,14 @@ export const en: T = {
   filtersBtn:      "Filters",
   clearFilters:    "Clear",
 
+  // UX: business page — gallery, specialists, nav
+  portfolio:       "Portfolio",
+  specialists:     "Specialists",
+  contactNav:      "Contact",
+  bookWith:        "Book",
+  dayOff:          "Closed",
+  closingSoon:     (time: string) => `Closes at ${time}`,
+
   waitlistTitle: "Waiting list",
   waitlistSub: (svc?: string) => svc ? `No free slots for ${svc}? Leave your details and we'll notify you.` : "Salon is busy? Leave your details and we'll notify you.",
   waitlistSuccess: "You've been added to the waiting list. We'll notify you when a slot is available.",

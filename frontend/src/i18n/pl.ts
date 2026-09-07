@@ -138,6 +138,14 @@ export const pl = {
   filtersBtn:      "Filtry",
   clearFilters:    "Wyczyść",
 
+  // UX: business page — gallery, specialists, nav
+  portfolio:       "Portfolio",
+  specialists:     "Specjaliści",
+  contactNav:      "Kontakt",
+  bookWith:        "Zarezerwuj",
+  dayOff:          "Wolne",
+  closingSoon:     (time: string) => `Zamykamy o ${time}`,
+
   // waitlist
   waitlistTitle: "Lista oczekujących",
   waitlistSub: (svc?: string) => svc ? `Brak wolnych terminów na ${svc}? Zostaw dane — powiadomimy Cię, gdy pojawi się wolne miejsce.` : "Salon jest zajęty? Zostaw dane — powiadomimy Cię.",
