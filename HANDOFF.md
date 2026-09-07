@@ -113,17 +113,28 @@ CREATE INDEX IF NOT EXISTS …
 ```
 Идемпотентно: повторный запуск безопасен, существующие данные не трогаются.
 
-### Что добавит ветка `feature/ux-improvements` (справочно, действий не требует)
+### Что добавляет ветка `feature/ux-improvements` (справочно, действий не требует)
 
 | Таблица | Колонка / объект | Зачем |
 |---|---|---|
-| `appointments` | `manage_token TEXT` | magic-ссылка клиента для отмены/переноса записи без аккаунта |
+| `appointments` | `manage_token TEXT` + partial-unique индекс | magic-ссылка клиента для просмотра/отмены/переноса записи без аккаунта |
+| `reviews` | `verified BOOLEAN DEFAULT FALSE` | отзыв оставлен после реального визита (по `manage_token`) |
 | `reviews` | `owner_reply TEXT`, `owner_reply_at TIMESTAMPTZ` | ответы владельца на отзывы |
-| `reviews` | (использование существующей `appointment_id`) | «проверенный отзыв» — оставлен после реального визита |
-| `review_requests_sent` | новая таблица `(appointment_id UNIQUE, sent_at)` | защита от повторной отправки письма «оставьте отзыв» |
+| `reviews` | partial-unique `idx_reviews_appointment` | 1 отзыв на 1 запись |
+| `review_requests_sent` | новая таблица `(appointment_id PK, sent_at)` | защита от повторной отправки письма «оцените визит» |
 
-Все — через `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS`. После мёржа и деплоя
-применятся автоматически. **Откат:** колонки не удаляются кодом; при необходимости — вручную в Neon.
+Все — через `ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS` / `CREATE INDEX IF NOT EXISTS`
+в `initDb()`. После мёржа и деплоя применятся автоматически. **Откат:** объекты не удаляются кодом;
+при необходимости — вручную в Neon.
+
+### Новые cron-задачи (backend, работают сами при заданном `RESEND_API_KEY`)
+
+| Задача | Частота | Что делает |
+|---|---|---|
+| напоминания (было) | 5 мин | письма-напоминания за N часов до визита + ссылка «Zarządzaj wizytą» |
+| запрос отзыва (ново) | 30 мин | через 2–48 ч после визита — письмо «оцените визит» со ссылкой `/wizyta/:token` |
+
+Обе молчат, если `RESEND_API_KEY` не задан (в логах Render — предупреждение).
 
 ---
 
