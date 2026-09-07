@@ -135,8 +135,13 @@ export default function MarketplacePage() {
   const [sort,     setSort]     = useState<SortKey>("rating");
   const [recent,   setRecent]   = useState(() => loadRecent());
   const [favs,     setFavs]     = useState<string[]>(() => loadFavs());
+  const [fLangs,   setFLangs]   = useState<string[]>([]);
+  const [fAmens,   setFAmens]   = useState<string[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
 
   const hasQuery = !!(city || district || category || nameQ.trim());
+  const filterCount = fLangs.length + fAmens.length;
+  const toggleIn = (arr: string[], v: string) => arr.includes(v) ? arr.filter(x => x !== v) : [...arr, v];
 
   const runSearch = async (p: { city?: string; district?: string; category?: string; q?: string }) => {
     setLoading(true); setSearched(true);
@@ -181,13 +186,17 @@ export default function MarketplacePage() {
   const onToggleFav = (slug: string) => { toggleFav(slug); setFavs(loadFavs()); };
 
   const sortedResults = useMemo(() => {
-    const arr = [...results];
+    let arr = results.filter(b =>
+      fLangs.every(l => b.languages?.includes(l)) &&
+      fAmens.every(a => b.amenities?.includes(a))
+    );
+    arr = [...arr];
     if (sort === "rating") arr.sort((a, b) => (b.avgRating ?? -1) - (a.avgRating ?? -1));
     else if (sort === "name") arr.sort((a, b) => a.name.localeCompare(b.name));
     // "newest" keeps backend order (created_at ASC → reverse for newest first)
     else arr.reverse();
     return arr;
-  }, [results, sort]);
+  }, [results, sort, fLangs, fAmens]);
 
   const favResults = useMemo(
     () => results.filter(b => favs.includes(b.slug)),
@@ -373,18 +382,48 @@ export default function MarketplacePage() {
 
             <div style={S.resultsBar}>
               <div style={S.resultsHeader}>{hasQuery ? t.found(sortedResults.length) : t.popularSalons}</div>
-              <label style={S.sortWrap}>
-                <span style={{ color: "#a8a2b0", fontSize: 12 }}>{t.sortLabel}</span>
-                <select value={sort} onChange={e => setSort(e.target.value as SortKey)} style={S.sortSelect}>
-                  <option value="rating">{t.sortRating}</option>
-                  <option value="newest">{t.sortNewest}</option>
-                  <option value="name">{t.sortNameAZ}</option>
-                </select>
-              </label>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button style={{ ...S.sortSelect, ...(filterCount ? { color: "#7c3aed", borderColor: "#7c3aed" } : {}) }}
+                  aria-expanded={showFilters} onClick={() => setShowFilters(v => !v)}>
+                  {t.filtersBtn}{filterCount > 0 ? ` (${filterCount})` : ""}
+                </button>
+                <label style={S.sortWrap}>
+                  <span style={{ color: "#a8a2b0", fontSize: 12 }}>{t.sortLabel}</span>
+                  <select value={sort} onChange={e => setSort(e.target.value as SortKey)} style={S.sortSelect}>
+                    <option value="rating">{t.sortRating}</option>
+                    <option value="newest">{t.sortNewest}</option>
+                    <option value="name">{t.sortNameAZ}</option>
+                  </select>
+                </label>
+              </div>
             </div>
+
+            {showFilters && (
+              <div style={S.filterPanel}>
+                <div style={S.filterGroupLbl}>{t.p_languagesTitle}</div>
+                <div style={S.filterChips}>
+                  {[["pl","🇵🇱 PL"],["en","🇬🇧 EN"],["ua","🇺🇦 UA"],["ru","🇷🇺 RU"]].map(([k,label])=>(
+                    <button key={k} onClick={()=>setFLangs(x=>toggleIn(x,k))}
+                      style={{...S.filterChip, ...(fLangs.includes(k)?S.filterChipOn:{})}}>{label}</button>
+                  ))}
+                </div>
+                <div style={S.filterGroupLbl}>{t.p_amenitiesTitle}</div>
+                <div style={S.filterChips}>
+                  {[["parking",t.p_amenParking],["card",t.p_amenCard],["blik",t.p_amenBlik],["disabled",t.p_amenDisabled],["waiting",t.p_amenWaiting],["ac",t.p_amenAC],["wifi",t.p_amenWifi]].map(([k,label])=>(
+                    <button key={k} onClick={()=>setFAmens(x=>toggleIn(x,k))}
+                      style={{...S.filterChip, ...(fAmens.includes(k)?S.filterChipOn:{})}}>{label}</button>
+                  ))}
+                </div>
+                {filterCount > 0 && (
+                  <button style={{...S.filterChip, marginTop: 4}} onClick={()=>{ setFLangs([]); setFAmens([]); }}>{t.clearFilters}</button>
+                )}
+              </div>
+            )}
+
             <div style={S.grid} className="biz-grid">
               {sortedResults.map(b => <BusinessCard key={b.id} biz={b} fav={favs.includes(b.slug)} onToggleFav={onToggleFav}/>)}
             </div>
+            {!sortedResults.length && <div style={{...S.emptySub, textAlign:"center", padding:"32px 0"}}>{t.noResults}</div>}
           </>
         )}
       </div>
@@ -526,6 +565,11 @@ const S: Record<string, CSSProperties> = {
   sortWrap:      { display:"flex", alignItems:"center", gap:6 },
   sortSelect:    { border:"1.5px solid #efe9ee", borderRadius:10, padding:"6px 10px", fontSize:13, fontWeight:600, color:"#52525b", background:"#fff", cursor:"pointer", fontFamily:"'Inter',system-ui,sans-serif" },
   stripHeader:   { display:"flex", alignItems:"center", gap:6, fontSize:12, fontWeight:700, color:"#8b8194", textTransform:"uppercase" as const, letterSpacing:"0.06em", marginBottom:12 },
+  filterPanel:   { background:"#fff", border:"1px solid #efe9ee", borderRadius:16, padding:"14px 16px", marginBottom:16 },
+  filterGroupLbl:{ fontSize:11, fontWeight:700, color:"#a8a2b0", textTransform:"uppercase" as const, letterSpacing:"0.06em", margin:"4px 0 8px" },
+  filterChips:   { display:"flex", flexWrap:"wrap" as const, gap:8, marginBottom:10 },
+  filterChip:    { padding:"6px 12px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", fontSize:12.5, fontWeight:600, color:"#52525b", cursor:"pointer", fontFamily:"'Inter',system-ui,sans-serif" },
+  filterChipOn:  { background:"#f3eefe", borderColor:"#7c3aed", color:"#7c3aed" },
   recentRow:     { display:"flex", flexWrap:"wrap" as const, gap:8 },
   recentChip:    { display:"inline-block", padding:"8px 14px", borderRadius:999, background:"#fff", border:"1.5px solid #efe9ee", fontSize:13, color:"#1a1320", textDecoration:"none", cursor:"pointer" },
   grid:          { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:18 },
