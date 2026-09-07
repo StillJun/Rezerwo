@@ -2,6 +2,7 @@ import { useState, useEffect, lazy, Suspense, Component } from "react";
 import type { ReactNode } from "react";
 import { FeedbackWidget } from "./components/FeedbackWidget";
 import { InstallPrompt } from "./components/InstallPrompt";
+import { ToastHost } from "./components/Toast";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { err: Error | null }> {
   state = { err: null };
@@ -68,6 +69,7 @@ export default function App() {
       </Suspense>
       <FeedbackWidget />
       <InstallPrompt />
+      <ToastHost />
     </ErrorBoundary>
   );
 }

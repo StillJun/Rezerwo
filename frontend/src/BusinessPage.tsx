@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { CSSProperties } from "react";
 import {
   MapPin, Phone, Instagram, Clock, ChevronLeft,
   BadgeCheck, X, Check, MessageSquarePlus, ArrowLeft,
-  Mail, Send, Globe, Navigation, Music, Link,
+  Mail, Send, Globe, Navigation, Music, Link, Share2, CalendarPlus,
 } from "lucide-react";
 import { api } from "./api";
 import { navigate } from "./App";
@@ -11,6 +11,11 @@ import type { PublicBusiness, PublicMaster, PublicService, BookingResult, Review
 import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
+import { loadClient, saveClient } from "./lib/clientMemory";
+import { isEmail, isPhone } from "./lib/validate";
+import { googleCalendarUrl, icsDataUri } from "./lib/calendar";
+import { useModalA11y } from "./lib/useModalA11y";
+import { showToast } from "./components/Toast";
 
 const ACC  = "#7c3aed";
 const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
@@ -115,11 +120,13 @@ function BookingWizard({ biz, initService, onClose }: {
   onClose: () => void;
 }) {
   const { t } = useTranslation();
+  const a11yRef = useModalA11y(onClose);
   const [step, setStep] = useState<WizardStep>(initService ? "date" : "service");
+  const remembered = useMemo(() => loadClient(), []);
   const [state, setState] = useState<WizardState>({
     service: initService, masterId: null, masterName: "",
     date: isoToday(), slot: null,
-    name:"",phone:"",email:"",comment:"",
+    name: remembered.name, phone: remembered.phone, email: remembered.email, comment: "",
   });
   const [slots, setSlots] = useState<{ mins: number[]; times: string[] }>({ mins:[], times:[] });
   const [slotsLoading, setSlotsLoading] = useState(false);
@@ -156,6 +163,8 @@ function BookingWizard({ biz, initService, onClose }: {
     if (!state.service || state.slot == null || !state.name.trim() || !state.phone.trim()) {
       setErr(t.bookingErrRequired); return;
     }
+    if (!isPhone(state.phone)) { setErr(t.errPhoneFormat); return; }
+    if (state.email.trim() && !isEmail(state.email)) { setErr(t.errEmailFormat); return; }
     setBusy(true); setErr("");
     try {
       const r = await api.book(biz.slug, {
@@ -168,9 +177,19 @@ function BookingWizard({ biz, initService, onClose }: {
         start_min: state.slot,
         master_id: state.masterId ?? undefined,
       });
+      saveClient({ name: state.name.trim(), phone: state.phone.trim(), email: state.email.trim() });
       setResult(r); setStep("done");
     } catch(e) { setErr((e as Error).message); } finally { setBusy(false); }
   };
+
+  const calEvent = state.service && state.slot != null ? {
+    title: `${state.service.name} — ${biz.name}`,
+    description: [biz.phone && `Tel: ${biz.phone}`, state.comment.trim()].filter(Boolean).join("\n"),
+    location: [biz.address, biz.city].filter(Boolean).join(", "),
+    date: state.date,
+    startMin: state.slot,
+    durationMin: state.service.duration,
+  } : null;
 
   const services = biz.services || [];
   const groups: Record<string,PublicService[]> = {};
@@ -189,11 +208,12 @@ function BookingWizard({ biz, initService, onClose }: {
 
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
-      <div style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
+      <div ref={a11yRef} role="dialog" aria-modal="true" tabIndex={-1}
+        style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         {/* wizard header */}
         <div style={S.wizHead}>
           {step!=="done" && stepNum>1 && (
-            <button style={S.backBtn} onClick={()=>setStep(prev[step])}>
+            <button style={S.backBtn} onClick={()=>setStep(prev[step])} aria-label={t.back}>
               <ChevronLeft size={16}/>
             </button>
           )}
@@ -371,11 +391,12 @@ function BookingWizard({ biz, initService, onClose }: {
 
             <label style={S.lbl}>{t.phone}</label>
             <input style={S.input} value={state.phone} onChange={e=>set("phone",e.target.value)}
-              placeholder="+48 500 600 700" type="tel"/>
+              placeholder="+48 500 600 700" type="tel" inputMode="tel" autoComplete="tel"/>
 
             <label style={S.lbl}>{t.email}</label>
             <input style={S.input} value={state.email} onChange={e=>set("email",e.target.value)}
-              placeholder="jan@example.com" type="email"/>
+              placeholder="jan@example.com" type="email" inputMode="email" autoComplete="email"/>
+            {!state.email.trim() && <p style={S.nudge}>{t.emailReminderHint}</p>}
 
             <label style={S.lbl}>{t.commentSalon}</label>
             <textarea style={{...S.input,minHeight:64,resize:"vertical" as const,fontFamily:font}}
@@ -425,6 +446,19 @@ function BookingWizard({ biz, initService, onClose }: {
                 )}
               </p>
             )}
+            {calEvent && (
+              <div style={S.calRow}>
+                <div style={S.calLabel}><CalendarPlus size={13}/> {t.addToCalendar}</div>
+                <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+                  <a href={googleCalendarUrl(calEvent)} target="_blank" rel="noopener noreferrer" style={S.calBtn}>
+                    {t.calGoogle}
+                  </a>
+                  <a href={icsDataUri(calEvent)} download="rezerwo.ics" style={S.calBtn}>
+                    {t.calIcs}
+                  </a>
+                </div>
+              </div>
+            )}
             <button style={{...S.primary,marginTop:20}} onClick={onClose}>{t.backToProfile}</button>
           </div>
         )}
@@ -436,26 +470,30 @@ function BookingWizard({ biz, initService, onClose }: {
 /* ========== SERVICE REQUEST MODAL ========== */
 function ServiceRequestModal({ biz, onClose }: { biz: PublicBusiness; onClose: ()=>void }) {
   const { t } = useTranslation();
-  const [phone, setPhone] = useState("");
+  const a11yRef = useModalA11y(onClose);
+  const [phone, setPhone] = useState(() => loadClient().phone);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
 
   const send = async () => {
     if (!phone.trim()||!text.trim()) { setErr(t.phoneField.replace(" *","") + " / " + t.whatLooking.replace(" *","")); return; }
+    if (!isPhone(phone)) { setErr(t.errPhoneFormat); return; }
     setErr("");
     try {
       await api.serviceRequest(biz.slug, { client_phone: phone.trim(), text: text.trim() });
+      saveClient({ phone: phone.trim() });
       setSent(true);
     } catch(e) { setErr((e as Error).message); }
   };
 
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
-      <div style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
+      <div ref={a11yRef} role="dialog" aria-modal="true" tabIndex={-1}
+        style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.wizHead}>
           <div style={{flex:1,fontWeight:800,fontSize:16}}>{t.askTitle}</div>
-          <button style={S.closeBtn} onClick={onClose}><X size={18}/></button>
+          <button style={S.closeBtn} onClick={onClose} aria-label={t.close}><X size={18}/></button>
         </div>
         {sent ? (
           <div style={{textAlign:"center" as const,padding:"20px 0"}}>
@@ -467,7 +505,7 @@ function ServiceRequestModal({ biz, onClose }: { biz: PublicBusiness; onClose: (
           <>
             <p style={{fontSize:13.5,color:"#71717a",margin:"0 0 14px"}}>{t.askSub}</p>
             <label style={S.lbl}>{t.phoneField}</label>
-            <input style={S.input} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 600 700" type="tel" autoFocus/>
+            <input style={S.input} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 600 700" type="tel" inputMode="tel" autoComplete="tel" autoFocus/>
             <label style={S.lbl}>{t.whatLooking}</label>
             <textarea style={{...S.input,minHeight:80,resize:"vertical" as const,fontFamily:font}}
               value={text} onChange={e=>setText(e.target.value)} placeholder={t.askPlaceholder}/>
@@ -495,15 +533,20 @@ function ReviewsSection({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avg, setAvg] = useState<number|null>(null);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [name, setName] = useState("");
+  const [name, setName] = useState(() => loadClient().name);
   const [rating, setRating] = useState(5);
   const [text, setText] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    api.reviews(slug).then(d => { setReviews(d.reviews); setAvg(d.avg); }).catch(()=>{});
+    setLoading(true);
+    api.reviews(slug)
+      .then(d => { setReviews(d.reviews); setAvg(d.avg); })
+      .catch(()=>{})
+      .finally(() => setLoading(false));
   }, [slug]);
 
   const submit = async () => {
@@ -529,7 +572,18 @@ function ReviewsSection({ slug }: { slug: string }) {
         )}
       </div>
 
-      {!reviews.length && <div style={S.empty}>{t.noReviews}</div>}
+      {loading && (
+        <div style={{display:"flex",flexDirection:"column" as const,gap:10,marginBottom:14}}>
+          {[1,2].map(i => (
+            <div key={i} style={{background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 2px 8px #1b142008"}}>
+              <div className="skeleton-line" style={{height:13,width:"38%",marginBottom:8}}/>
+              <div className="skeleton-line" style={{height:11,width:"85%"}}/>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && !reviews.length && <div style={S.empty}>{t.noReviews}</div>}
 
       <div style={{display:"flex",flexDirection:"column" as const,gap:10,marginBottom:14}}>
         {reviews.map(r => (
@@ -584,15 +638,19 @@ function ReviewsSection({ slug }: { slug: string }) {
 /* ========== WAITLIST MODAL ========== */
 function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service?: PublicService; onClose: ()=>void }) {
   const { t } = useTranslation();
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
+  const a11yRef = useModalA11y(onClose);
+  const remembered = useMemo(() => loadClient(), []);
+  const [name, setName] = useState(remembered.name);
+  const [phone, setPhone] = useState(remembered.phone);
+  const [email, setEmail] = useState(remembered.email);
   const [date, setDate] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
 
   const send = async () => {
     if (!name.trim() || !phone.trim()) { setErr(t.waitlistErrRequired); return; }
+    if (!isPhone(phone)) { setErr(t.errPhoneFormat); return; }
+    if (email.trim() && !isEmail(email)) { setErr(t.errEmailFormat); return; }
     setErr("");
     try {
       await api.joinWaitlist(biz.slug, {
@@ -602,16 +660,18 @@ function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service
         client_email: email.trim(),
         preferred_date: date || undefined,
       });
+      saveClient({ name: name.trim(), phone: phone.trim(), email: email.trim() });
       setSent(true);
     } catch(e) { setErr((e as Error).message); }
   };
 
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
-      <div style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
+      <div ref={a11yRef} role="dialog" aria-modal="true" tabIndex={-1}
+        style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         <div style={S.wizHead}>
           <div style={{flex:1,fontWeight:800,fontSize:16}}>{t.waitlistTitle}</div>
-          <button style={S.closeBtn} onClick={onClose}><X size={18}/></button>
+          <button style={S.closeBtn} onClick={onClose} aria-label={t.close}><X size={18}/></button>
         </div>
         {sent ? (
           <div style={{textAlign:"center" as const,padding:"20px 0"}}>
@@ -623,17 +683,36 @@ function WaitlistModal({ biz, service, onClose }: { biz: PublicBusiness; service
           <>
             <p style={{fontSize:13.5,color:"#71717a",margin:"0 0 14px"}}>{t.waitlistSub(service?.name)}</p>
             <label style={S.lbl}>{t.fullName}</label>
-            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder={t.namePlaceholder} autoFocus/>
+            <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder={t.namePlaceholder} autoComplete="name" autoFocus/>
             <label style={S.lbl}>{t.phone}</label>
-            <input style={S.input} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 600 700" type="tel"/>
+            <input style={S.input} value={phone} onChange={e=>setPhone(e.target.value)} placeholder="+48 500 600 700" type="tel" inputMode="tel" autoComplete="tel"/>
             <label style={S.lbl}>{t.email}</label>
-            <input style={S.input} value={email} onChange={e=>setEmail(e.target.value)} placeholder="jan@example.com" type="email"/>
+            <input style={S.input} value={email} onChange={e=>setEmail(e.target.value)} placeholder="jan@example.com" type="email" inputMode="email" autoComplete="email"/>
             <label style={S.lbl}>{t.preferredDate}</label>
             <input style={S.input} value={date} onChange={e=>setDate(e.target.value)} type="date"/>
             {err && <div style={S.err}>{err}</div>}
             <button style={S.primary} onClick={send}>{t.notifyBtn}</button>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ========== LOADING SKELETON ========== */
+function BizSkeleton() {
+  return (
+    <div style={S.page}>
+      <div className="skeleton-line" style={{height:220,borderRadius:0}}/>
+      <div style={S.content}>
+        <div className="skeleton-line" style={{height:28,width:"55%",marginBottom:12}}/>
+        <div className="skeleton-line" style={{height:14,width:"38%",marginBottom:22}}/>
+        <div style={{display:"flex",gap:8,marginBottom:22}}>
+          {[90,120,70].map((w,i)=><div key={i} className="skeleton-line" style={{height:32,width:w,borderRadius:999}}/>)}
+        </div>
+        <div className="skeleton-line" style={{height:16,width:"30%",marginBottom:12}}/>
+        <div className="skeleton-line" style={{height:120,borderRadius:22,marginBottom:16}}/>
+        <div className="skeleton-line" style={{height:120,borderRadius:22}}/>
       </div>
     </div>
   );
@@ -656,7 +735,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
       .catch(()=>{ setNotFound(true); setLoading(false); });
   }, [slug]);
 
-  if (loading) return <div style={S.center}>…</div>;
+  if (loading) return <BizSkeleton/>;
   if (notFound || !biz) return (
     <div style={S.center}>
       <div style={{textAlign:"center" as const}}>
@@ -674,6 +753,15 @@ export default function BusinessPage({ slug }: { slug: string }) {
   const workingDays = DAY_ORDER.filter(d=>biz.hours?.[d]);
   const DAY_PL = t.days;
 
+  const handleShare = async () => {
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: biz.name, url }); } catch { /* cancelled */ }
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); showToast(t.linkCopied); } catch { /* ignore */ }
+  };
+
   return (
     <div style={S.page}>
       {/* back nav */}
@@ -682,6 +770,9 @@ export default function BusinessPage({ slug }: { slug: string }) {
           <ArrowLeft size={16}/> {t.back}
         </button>
         <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <button style={S.shareBtn} onClick={handleShare} aria-label={t.share} title={t.share}>
+            <Share2 size={16}/>
+          </button>
           <LangDropdown/>
         </div>
       </div>
@@ -973,7 +1064,12 @@ const S: Record<string, CSSProperties> = {
   input:  { width:"100%", padding:"12px 14px", borderRadius:14, border:"1.5px solid #efe9ee", fontSize:16, outline:"none", background:"#fbf7f4", marginBottom:4, boxSizing:"border-box" as const, fontFamily:font, color:"#1a1320" },
   err:    { background:"#fef2f2", color:"#dc2626", fontSize:13, padding:"10px 12px", borderRadius:10, marginBottom:8, textAlign:"center" as const },
   hint:   { fontSize:12, color:"#8b8194", textAlign:"center" as const, marginTop:8 },
+  nudge:  { fontSize:12, color:"#8b8194", margin:"2px 0 0", lineHeight:1.5 },
   primary:{ width:"100%", marginTop:12, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 20px rgba(124,58,237,.35)" },
 
   successIcon:{ width:60, height:60, borderRadius:999, background:GRAD, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", boxShadow:"0 4px 20px rgba(124,58,237,.40)" },
+  calRow:   { marginTop:18, padding:"14px 0 4px", borderTop:"1px solid #efe9ee" },
+  calLabel: { display:"flex", alignItems:"center", justifyContent:"center", gap:6, fontSize:12, fontWeight:700, color:"#8b8194", textTransform:"uppercase" as const, letterSpacing:0.6, marginBottom:10 },
+  calBtn:   { display:"inline-flex", alignItems:"center", gap:6, padding:"9px 16px", borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", color:"#52525b", fontSize:13, fontWeight:600, cursor:"pointer", fontFamily:font, textDecoration:"none" },
+  shareBtn: { width:34, height:34, borderRadius:999, border:"1.5px solid #efe9ee", background:"#fff", color:ACC, cursor:"pointer", display:"grid", placeItems:"center", flexShrink:0 },
 };

@@ -43,65 +43,30 @@
 
 ---
 
-## Этап UX-1 — Быстрые победы
+## Этап UX-1 — Быстрые победы ✅
 
-Мало кода, эффект виден сразу. Всё во фронте, без БД.
+Мало кода, эффект виден сразу. Всё во фронте, без БД. **Сделано** (коммит `feat: UX-1`).
 
-- [ ] **1.1 · Запоминание клиента (S)**
-  - Что: после успешной брони писать `{name, phone, email}` в `localStorage` (`rz_client`);
-    при открытии `BookingWizard` / `WaitlistModal` / `ServiceRequestModal` — подставлять в поля.
-  - Зачем: повторный клиент сейчас каждый раз вбивает данные заново.
-  - Где: `frontend/src/BusinessPage.tsx` — `BookingWizard` шаг `details`, `book()` (после `setResult`).
-  - Заметки: try/catch на доступ к `localStorage` (приватный режим кидает). Не хранить comment.
+Новые модули: `lib/clientMemory.ts`, `lib/validate.ts`, `lib/calendar.ts`, `lib/useModalA11y.ts`,
+`components/Toast.tsx` (+ `<ToastHost/>` в `App.tsx`).
 
-- [ ] **1.2 · «Добавить в календарь» на экране «Готово» (M)**
-  - Что: кнопки «Google Calendar» и «Скачать .ics» на шаге `done`. Генерить `.ics` строкой на клиенте
-    (VEVENT: дата+`start_min`, длительность услуги, название салона, адрес, телефон).
-  - Зачем: сейчас `done` — просто текст, запись легко забыть → no-show.
-  - Где: `BusinessPage.tsx:411` (`step==="done"`). Нужны данные адреса/названия из `biz` + `result`.
-  - i18n: `t.addToCalendar`, `t.downloadIcs`.
-  - PWA-нюанс: `<a download>` может не работать в standalone — дать и Google-ссылку как fallback.
+- [x] **1.1 · Запоминание клиента** — `lib/clientMemory.ts` (`loadClient`/`saveClient`, ключ `rz_client`,
+  try/catch на приватный режим). Подставляется в `BookingWizard`, `WaitlistModal`,
+  `ServiceRequestModal`, поле имени в отзыве. Сохраняется после успешной брони/waitlist/запроса. Comment не хранится.
+- [x] **1.2 · «Добавить в календарь»** — `lib/calendar.ts`: `googleCalendarUrl()` + `icsDataUri()`
+  (data-URI, без blob-cleanup). Блок на шаге `done` (`calEvent`), TZID=Europe/Warsaw. Google-ссылка как fallback для PWA.
+- [x] **1.3 · Share** — кнопка `Share2` в `navBar` → `navigator.share()` → fallback `clipboard.writeText` + тост.
+- [x] **1.4 · Инлайн-валидация** — `lib/validate.ts` (`isEmail`, `isPhone` — зеркало backend-regex).
+  Проверка в `book()`, `WaitlistModal.send()`, `ServiceRequestModal.send()` перед запросом.
+- [x] **1.5 · Нудж про email** — `t.emailReminderHint` под пустым полем email в `BookingWizard` (не блокирует).
+- [x] **1.6 · `inputMode`** — `inputMode="tel"/"email"` + `autoComplete` на всех клиентских полях.
+- [x] **1.7 · `useModalA11y`** — `Esc` закрывает, scroll-lock `body`, фокус в модалку (уважает `autoFocus`)
+  и возврат на триггер. Подключён к 3 клиентским модалкам + `role="dialog"`/`aria-modal`/`aria-label` на иконочных кнопках.
+- [x] **1.8 · Скелетон страницы бизнеса** — `BizSkeleton` вместо `…`.
+- [x] **1.9 · Загрузка отзывов** — `loading` state + skeleton-строки в `ReviewsSection` (AUDIT K-5).
 
-- [ ] **1.3 · Share / «Скопировать ссылку» (S)**
-  - Что: кнопка share в `navBar` страницы бизнеса → `navigator.share()` с fallback на
-    `navigator.clipboard.writeText()` + тост «Скопировано».
-  - Зачем: салоны и клиенты делятся ссылками в мессенджерах — сейчас только вручную из адресной строки.
-  - Где: `BusinessPage.tsx:680` (`S.navBar`).
-  - i18n: `t.share`, `t.linkCopied`.
-
-- [ ] **1.4 · Инлайн-валидация телефона и email (S)**
-  - Что: на шаге `details` — подсветка поля + подсказка, если email не проходит
-    `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` или телефон < 9 цифр. Блокировать `confirmBooking` до исправления.
-  - Зачем: кривой email → клиент молча не получает подтверждение и напоминание.
-  - Где: `BusinessPage.tsx` `BookingWizard` `book()` + рендер полей.
-  - i18n: `t.errEmailFormat`, `t.errPhoneFormat`.
-
-- [ ] **1.5 · Нудж «укажи email — пришлём напоминание» (S)**
-  - Что: если email пуст на шаге `details` — мягкая подсказка под полем (не блокирует).
-  - Зачем: email опционален, без него нет reminder'а — а это ядро продукта.
-  - i18n: `t.emailReminderHint`.
-
-- [ ] **1.6 · `inputmode` + тип клавиатуры для телефона (S)**
-  - Что: `inputMode="tel"` на телефонные поля во всех модалках; placeholder-подсказка формата `+48`.
-  - Зачем: на мобиле открывается буквенная клавиатура.
-  - Где: `BusinessPage.tsx` (booking, waitlist, service-request), `PanelPage` не трогаем.
-
-- [ ] **1.7 · Закрытие модалок по `Esc` + фокус (S)**
-  - Что: общий хук `useModalA11y` — `Esc` закрывает, фокус уходит в модалку при открытии,
-    возвращается на триггер при закрытии, `body` не скроллится под оверлеем.
-  - Зачем: сейчас оверлей закрывается только кликом вне / крестиком.
-  - Где: `BusinessPage.tsx` — `BookingWizard`, `ServiceRequestModal`, `WaitlistModal`; переиспользовать в `PanelPage`.
-
-- [ ] **1.8 · Скелетон вместо `…` на странице бизнеса (S)**
-  - Что: скелетон-версия шапки/услуг вместо `<div style={S.center}>…</div>`.
-  - Зачем: `BusinessPage.tsx:659` — голое многоточие на 1–3 сек (Render просыпается — до 50 сек).
-  - Переиспользовать `.skeleton-line` из `index.css`.
-
-- [ ] **1.9 · Состояние загрузки в отзывах (S)**
-  - Что: скелетон/спиннер в `ReviewsSection` пока грузятся отзывы (AUDIT K-5).
-  - Где: `BusinessPage.tsx:504`.
-
-**Новые i18n ключи UX-1:** `addToCalendar`, `downloadIcs`, `share`, `linkCopied`, `errEmailFormat`, `errPhoneFormat`, `emailReminderHint`.
+**i18n ключи UX-1 (добавлены в pl/en/ru/ua):** `addToCalendar`, `calGoogle`, `calIcs`,
+`errEmailFormat`, `errPhoneFormat`, `emailReminderHint`, `share`, `linkCopied`.
 
 ---
 

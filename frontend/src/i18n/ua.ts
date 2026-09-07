@@ -89,6 +89,16 @@ export const ua: T = {
   anyMaster:     "Будь-який вільний спеціаліст",
   anyMasterSub:  "Система призначить доступного спеціаліста при бронюванні",
 
+  // UX: booking confirmation, validation, share
+  addToCalendar:     "Додати в календар",
+  calGoogle:         "Google Календар",
+  calIcs:            "Apple / Outlook (.ics)",
+  errEmailFormat:    "Перевірте адресу email",
+  errPhoneFormat:    "Перевірте номер телефону",
+  emailReminderHint: "Вкажіть email — надішлемо нагадування про візит",
+  share:             "Поділитися",
+  linkCopied:        "Посилання скопійовано",
+
   waitlistTitle: "Список очікування",
   waitlistSub: (svc?: string) => svc ? `Немає вільного часу для ${svc}? Залиште дані — ми повідомимо вас.` : "Салон зайнятий? Залиште дані — ми повідомимо вас.",
   waitlistSuccess: "Вас додано до списку очікування. Ми повідомимо вас, коли з'явиться вільний час.",

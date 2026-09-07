@@ -89,6 +89,16 @@ export const en: T = {
   anyMaster:     "Any available specialist",
   anyMasterSub:  "System will assign an available specialist at booking",
 
+  // UX: booking confirmation, validation, share
+  addToCalendar:     "Add to calendar",
+  calGoogle:         "Google Calendar",
+  calIcs:            "Apple / Outlook (.ics)",
+  errEmailFormat:    "Check the email address",
+  errPhoneFormat:    "Check the phone number",
+  emailReminderHint: "Add your email — we'll send a visit reminder",
+  share:             "Share",
+  linkCopied:        "Link copied",
+
   waitlistTitle: "Waiting list",
   waitlistSub: (svc?: string) => svc ? `No free slots for ${svc}? Leave your details and we'll notify you.` : "Salon is busy? Leave your details and we'll notify you.",
   waitlistSuccess: "You've been added to the waiting list. We'll notify you when a slot is available.",

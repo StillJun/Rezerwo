@@ -89,6 +89,16 @@ export const ru: T = {
   anyMaster:     "Любой свободный специалист",
   anyMasterSub:  "Система назначит доступного специалиста при бронировании",
 
+  // UX: booking confirmation, validation, share
+  addToCalendar:     "Добавить в календарь",
+  calGoogle:         "Google Календарь",
+  calIcs:            "Apple / Outlook (.ics)",
+  errEmailFormat:    "Проверьте адрес email",
+  errPhoneFormat:    "Проверьте номер телефона",
+  emailReminderHint: "Укажите email — пришлём напоминание о визите",
+  share:             "Поделиться",
+  linkCopied:        "Ссылка скопирована",
+
   waitlistTitle: "Лист ожидания",
   waitlistSub: (svc?: string) => svc ? `Нет свободного времени на ${svc}? Оставьте данные — мы уведомим вас.` : "Салон занят? Оставьте данные — мы уведомим вас.",
   waitlistSuccess: "Вы добавлены в лист ожидания. Мы уведомим вас, когда появится свободное время.",

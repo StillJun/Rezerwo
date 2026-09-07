@@ -90,6 +90,16 @@ export const pl = {
   anyMaster:     "Dowolny wolny specjalista",
   anyMasterSub:  "System przypisze dostępnego specjalistę w momencie rezerwacji",
 
+  // UX: booking confirmation, validation, share
+  addToCalendar:     "Dodaj do kalendarza",
+  calGoogle:         "Google Calendar",
+  calIcs:            "Apple / Outlook (.ics)",
+  errEmailFormat:    "Sprawdź adres email",
+  errPhoneFormat:    "Sprawdź numer telefonu",
+  emailReminderHint: "Zostaw email — wyślemy przypomnienie o wizycie",
+  share:             "Udostępnij",
+  linkCopied:        "Link skopiowany",
+
   // waitlist
   waitlistTitle: "Lista oczekujących",
   waitlistSub: (svc?: string) => svc ? `Brak wolnych terminów na ${svc}? Zostaw dane — powiadomimy Cię, gdy pojawi się wolne miejsce.` : "Salon jest zajęty? Zostaw dane — powiadomimy Cię.",
