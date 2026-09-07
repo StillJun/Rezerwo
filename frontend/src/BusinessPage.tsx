@@ -687,7 +687,11 @@ export default function BusinessPage({ slug }: { slug: string }) {
       </div>
 
       {/* banner */}
-      <div className="biz-banner" style={{...S.banner,background:BANNERS[biz.banner]||BANNERS.violet}}>
+      <div className="biz-banner" style={{...S.banner,
+        background: biz.banner?.startsWith("http") ? "#1a1320" : (BANNERS[biz.banner]||BANNERS.violet),
+        backgroundImage: biz.banner?.startsWith("http") ? `url(${biz.banner})` : undefined,
+        backgroundSize: "cover", backgroundPosition: "center",
+      }}>
         {biz.photos && biz.photos.length>0 && (
           <img src={biz.photos[photoIdx]} alt="" style={S.bannerPhoto}
             onError={e=>(e.currentTarget.style.display="none")}/>
