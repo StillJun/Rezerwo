@@ -57,6 +57,18 @@ img, video { max-width: 100% }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important }
 }
 
+/* ═══════════ FOCUS VISIBILITY ═══════════ */
+:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) { outline: none }
+
 /* ═══════════ GRADIENT TEXT ═══════════ */
 .grad-text {
   background: var(--grad);

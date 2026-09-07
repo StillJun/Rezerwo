@@ -214,10 +214,11 @@ export default function MarketplacePage() {
 
       {/* ══ HEADER ══ */}
       <header style={S.header}>
-        <div style={S.logoRow} onClick={() => navigate("/")} role="link" tabIndex={0} onKeyDown={e=>e.key==="Enter"&&navigate("/")}>
+        <a href="/" style={{...S.logoRow, textDecoration:"none"}}
+          onClick={e => { if (e.metaKey||e.ctrlKey||e.shiftKey||e.button) return; e.preventDefault(); navigate("/"); }}>
           <div style={S.logoMark}>R</div>
           <span style={S.logoText}>Rezerwo</span>
-        </div>
+        </a>
         <div style={{ display:"flex", gap:8, alignItems:"center" }}>
           <LangDropdown/>
           <button className="panel-btn-sec nav-login-btn" style={S.panelBtn} onClick={() => navigate("/panel?mode=login")}>

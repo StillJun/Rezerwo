@@ -50,7 +50,20 @@ export default function App() {
     return () => window.removeEventListener("popstate", h);
   }, []);
 
-  useEffect(() => { document.title = "Rezerwo"; }, []);
+  useEffect(() => {
+    const named: Record<string, string> = {
+      "/panel": "Panel — Rezerwo",
+      "/admin": "Admin — Rezerwo",
+      "/pomoc": "Pomoc — Rezerwo",
+      "/regulamin": "Regulamin — Rezerwo",
+      "/polityka-prywatnosci": "Polityka prywatności — Rezerwo",
+      "/verify-email": "Rezerwo",
+    };
+    // BusinessPage / ManageBookingPage set their own title once loaded
+    if (path.startsWith("/wizyta/")) return;
+    if (named[path]) { document.title = named[path]; return; }
+    if (path === "/" || path.slice(1).includes("/")) document.title = "Rezerwo — rezerwacje online";
+  }, [path]);
 
   return (
     <ErrorBoundary>

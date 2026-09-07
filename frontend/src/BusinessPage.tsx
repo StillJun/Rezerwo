@@ -500,21 +500,21 @@ function BookingWizard({ biz, initService, onClose }: {
               <div style={S.confirmNotice}>{t.confirmRequiredNotice}</div>
             )}
 
-            <label style={S.lbl}>{t.fullName}</label>
-            <input style={S.input} value={state.name} onChange={e=>set("name",e.target.value)}
-              placeholder={t.namePlaceholder} autoFocus/>
+            <label style={S.lbl} htmlFor="bk-name">{t.fullName}</label>
+            <input id="bk-name" style={S.input} value={state.name} onChange={e=>set("name",e.target.value)}
+              placeholder={t.namePlaceholder} autoComplete="name" autoFocus/>
 
-            <label style={S.lbl}>{t.phone}</label>
-            <input style={S.input} value={state.phone} onChange={e=>set("phone",e.target.value)}
+            <label style={S.lbl} htmlFor="bk-phone">{t.phone}</label>
+            <input id="bk-phone" style={S.input} value={state.phone} onChange={e=>set("phone",e.target.value)}
               placeholder="+48 500 600 700" type="tel" inputMode="tel" autoComplete="tel"/>
 
-            <label style={S.lbl}>{t.email}</label>
-            <input style={S.input} value={state.email} onChange={e=>set("email",e.target.value)}
+            <label style={S.lbl} htmlFor="bk-email">{t.email}</label>
+            <input id="bk-email" style={S.input} value={state.email} onChange={e=>set("email",e.target.value)}
               placeholder="jan@example.com" type="email" inputMode="email" autoComplete="email"/>
             {!state.email.trim() && <p style={S.nudge}>{t.emailReminderHint}</p>}
 
-            <label style={S.lbl}>{t.commentSalon}</label>
-            <textarea style={{...S.input,minHeight:64,resize:"vertical" as const,fontFamily:font}}
+            <label style={S.lbl} htmlFor="bk-comment">{t.commentSalon}</label>
+            <textarea id="bk-comment" style={{...S.input,minHeight:64,resize:"vertical" as const,fontFamily:font}}
               value={state.comment} onChange={e=>set("comment",e.target.value)}
               placeholder={t.commentSalonPlaceholder}/>
 
@@ -746,18 +746,18 @@ function ReviewsSection({ slug }: { slug: string }) {
       {showForm && !sent && (
         <div style={{background:"#fff",borderRadius:16,padding:"16px",boxShadow:"0 2px 12px #1b142010"}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>{t.yourReview}</div>
-          <label style={S.lbl}>{t.rating}</label>
-          <div style={{display:"flex",gap:6,marginBottom:12}}>
+          <label style={S.lbl} id="rv-rating-lbl">{t.rating}</label>
+          <div style={{display:"flex",gap:6,marginBottom:12}} role="radiogroup" aria-labelledby="rv-rating-lbl">
             {[1,2,3,4,5].map(i => (
-              <button key={i} onClick={()=>setRating(i)}
+              <button key={i} onClick={()=>setRating(i)} aria-label={`${i} / 5`} aria-pressed={i<=rating}
                 style={{fontSize:24,background:"none",border:"none",cursor:"pointer",
                   color:i<=rating?"#f59e0b":"#e5e7eb",padding:"0 2px"}}>★</button>
             ))}
           </div>
-          <label style={S.lbl}>{t.firstName}</label>
-          <input style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder={t.nameShortPh}/>
-          <label style={S.lbl}>{t.comment}</label>
-          <textarea style={{...S.input,minHeight:64,resize:"vertical" as const,fontFamily:font}}
+          <label style={S.lbl} htmlFor="rv-name">{t.firstName}</label>
+          <input id="rv-name" style={S.input} value={name} onChange={e=>setName(e.target.value)} placeholder={t.nameShortPh} autoComplete="name"/>
+          <label style={S.lbl} htmlFor="rv-text">{t.comment}</label>
+          <textarea id="rv-text" style={{...S.input,minHeight:64,resize:"vertical" as const,fontFamily:font}}
             value={text} onChange={e=>setText(e.target.value)} placeholder={t.commentPlaceholder}/>
           {err && <div style={S.err}>{err}</div>}
           <div style={{display:"flex",gap:8,marginTop:8}}>
@@ -905,6 +905,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
     api.publicBusiness(slug)
       .then(d=>{
         setBiz(d); setLoading(false);
+        document.title = `${d.name} — Rezerwo`;
         pushRecent({ slug: d.slug, name: d.name, city: d.city });
       })
       .catch(()=>{ setNotFound(true); setLoading(false); });
@@ -963,7 +964,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
         {biz.photos && biz.photos.length>1 && (
           <div style={S.photoDots}>
             {biz.photos.map((_,i)=>(
-              <button key={i} style={{...S.photoDot,...(i===photoIdx?S.photoDotOn:{})}} onClick={()=>setPhotoIdx(i)}/>
+              <button key={i} aria-label={`${t.portfolio} ${i+1}`} style={{...S.photoDot,...(i===photoIdx?S.photoDotOn:{})}} onClick={()=>setPhotoIdx(i)}/>
             ))}
           </div>
         )}

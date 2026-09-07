@@ -60,9 +60,10 @@ export default function ManageBookingPage({ token }: { token: string }) {
   const [rvSent, setRvSent] = useState(false);
 
   useEffect(() => {
+    document.title = "Rezerwo";
     setLoading(true);
     api.managedBooking(token)
-      .then(setBooking)
+      .then(b => { setBooking(b); document.title = `${b.businessName} — Rezerwo`; })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, [token]);
