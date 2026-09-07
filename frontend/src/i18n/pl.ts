@@ -146,6 +146,18 @@ export const pl = {
   dayOff:          "Wolne",
   closingSoon:     (time: string) => `Zamykamy o ${time}`,
 
+  // UX: reviews & trust
+  reviewVerified:   "Był(a) na wizycie",
+  reviewSortHigh:   "Najwyższe oceny",
+  reviewSortLow:    "Najniższe oceny",
+  ownerReplyLabel:  "Odpowiedź salonu",
+  rateYourVisit:    "Oceń swoją wizytę",
+  p_reviewReply:       "Odpowiedz",
+  p_reviewReplyPh:     "Twoja odpowiedź na opinię…",
+  p_reviewReplySave:   "Zapisz odpowiedź",
+  p_reviewReplyDelete: "Usuń odpowiedź",
+  p_reviewVerified:    "Zweryfikowana wizyta",
+
   // waitlist
   waitlistTitle: "Lista oczekujących",
   waitlistSub: (svc?: string) => svc ? `Brak wolnych terminów na ${svc}? Zostaw dane — powiadomimy Cię, gdy pojawi się wolne miejsce.` : "Salon jest zajęty? Zostaw dane — powiadomimy Cię.",

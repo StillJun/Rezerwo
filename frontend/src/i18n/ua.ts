@@ -145,6 +145,18 @@ export const ua: T = {
   dayOff:          "Вихідний",
   closingSoon:     (time: string) => `Зачиняється о ${time}`,
 
+  // UX: reviews & trust
+  reviewVerified:   "Був(ла) на візиті",
+  reviewSortHigh:   "Найвищі оцінки",
+  reviewSortLow:    "Найнижчі оцінки",
+  ownerReplyLabel:  "Відповідь салону",
+  rateYourVisit:    "Оцініть візит",
+  p_reviewReply:       "Відповісти",
+  p_reviewReplyPh:     "Ваша відповідь на відгук…",
+  p_reviewReplySave:   "Зберегти відповідь",
+  p_reviewReplyDelete: "Видалити відповідь",
+  p_reviewVerified:    "Підтверджений візит",
+
   waitlistTitle: "Список очікування",
   waitlistSub: (svc?: string) => svc ? `Немає вільного часу для ${svc}? Залиште дані — ми повідомимо вас.` : "Салон зайнятий? Залиште дані — ми повідомимо вас.",
   waitlistSuccess: "Вас додано до списку очікування. Ми повідомимо вас, коли з'явиться вільний час.",

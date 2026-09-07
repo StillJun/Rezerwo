@@ -145,6 +145,18 @@ export const en: T = {
   dayOff:          "Closed",
   closingSoon:     (time: string) => `Closes at ${time}`,
 
+  // UX: reviews & trust
+  reviewVerified:   "Verified visit",
+  reviewSortHigh:   "Highest rated",
+  reviewSortLow:    "Lowest rated",
+  ownerReplyLabel:  "Salon's reply",
+  rateYourVisit:    "Rate your visit",
+  p_reviewReply:       "Reply",
+  p_reviewReplyPh:     "Your reply to this review…",
+  p_reviewReplySave:   "Save reply",
+  p_reviewReplyDelete: "Delete reply",
+  p_reviewVerified:    "Verified visit",
+
   waitlistTitle: "Waiting list",
   waitlistSub: (svc?: string) => svc ? `No free slots for ${svc}? Leave your details and we'll notify you.` : "Salon is busy? Leave your details and we'll notify you.",
   waitlistSuccess: "You've been added to the waiting list. We'll notify you when a slot is available.",

@@ -315,5 +315,17 @@ export async function initDb() {
   await pool.query(`ALTER TABLE appointments ADD COLUMN IF NOT EXISTS manage_token TEXT`).catch(() => {});
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_appt_manage_token ON appointments(manage_token) WHERE manage_token IS NOT NULL`).catch(() => {});
 
+  // ── reviews: verified-visit flag, owner reply, post-visit request log ───────────
+  await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS verified BOOLEAN NOT NULL DEFAULT FALSE`).catch(() => {});
+  await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS owner_reply TEXT NOT NULL DEFAULT ''`).catch(() => {});
+  await pool.query(`ALTER TABLE reviews ADD COLUMN IF NOT EXISTS owner_reply_at TIMESTAMPTZ`).catch(() => {});
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_appointment ON reviews(appointment_id) WHERE appointment_id IS NOT NULL`).catch(() => {});
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS review_requests_sent (
+      appointment_id BIGINT PRIMARY KEY REFERENCES appointments(id) ON DELETE CASCADE,
+      sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `).catch(() => {});
+
   console.log("Database ready (tables checked/created)");
 }

@@ -322,10 +322,56 @@ export async function notifyClientBooking(apptId, event) {
   }
 }
 
+// Ask the client for a review a few hours after the visit ended
+async function sendReviewRequests() {
+  const r = getResend(); if (!r) return;
+  const rows = await q(`
+    SELECT a.id, a.client_email, a.client_name, a.manage_token,
+           b.name AS business_name, s.name AS service_name
+    FROM appointments a
+    JOIN businesses b ON b.id = a.business_id
+    LEFT JOIN services s ON s.id = a.service_id
+    WHERE a.status IN ('confirmed','done')
+      AND a.client_email <> ''
+      AND a.manage_token IS NOT NULL
+      AND (a.date::date + (a.start_min + a.duration || ' minutes')::interval)
+            BETWEEN now() - interval '48 hours' AND now() - interval '2 hours'
+      AND NOT EXISTS (SELECT 1 FROM review_requests_sent x WHERE x.appointment_id = a.id)
+      AND NOT EXISTS (SELECT 1 FROM reviews rv WHERE rv.appointment_id = a.id)
+  `);
+  for (const a of rows) {
+    const url = `${APP_URL()}/wizyta/${a.manage_token}`;
+    try {
+      await r.emails.send({
+        from: FROM,
+        to: a.client_email,
+        subject: `Jak było w ${esc(a.business_name)}? Zostaw opinię`,
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+            <h2 style="color:#7c3aed;margin-bottom:8px">Podziel się opinią ⭐</h2>
+            <p>Cześć <strong>${esc(a.client_name)}</strong>! Jak minęła Twoja wizyta w <strong>${esc(a.business_name)}</strong>${a.service_name ? ` (${esc(a.service_name)})` : ""}?</p>
+            <p style="margin:18px 0"><a href="${url}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:11px 24px;border-radius:8px;font-weight:700;font-size:14px">Oceń wizytę</a></p>
+            <p style="color:#a8a2b0;font-size:12px">To zajmie 20 sekund i pomoże innym klientom.</p>
+            <hr style="border:none;border-top:1px solid #ece8f0;margin:20px 0"/>
+            <p style="color:#a8a2b0;font-size:12px">Rezerwo · platforma rezerwacji online</p>
+          </div>`,
+      });
+      await q("INSERT INTO review_requests_sent (appointment_id) VALUES ($1) ON CONFLICT DO NOTHING", [a.id]);
+      console.log(`[reviews] request sent to ${a.client_email} for appt ${a.id}`);
+    } catch (err) {
+      console.error(`[reviews] request failed for appt ${a.id}:`, err.message);
+    }
+  }
+}
+
 export function startReminderScheduler() {
   // every 5 minutes
   cron.schedule("*/5 * * * *", () => {
     runReminders().catch(err => console.error("[reminders] scheduler error:", err.message));
   });
-  console.log("[reminders] scheduler started (every 5 min)");
+  // review requests — every 30 minutes
+  cron.schedule("*/30 * * * *", () => {
+    sendReviewRequests().catch(err => console.error("[reviews] scheduler error:", err.message));
+  });
+  console.log("[reminders] scheduler started (reminders 5 min, review requests 30 min)");
 }

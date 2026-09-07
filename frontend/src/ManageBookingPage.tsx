@@ -6,6 +6,7 @@ import { navigate } from "./App";
 import type { ManagedBooking } from "./types";
 import { useTranslation } from "./i18n";
 import { showToast } from "./components/Toast";
+import { loadClient, saveClient } from "./lib/clientMemory";
 
 const ACC = "#7c3aed";
 const GRAD = "linear-gradient(115deg,#7c3aed 0%,#e0399e 52%,#ff7a59 100%)";
@@ -52,6 +53,12 @@ export default function ManageBookingPage({ token }: { token: string }) {
   const [slots, setSlots] = useState<{ mins: number[]; times: string[] }>({ mins: [], times: [] });
   const [slotsLoading, setSlotsLoading] = useState(false);
 
+  // post-visit review state
+  const [rvName, setRvName] = useState(() => loadClient().name);
+  const [rvRating, setRvRating] = useState(5);
+  const [rvText, setRvText] = useState("");
+  const [rvSent, setRvSent] = useState(false);
+
   useEffect(() => {
     setLoading(true);
     api.managedBooking(token)
@@ -93,6 +100,19 @@ export default function ManageBookingPage({ token }: { token: string }) {
     try {
       await api.rescheduleManagedBooking(token, rDate, startMin);
       setDoneKind("rescheduled"); setView("done");
+    } catch (e) { showToast((e as Error).message, "err"); }
+    finally { setBusy(false); }
+  };
+
+  const submitReview = async () => {
+    if (!booking || !rvName.trim()) return;
+    setBusy(true);
+    try {
+      await api.addReview(booking.businessSlug, {
+        client_name: rvName.trim(), rating: rvRating, text: rvText.trim(), manage_token: token,
+      });
+      saveClient({ name: rvName.trim() });
+      setRvSent(true);
     } catch (e) { showToast((e as Error).message, "err"); }
     finally { setBusy(false); }
   };
@@ -186,7 +206,25 @@ export default function ManageBookingPage({ token }: { token: string }) {
         {booking.phone && <Row icon={<Phone size={14} />} label="" value={<a href={`tel:${booking.phone}`} style={{ color: ACC }}>{booking.phone}</a>} />}
       </div>
 
-      {booking.isPast && <p style={S.sub}>{t.mv_past}</p>}
+      {booking.isPast && booking.status !== "cancelled" && (
+        rvSent ? (
+          <p style={{ ...S.sub, color: ACC, fontWeight: 700 }}>{t.thankReview}</p>
+        ) : (
+          <div style={S.reviewBox}>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>{t.rateYourVisit}</div>
+            <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <button key={i} onClick={() => setRvRating(i)} aria-label={`${i}`}
+                  style={{ fontSize: 26, background: "none", border: "none", cursor: "pointer", color: i <= rvRating ? "#f59e0b" : "#e5e7eb", padding: "0 2px" }}>★</button>
+              ))}
+            </div>
+            <input style={S.rvInput} value={rvName} onChange={e => setRvName(e.target.value)} placeholder={t.nameShortPh} autoComplete="name" />
+            <textarea style={{ ...S.rvInput, minHeight: 60, resize: "vertical" }} value={rvText} onChange={e => setRvText(e.target.value)} placeholder={t.commentPlaceholder} />
+            <button style={{ ...S.primary, marginTop: 8 }} disabled={busy || !rvName.trim()} onClick={submitReview}>{t.sendReview}</button>
+          </div>
+        )
+      )}
+      {booking.isPast && booking.status === "cancelled" && <p style={S.sub}>{t.mv_past}</p>}
 
       {canModify && !confirmCancel && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 4 }}>
@@ -260,4 +298,6 @@ const S: Record<string, CSSProperties> = {
   bucketLbl: { fontSize: 11, fontWeight: 700, color: "#8b8194", textTransform: "uppercase", letterSpacing: 0.6, margin: "4px 0 6px", textAlign: "left" },
   slotGrid: { display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, width: "100%" },
   slotBtn: { padding: "11px 0", borderRadius: 12, border: "1.5px solid #efe9ee", background: "#fbf7f4", cursor: "pointer", fontSize: 14, fontWeight: 700, fontFamily: font, color: "#1a1320" },
+  reviewBox: { width: "100%", background: "#faf8fb", border: "1px solid #efe9ee", borderRadius: 16, padding: "14px 16px", marginBottom: 12, textAlign: "left" },
+  rvInput: { width: "100%", padding: "10px 12px", borderRadius: 10, border: "1.5px solid #efe9ee", fontSize: 15, outline: "none", background: "#fff", marginBottom: 8, boxSizing: "border-box", fontFamily: font },
 };

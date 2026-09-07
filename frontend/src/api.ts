@@ -156,16 +156,19 @@ export const api = {
     req<{ ok: boolean; status: string }>(`/public/appointments/${encodeURIComponent(token)}/reschedule`, { method: "POST", body: JSON.stringify({ date, start_min }) }),
 
   /* public: reviews */
-  reviews: (slug: string) =>
-    req<{ reviews: Review[]; avg: number | null; total: number }>(`/public/businesses/${slug}/reviews`),
-  addReview: (slug: string, data: { client_name: string; rating: number; text?: string }) =>
-    req<{ ok: boolean; id: number }>(`/public/businesses/${slug}/reviews`, { method: "POST", body: JSON.stringify(data) }),
+  reviews: (slug: string, sort?: "recent" | "rating_desc" | "rating_asc") =>
+    req<{ reviews: Review[]; avg: number | null; total: number }>(
+      `/public/businesses/${slug}/reviews${sort && sort !== "recent" ? `?sort=${sort}` : ""}`),
+  addReview: (slug: string, data: { client_name: string; rating: number; text?: string; manage_token?: string }) =>
+    req<{ ok: boolean; id: number; verified?: boolean }>(`/public/businesses/${slug}/reviews`, { method: "POST", body: JSON.stringify(data) }),
 
   /* owner: reviews + reports */
   ownerReviews: () =>
     req<Review[]>("/reviews"),
   reportReview: (id: number, reason: string) =>
     req<{ ok: boolean }>(`/reviews/${id}/report`, { method: "POST", body: JSON.stringify({ reason }) }),
+  replyReview: (id: number, reply: string) =>
+    req<{ ok: boolean }>(`/reviews/${id}/reply`, { method: "PUT", body: JSON.stringify({ reply }) }),
 
   /* support */
   submitSupport: (data: { email: string; subject: string; message: string }) =>

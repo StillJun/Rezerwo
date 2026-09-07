@@ -160,31 +160,26 @@ Backend: `slotsForDate()` вынесен как общий хелпер; `/slots
 
 ---
 
-## Этап UX-6 — Доверие и отзывы
+## Этап UX-6 — Доверие и отзывы ✅
 
-- [ ] **6.1 · Верифицированные отзывы (M)**
-  - Что: связать отзыв с реальной записью. Вариант: после визита письмо со ссылкой
-    `/wizyta/:token#opinia` → форма отзыва, которая шлёт `appointment_id`. Бейдж «Был на визите».
-  - БД: `reviews.appointment_id` уже есть в схеме — задействовать.
-  - Backend: в `POST .../reviews` принимать токен записи, ставить `appointment_id`; помечать `verified`.
-  - Зачем: сейчас отзыв оставляет кто угодно (`BusinessPage.tsx:509`) — нет защиты от накрутки.
+**Сделано** (коммит `feat: UX-6`).
 
-- [ ] **6.2 · Ответы владельца на отзывы (M)**
-  - БД: `reviews.owner_reply TEXT`, `owner_reply_at TIMESTAMPTZ` (идемпотентная миграция).
-  - Backend: `PUT /reviews/:id/reply` (owner-scoped), отдавать `ownerReply` в публичном списке.
-  - Frontend: поле ответа во вкладке отзывов панели; показ ответа под отзывом на странице бизнеса.
-  - i18n: `t.ownerReply`, `t.replyToReview`, `t.yourReply`.
+БД: `reviews.verified`, `reviews.owner_reply`, `reviews.owner_reply_at`,
+partial-unique `idx_reviews_appointment`, таблица `review_requests_sent`.
 
-- [ ] **6.3 · Сортировка и фильтр отзывов (S)**
-  - Что: «Сначала новые / Высокая оценка / Низкая оценка», фильтр по звёздам.
-  - Где: `ReviewsSection` `BusinessPage.tsx:494`.
+- [x] **6.1 · Верифицированные отзывы** — `POST .../reviews` принимает `manage_token`; если он валиден
+  и запись принадлежит бизнесу → `appointment_id` + `verified=true` (1 отзыв на запись, дубль → 409).
+  Форма отзыва на `/wizyta/:token` для прошедших визитов. Бейдж «Był na wizycie» на странице бизнеса и в панели.
+- [x] **6.2 · Ответы владельца** — `PUT /api/reviews/:id/reply` (owner-scoped). Показ ответа под отзывом
+  на странице бизнеса (`S.ownerReply`) и редактирование во вкладке «Opinie» панели.
+- [x] **6.3 · Сортировка отзывов** — `?sort=recent|rating_desc|rating_asc`, селектор в `ReviewsSection`
+  (при `total > 1`); avg/total считаются в SQL, а не по 50 отданным строкам.
+- [x] **6.4 · Письмо после визита** — `sendReviewRequests()` в `reminders.js`, cron каждые 30 мин:
+  визиты, закончившиеся 2–48 ч назад, `confirmed/done`, есть email+token, нет записи в
+  `review_requests_sent` и нет отзыва → письмо со ссылкой `/wizyta/:token`.
 
-- [ ] **6.4 · Письмо «оставьте отзыв» после визита (S)**
-  - Что: в cron (`reminders.js`) — через N часов после `status` перешёл в `done` (или после времени
-    окончания) слать письмо с ссылкой на форму отзыва. Защита от дублей по аналогии с `reminders_sent`.
-  - БД: `review_requests_sent(appointment_id UNIQUE, sent_at)` или флаг в `appointments`.
-
-**Backend UX-6:** `reviews.owner_reply`, привязка `appointment_id`, новый роут reply, доп. cron-задача.
+**i18n ключи UX-6 (pl/en/ru/ua):** `reviewVerified`, `reviewSortHigh`, `reviewSortLow`, `ownerReplyLabel`,
+`rateYourVisit`, `p_reviewReply`, `p_reviewReplyPh`, `p_reviewReplySave`, `p_reviewReplyDelete`, `p_reviewVerified`.
 
 ---
 

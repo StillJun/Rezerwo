@@ -653,7 +653,9 @@ function ReviewsSection({ slug }: { slug: string }) {
   const { t } = useTranslation();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [avg, setAvg] = useState<number|null>(null);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [sort, setSort] = useState<"recent"|"rating_desc"|"rating_asc">("recent");
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState(() => loadClient().name);
   const [rating, setRating] = useState(5);
@@ -663,11 +665,11 @@ function ReviewsSection({ slug }: { slug: string }) {
 
   useEffect(() => {
     setLoading(true);
-    api.reviews(slug)
-      .then(d => { setReviews(d.reviews); setAvg(d.avg); })
+    api.reviews(slug, sort)
+      .then(d => { setReviews(d.reviews); setAvg(d.avg); setTotal(d.total); })
       .catch(()=>{})
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, sort]);
 
   const submit = async () => {
     if (!name.trim()) { setErr(t.reviewErrName); return; }
@@ -675,22 +677,30 @@ function ReviewsSection({ slug }: { slug: string }) {
     try {
       await api.addReview(slug, { client_name: name.trim(), rating, text: text.trim() });
       setSent(true);
-      api.reviews(slug).then(d => { setReviews(d.reviews); setAvg(d.avg); }).catch(()=>{});
+      api.reviews(slug, sort).then(d => { setReviews(d.reviews); setAvg(d.avg); setTotal(d.total); }).catch(()=>{});
     } catch(e) { setErr((e as Error).message); }
   };
 
   return (
     <div style={{marginTop:28}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12,gap:8,flexWrap:"wrap" as const}}>
         <div style={S.sectionTitle}>{t.reviews}</div>
         {avg !== null && (
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <Stars rating={Math.round(avg)} size={15}/>
             <span style={{fontWeight:700,fontSize:14}}>{avg.toFixed(1)}</span>
-            <span style={{fontSize:12,color:"#a8a2b0"}}>({reviews.length})</span>
+            <span style={{fontSize:12,color:"#a8a2b0"}}>({total})</span>
           </div>
         )}
       </div>
+
+      {total > 1 && (
+        <select value={sort} onChange={e=>setSort(e.target.value as typeof sort)} style={S.reviewSort}>
+          <option value="recent">{t.sortNewest}</option>
+          <option value="rating_desc">{t.reviewSortHigh}</option>
+          <option value="rating_asc">{t.reviewSortLow}</option>
+        </select>
+      )}
 
       {loading && (
         <div style={{display:"flex",flexDirection:"column" as const,gap:10,marginBottom:14}}>
@@ -708,12 +718,21 @@ function ReviewsSection({ slug }: { slug: string }) {
       <div style={{display:"flex",flexDirection:"column" as const,gap:10,marginBottom:14}}>
         {reviews.map(r => (
           <div key={r.id} style={{background:"#fff",borderRadius:14,padding:"12px 14px",boxShadow:"0 2px 8px #1b142008"}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-              <span style={{fontWeight:700,fontSize:14}}>{r.clientName}</span>
+            <div style={{display:"flex",justifyContent:"space-between",marginBottom:4,gap:8}}>
+              <span style={{fontWeight:700,fontSize:14}}>
+                {r.clientName}
+                {r.verified && <span style={S.verifiedTag}><Check size={10}/> {t.reviewVerified}</span>}
+              </span>
               <Stars rating={r.rating}/>
             </div>
             {r.text && <p style={{fontSize:13.5,color:"#52525b",margin:0,lineHeight:1.5}}>{r.text}</p>}
             <div style={{fontSize:11.5,color:"#c4bdd0",marginTop:6}}>{String(r.createdAt).slice(0,10).split("-").reverse().join(".")}</div>
+            {r.ownerReply && (
+              <div style={S.ownerReply}>
+                <div style={{fontSize:11,fontWeight:700,color:ACC,marginBottom:2}}>{t.ownerReplyLabel}</div>
+                <p style={{fontSize:13,color:"#52525b",margin:0,lineHeight:1.5}}>{r.ownerReply}</p>
+              </div>
+            )}
           </div>
         ))}
       </div>
@@ -1311,6 +1330,9 @@ const S: Record<string, CSSProperties> = {
   err:    { background:"#fef2f2", color:"#dc2626", fontSize:13, padding:"10px 12px", borderRadius:10, marginBottom:8, textAlign:"center" as const },
   hint:   { fontSize:12, color:"#8b8194", textAlign:"center" as const, marginTop:8 },
   nudge:  { fontSize:12, color:"#8b8194", margin:"2px 0 0", lineHeight:1.5 },
+  reviewSort:  { border:"1.5px solid #efe9ee", borderRadius:10, padding:"6px 10px", fontSize:12.5, fontWeight:600, color:"#52525b", background:"#fff", cursor:"pointer", fontFamily:font, marginBottom:12 },
+  verifiedTag: { display:"inline-flex", alignItems:"center", gap:3, fontSize:10, fontWeight:700, color:"#16a34a", background:"#dcfce7", borderRadius:999, padding:"2px 7px", marginLeft:6, verticalAlign:"middle" },
+  ownerReply:  { marginTop:8, padding:"8px 12px", background:"#faf7ff", borderRadius:10, borderLeft:`3px solid ${ACC}` },
   primary:{ width:"100%", marginTop:12, display:"flex", justifyContent:"center", alignItems:"center", gap:8, background:GRAD, color:"#fff", border:"none", borderRadius:999, padding:"14px", fontSize:15, fontWeight:700, cursor:"pointer", fontFamily:font, boxShadow:"0 6px 20px rgba(124,58,237,.35)" },
 
   successIcon:{ width:60, height:60, borderRadius:999, background:GRAD, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto", boxShadow:"0 4px 20px rgba(124,58,237,.40)" },

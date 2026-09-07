@@ -1196,18 +1196,33 @@ app.get("/api/public/businesses/:slug/reviews", async (req, res) => {
   try {
     const [b] = await q("SELECT id FROM businesses WHERE slug=$1", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
+    const order = req.query.sort === "rating_desc" ? "rating DESC, created_at DESC"
+      : req.query.sort === "rating_asc" ? "rating ASC, created_at DESC"
+      : "created_at DESC";
     const rows = await q(
-      "SELECT id, client_name, rating, text, created_at FROM reviews WHERE business_id=$1 AND hidden=FALSE ORDER BY created_at DESC LIMIT 50",
+      `SELECT id, client_name, rating, text, created_at, verified, owner_reply, owner_reply_at
+       FROM reviews WHERE business_id=$1 AND hidden=FALSE ORDER BY ${order} LIMIT 50`,
       [b.id]
     );
-    const avg = rows.length ? (rows.reduce((s, r) => s + r.rating, 0) / rows.length).toFixed(1) : null;
-    res.json({ reviews: rows.map(r => ({ id: Number(r.id), clientName: r.client_name, rating: r.rating, text: r.text, createdAt: r.created_at })), avg: avg ? Number(avg) : null, total: rows.length });
+    const [agg] = await q(
+      "SELECT ROUND(AVG(rating)::numeric,1) AS avg, COUNT(*)::int AS total FROM reviews WHERE business_id=$1 AND hidden=FALSE",
+      [b.id]
+    );
+    res.json({
+      reviews: rows.map(r => ({
+        id: Number(r.id), clientName: r.client_name, rating: r.rating, text: r.text,
+        createdAt: r.created_at, verified: r.verified === true,
+        ownerReply: r.owner_reply || "", ownerReplyAt: r.owner_reply_at || null,
+      })),
+      avg: agg?.avg ? Number(agg.avg) : null,
+      total: Number(agg?.total) || 0,
+    });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
 app.post("/api/public/businesses/:slug/reviews", bookLimiter, async (req, res) => {
   try {
-    const { client_name, rating, text = "" } = req.body || {};
+    const { client_name, rating, text = "", manage_token } = req.body || {};
     if (!client_name || !rating || rating < 1 || rating > 5)
       return res.status(400).json({ error: "Imię i ocena (1-5) są wymagane" });
     if (typeof client_name !== "string" || client_name.trim().length < 2 || client_name.length > 100)
@@ -1216,11 +1231,23 @@ app.post("/api/public/businesses/:slug/reviews", bookLimiter, async (req, res) =
       return res.status(400).json({ error: "Opinia zbyt długa (max 1000 znaków)" });
     const [b] = await q("SELECT id FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
     if (!b) return res.status(404).json({ error: "Nie znaleziono" });
+
+    // A magic-link token from a real, past booking marks the review "verified"
+    let appointmentId = null;
+    if (manage_token) {
+      const appt = await loadApptByToken(manage_token);
+      if (appt && Number(appt.business_id) === Number(b.id)) {
+        const [dup] = await q("SELECT id FROM reviews WHERE appointment_id=$1", [appt.id]);
+        if (dup) return res.status(409).json({ error: "Opinia dla tej wizyty już istnieje." });
+        appointmentId = appt.id;
+      }
+    }
+
     const [row] = await q(
-      "INSERT INTO reviews (business_id, client_name, rating, text) VALUES ($1,$2,$3,$4) RETURNING id",
-      [b.id, client_name.trim(), rating, text.trim()]
+      "INSERT INTO reviews (business_id, client_name, rating, text, appointment_id, verified) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id",
+      [b.id, client_name.trim(), rating, text.trim(), appointmentId, appointmentId != null]
     );
-    res.json({ ok: true, id: Number(row.id) });
+    res.json({ ok: true, id: Number(row.id), verified: appointmentId != null });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 
@@ -1231,7 +1258,25 @@ app.get("/api/reviews", requireAuth, ah(async (req, res) => {
     "SELECT * FROM reviews WHERE business_id=$1 ORDER BY created_at DESC",
     [b.id]
   );
-  res.json(rows.map(r => ({ id: Number(r.id), clientName: r.client_name, rating: r.rating, text: r.text, hidden: r.hidden, createdAt: r.created_at })));
+  res.json(rows.map(r => ({
+    id: Number(r.id), clientName: r.client_name, rating: r.rating, text: r.text,
+    hidden: r.hidden, createdAt: r.created_at, verified: r.verified === true,
+    ownerReply: r.owner_reply || "", ownerReplyAt: r.owner_reply_at || null,
+  })));
+}));
+
+app.put("/api/reviews/:id/reply", requireAuth, ah(async (req, res) => {
+  const b = await requireBusiness(req, res); if (!b) return;
+  const { reply = "" } = req.body || {};
+  if (typeof reply !== "string" || reply.length > 1000)
+    return res.status(400).json({ error: "Odpowiedź zbyt długa (max 1000 znaków)" });
+  const [row] = await q(
+    `UPDATE reviews SET owner_reply=$1, owner_reply_at=CASE WHEN $1='' THEN NULL ELSE now() END
+     WHERE id=$2 AND business_id=$3 RETURNING id`,
+    [reply.trim(), req.params.id, b.id]
+  );
+  if (!row) return res.status(404).json({ error: "Nie znaleziono" });
+  res.json({ ok: true });
 }));
 
 app.post("/api/reviews/:id/report", requireAuth, ah(async (req, res) => {

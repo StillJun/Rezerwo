@@ -92,6 +92,7 @@ export interface ManagedBooking {
 export interface Review {
   id: number; clientName: string; rating: number; text: string;
   hidden?: boolean; createdAt: string;
+  verified?: boolean; ownerReply?: string; ownerReplyAt?: string | null;
 }
 
 export interface Client {

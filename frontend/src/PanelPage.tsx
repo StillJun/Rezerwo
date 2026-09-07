@@ -1906,8 +1906,16 @@ function ReviewsTab() {
   const [reason, setReason] = useState("");
   const [reportErr, setReportErr] = useState("");
   const [reportSent, setReportSent] = useState(false);
+  const [replyId, setReplyId] = useState<number|null>(null);
+  const [replyText, setReplyText] = useState("");
 
-  useEffect(() => { api.ownerReviews().then(setReviews).catch(()=>{}); }, []);
+  const load = () => api.ownerReviews().then(setReviews).catch(()=>{});
+  useEffect(() => { load(); }, []);
+
+  const saveReply = async (id: number, text: string) => {
+    try { await api.replyReview(id, text); setReplyId(null); setReplyText(""); load(); }
+    catch(e) { alert((e as Error).message); }
+  };
 
   const sendReport = async () => {
     if (!reportId || !reason.trim()) { setReportErr(t.p_reportEmpty); return; }
@@ -1935,15 +1943,38 @@ function ReviewsTab() {
         {reviews.map(r => (
           <div key={r.id} style={{...S.card,padding:"14px 16px",display:"flex",gap:12,alignItems:"flex-start"}}>
             <div style={{flex:1}}>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4,flexWrap:"wrap"}}>
                 <span style={{fontWeight:700,fontSize:14}}>{r.clientName}</span>
                 <span style={{display:"inline-flex",gap:1}}>
                   {[1,2,3,4,5].map(i=><span key={i} style={{fontSize:13,color:i<=r.rating?"#f59e0b":"#e5e7eb"}}>★</span>)}
                 </span>
+                {r.verified && <span style={{fontSize:11,fontWeight:700,color:"#16a34a",background:"#dcfce7",padding:"2px 7px",borderRadius:999}}>{t.p_reviewVerified}</span>}
                 {r.hidden && <span style={{fontSize:11,fontWeight:700,color:"#dc2626",background:"#fee2e2",padding:"2px 7px",borderRadius:999}}>{t.p_reviewHidden}</span>}
               </div>
               {r.text && <p style={{fontSize:13.5,color:"#52525b",margin:"4px 0 0",lineHeight:1.5}}>{r.text}</p>}
               <div style={{fontSize:11.5,color:"#c4bdd0",marginTop:6}}>{String(r.createdAt).slice(0,10)}</div>
+
+              {r.ownerReply && replyId !== r.id && (
+                <div style={{marginTop:8,padding:"8px 12px",background:"#faf7ff",borderRadius:10,borderLeft:"3px solid #7c3aed"}}>
+                  <div style={{fontSize:11,fontWeight:700,color:"#7c3aed",marginBottom:2}}>{t.ownerReplyLabel}</div>
+                  <p style={{fontSize:13,color:"#52525b",margin:0,lineHeight:1.5}}>{r.ownerReply}</p>
+                  <span style={{...S.link,fontSize:12.5,display:"inline-block",marginTop:4}} onClick={()=>{ setReplyId(r.id); setReplyText(r.ownerReply||""); }}>{t.p_reviewReply}</span>
+                </div>
+              )}
+
+              {replyId === r.id ? (
+                <div style={{marginTop:8}}>
+                  <textarea style={{...S.input,minHeight:56,resize:"vertical" as const,marginBottom:6}} value={replyText}
+                    onChange={e=>setReplyText(e.target.value)} placeholder={t.p_reviewReplyPh} autoFocus/>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button style={{...S.miniBtn,color:"#7c3aed",borderColor:"#7c3aed",padding:"6px 12px",fontSize:12,fontWeight:600}} onClick={()=>saveReply(r.id, replyText)}>{t.p_reviewReplySave}</button>
+                    {r.ownerReply && <button style={{...S.miniBtn,color:"#dc2626",borderColor:"#dc2626",padding:"6px 12px",fontSize:12,fontWeight:600}} onClick={()=>saveReply(r.id,"")}>{t.p_reviewReplyDelete}</button>}
+                    <button style={{...S.miniBtn,padding:"6px 12px",fontSize:12,fontWeight:600}} onClick={()=>{ setReplyId(null); setReplyText(""); }}>{t.cancel}</button>
+                  </div>
+                </div>
+              ) : !r.ownerReply && (
+                <span style={{...S.link,fontSize:12.5,display:"inline-block",marginTop:6}} onClick={()=>{ setReplyId(r.id); setReplyText(""); }}>{t.p_reviewReply}</span>
+              )}
             </div>
             {!r.hidden && (
               <button style={{...S.miniBtn,color:"#dc2626"}} title={t.p_reportTitle} onClick={()=>{ setReportId(r.id); setReportSent(false); setReason(""); }}>

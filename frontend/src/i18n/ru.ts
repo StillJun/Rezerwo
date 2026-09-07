@@ -145,6 +145,18 @@ export const ru: T = {
   dayOff:          "Выходной",
   closingSoon:     (time: string) => `Закрывается в ${time}`,
 
+  // UX: reviews & trust
+  reviewVerified:   "Был на визите",
+  reviewSortHigh:   "Высокие оценки",
+  reviewSortLow:    "Низкие оценки",
+  ownerReplyLabel:  "Ответ салона",
+  rateYourVisit:    "Оцените визит",
+  p_reviewReply:       "Ответить",
+  p_reviewReplyPh:     "Ваш ответ на отзыв…",
+  p_reviewReplySave:   "Сохранить ответ",
+  p_reviewReplyDelete: "Удалить ответ",
+  p_reviewVerified:    "Подтверждённый визит",
+
   waitlistTitle: "Лист ожидания",
   waitlistSub: (svc?: string) => svc ? `Нет свободного времени на ${svc}? Оставьте данные — мы уведомим вас.` : "Салон занят? Оставьте данные — мы уведомим вас.",
   waitlistSuccess: "Вы добавлены в лист ожидания. Мы уведомим вас, когда появится свободное время.",
