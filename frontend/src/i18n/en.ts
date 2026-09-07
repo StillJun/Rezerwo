@@ -126,6 +126,17 @@ export const en: T = {
   mv_salonPage:        "Salon page",
   mv_keepBtn:          "Keep as is",
 
+  // UX: marketplace discovery
+  popularSalons:   "Popular salons",
+  recentlyViewed:  "Recently viewed",
+  favorites:       "Favourites",
+  sortLabel:       "Sort",
+  sortRating:      "By rating",
+  sortNewest:      "Newest",
+  sortNameAZ:      "By name (A–Z)",
+  filtersBtn:      "Filters",
+  clearFilters:    "Clear",
+
   waitlistTitle: "Waiting list",
   waitlistSub: (svc?: string) => svc ? `No free slots for ${svc}? Leave your details and we'll notify you.` : "Salon is busy? Leave your details and we'll notify you.",
   waitlistSuccess: "You've been added to the waiting list. We'll notify you when a slot is available.",

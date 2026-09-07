@@ -126,6 +126,17 @@ export const ua: T = {
   mv_salonPage:        "Сторінка салону",
   mv_keepBtn:          "Залишити як є",
 
+  // UX: marketplace discovery
+  popularSalons:   "Популярні салони",
+  recentlyViewed:  "Нещодавно переглянуті",
+  favorites:       "Обране",
+  sortLabel:       "Сортування",
+  sortRating:      "За оцінкою",
+  sortNewest:      "Найновіші",
+  sortNameAZ:      "За назвою (А–Я)",
+  filtersBtn:      "Фільтри",
+  clearFilters:    "Очистити",
+
   waitlistTitle: "Список очікування",
   waitlistSub: (svc?: string) => svc ? `Немає вільного часу для ${svc}? Залиште дані — ми повідомимо вас.` : "Салон зайнятий? Залиште дані — ми повідомимо вас.",
   waitlistSuccess: "Вас додано до списку очікування. Ми повідомимо вас, коли з'явиться вільний час.",

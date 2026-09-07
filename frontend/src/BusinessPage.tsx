@@ -12,6 +12,7 @@ import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
 import { loadClient, saveClient } from "./lib/clientMemory";
+import { pushRecent } from "./lib/marketMemory";
 import { isEmail, isPhone } from "./lib/validate";
 import { googleCalendarUrl, icsDataUri } from "./lib/calendar";
 import { useModalA11y } from "./lib/useModalA11y";
@@ -848,7 +849,10 @@ export default function BusinessPage({ slug }: { slug: string }) {
 
   useEffect(() => {
     api.publicBusiness(slug)
-      .then(d=>{ setBiz(d); setLoading(false); })
+      .then(d=>{
+        setBiz(d); setLoading(false);
+        pushRecent({ slug: d.slug, name: d.name, city: d.city });
+      })
       .catch(()=>{ setNotFound(true); setLoading(false); });
   }, [slug]);
 

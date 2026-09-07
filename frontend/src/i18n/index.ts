@@ -10,9 +10,18 @@ export type Lang = "pl" | "en" | "ru" | "ua";
 const DICT: Record<Lang, T> = { pl, en, ru, ua };
 const STORAGE_KEY = "rz_lang";
 
+function isLang(v: string | null): v is Lang {
+  return v === "pl" || v === "en" || v === "ru" || v === "ua";
+}
+
 function getInitialLang(): Lang {
+  // explicit ?lang= wins (shared links), then a saved choice, then the browser
+  try {
+    const qp = new URLSearchParams(window.location.search).get("lang");
+    if (isLang(qp)) { localStorage.setItem(STORAGE_KEY, qp); return qp; }
+  } catch { /* ignore */ }
   const v = localStorage.getItem(STORAGE_KEY);
-  if (v === "pl" || v === "en" || v === "ru" || v === "ua") return v;
+  if (isLang(v)) return v;
   const browser = navigator.language.slice(0, 2).toLowerCase();
   if (browser === "ru") return "ru";
   if (browser === "uk") return "ua";

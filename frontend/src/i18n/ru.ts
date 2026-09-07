@@ -126,6 +126,17 @@ export const ru: T = {
   mv_salonPage:        "Страница салона",
   mv_keepBtn:          "Оставить как есть",
 
+  // UX: marketplace discovery
+  popularSalons:   "Популярные салоны",
+  recentlyViewed:  "Недавно просмотренные",
+  favorites:       "Избранное",
+  sortLabel:       "Сортировка",
+  sortRating:      "По рейтингу",
+  sortNewest:      "Новые",
+  sortNameAZ:      "По названию (А–Я)",
+  filtersBtn:      "Фильтры",
+  clearFilters:    "Сбросить",
+
   waitlistTitle: "Лист ожидания",
   waitlistSub: (svc?: string) => svc ? `Нет свободного времени на ${svc}? Оставьте данные — мы уведомим вас.` : "Салон занят? Оставьте данные — мы уведомим вас.",
   waitlistSuccess: "Вы добавлены в лист ожидания. Мы уведомим вас, когда появится свободное время.",

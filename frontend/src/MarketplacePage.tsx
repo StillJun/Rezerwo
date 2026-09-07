@@ -1,12 +1,15 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { CSSProperties } from "react";
-import { Search, MapPin, BadgeCheck, ChevronRight, ChevronDown, Store } from "lucide-react";
+import { Search, MapPin, BadgeCheck, ChevronRight, ChevronDown, Store, Heart } from "lucide-react";
 import { api } from "./api";
 import { navigate } from "./App";
 import type { PublicBusiness, Meta } from "./types";
 import { useTranslation } from "./i18n";
 import { LangDropdown } from "./components/LangDropdown";
 import { CategoryIcon } from "./icons/CategoryIcon";
+import { loadLastSearch, saveLastSearch, loadRecent, loadFavs, isFav, toggleFav } from "./lib/marketMemory";
+
+type SortKey = "rating" | "newest" | "name";
 
 /* ══ CONSTANTS ══ */
 const GRAD = "linear-gradient(100deg,#7c3aed,#d6409f,#ff7a59)";
@@ -128,38 +131,68 @@ export default function MarketplacePage() {
   const [nameQ,    setNameQ]    = useState("");
   const [results,  setResults]  = useState<PublicBusiness[]>([]);
   const [searched, setSearched] = useState(false);
-  const [loading,  setLoading]  = useState(false);
+  const [loading,  setLoading]  = useState(true);
+  const [sort,     setSort]     = useState<SortKey>("rating");
+  const [recent,   setRecent]   = useState(() => loadRecent());
+  const [favs,     setFavs]     = useState<string[]>(() => loadFavs());
 
-  useEffect(() => {
-    api.meta().then(m => { if (m?.cities && m?.categories) setMeta(m); }).catch(() => {});
-  }, []);
+  const hasQuery = !!(city || district || category || nameQ.trim());
 
-  const search = async (opts?: { category?: string }) => {
-    const cat = opts?.category ?? category;
+  const runSearch = async (p: { city?: string; district?: string; category?: string; q?: string }) => {
     setLoading(true); setSearched(true);
     try {
       const data = await api.publicBusinesses({
-        city: city||undefined, district: district||undefined,
-        category: cat||undefined, q: nameQ.trim()||undefined,
+        city: p.city || undefined, district: p.district || undefined,
+        category: p.category || undefined, q: (p.q ?? "").trim() || undefined,
       });
       setResults(data);
     } catch { setResults([]); } finally { setLoading(false); }
   };
 
+  useEffect(() => {
+    api.meta().then(m => { if (m?.cities && m?.categories) setMeta(m); }).catch(() => {});
+    // Restore last search and show results (or a "popular" list) right away
+    const last = loadLastSearch();
+    if (last.city) setCity(last.city);
+    if (last.category) setCategory(last.category);
+    runSearch({ city: last.city, category: last.category });
+  }, []);
+
+  const search = (opts?: { category?: string }) => {
+    const cat = opts?.category ?? category;
+    saveLastSearch(city, cat);
+    runSearch({ city, district, category: cat, q: nameQ });
+  };
+
   const handleKey = (e: React.KeyboardEvent) => { if (e.key==="Enter") search(); };
 
-  const pickCity = async (c: string) => {
-    setCity(c); setDistrict(""); setLoading(true); setSearched(true);
-    try {
-      const data = await api.publicBusinesses({ city: c, category: category||undefined, q: nameQ.trim()||undefined });
-      setResults(data);
-    } catch { setResults([]); } finally { setLoading(false); }
+  const pickCity = (c: string) => {
+    setCity(c); setDistrict("");
+    saveLastSearch(c, category);
+    runSearch({ city: c, category, q: nameQ });
   };
 
   const pickCategory = (id: string) => {
     setCategory(id);
-    search({ category: id });
+    saveLastSearch(city, id);
+    runSearch({ city, district, category: id, q: nameQ });
   };
+
+  const onToggleFav = (slug: string) => { toggleFav(slug); setFavs(loadFavs()); };
+
+  const sortedResults = useMemo(() => {
+    const arr = [...results];
+    if (sort === "rating") arr.sort((a, b) => (b.avgRating ?? -1) - (a.avgRating ?? -1));
+    else if (sort === "name") arr.sort((a, b) => a.name.localeCompare(b.name));
+    // "newest" keeps backend order (created_at ASC → reverse for newest first)
+    else arr.reverse();
+    return arr;
+  }, [results, sort]);
+
+  const favResults = useMemo(
+    () => results.filter(b => favs.includes(b.slug)),
+    [results, favs]
+  );
 
   const districts = city && meta?.cities ? (meta.cities[city] ?? []) : [];
   const catCount  = meta?.categories.length ?? 0;
@@ -301,45 +334,55 @@ export default function MarketplacePage() {
             <div style={S.emptyIcon}>🔍</div>
             <div style={S.emptyTitle}>{city ? t.noResultsCity : t.noResults}</div>
             {!city && <div style={S.emptySub}>{t.noResultsSub}</div>}
-          </div>
-        )}
-
-        {!loading && !searched && (
-          <div style={S.emptySearchWrap}>
-            <div style={S.emptyPinIcon}>
-              <MapPin size={30} color="#fff" strokeWidth={2.5}/>
-            </div>
-            <h2 style={S.emptySearchTitle}>{t.emptySearchTitle}</h2>
-            <p style={S.emptySearchSub}>{t.emptySearchSub}</p>
-            <p style={S.popularCitiesLabel}>{t.popularCities}</p>
-            <div style={S.cityChips}>
+            <div style={{...S.cityChips, marginTop:18}}>
               {POPULAR_CITIES.map(c => (
                 <button key={c} className="city-chip" style={S.cityChip} onClick={() => pickCity(c)}>
                   <MapPin size={12} color="#e0399e" strokeWidth={2.5}/>{c}
                 </button>
               ))}
             </div>
-            <div style={S.skelHintGrid}>
-              {[1,2].map(i => (
-                <div key={i} style={{...S.skelCard, opacity:0.45}}>
-                  <div className="skeleton-line" style={{height:70,borderRadius:"20px 20px 0 0"}}/>
-                  <div style={{padding:"12px 16px 14px"}}>
-                    <div className="skeleton-line" style={{height:12,width:"65%",marginBottom:7}}/>
-                    <div className="skeleton-line" style={{height:10,width:"40%",marginBottom:12}}/>
-                    <div className="skeleton-line" style={{height:28,borderRadius:999}}/>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p style={S.emptyHint}>{t.emptyHint}</p>
           </div>
         )}
 
         {!loading && results.length > 0 && (
           <>
-            <div style={S.resultsHeader}>{t.found(results.length)}</div>
+            {/* favourites + recently viewed — only on the unfiltered "popular" view */}
+            {!hasQuery && favResults.length > 0 && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={S.stripHeader}><Heart size={13} fill="#e0399e" color="#e0399e"/> {t.favorites}</div>
+                <div style={S.grid} className="biz-grid">
+                  {favResults.map(b => <BusinessCard key={b.id} biz={b} fav onToggleFav={onToggleFav}/>)}
+                </div>
+              </div>
+            )}
+            {!hasQuery && recent.filter(r => !favs.includes(r.slug)).length > 0 && (
+              <div style={{ marginBottom: 22 }}>
+                <div style={S.stripHeader}>{t.recentlyViewed}</div>
+                <div style={S.recentRow}>
+                  {recent.filter(r => !favs.includes(r.slug)).map(r => (
+                    <a key={r.slug} href={`/${r.slug}`} style={S.recentChip}
+                      onClick={e => { if (e.metaKey||e.ctrlKey||e.shiftKey||e.button) return; e.preventDefault(); navigate(`/${r.slug}`); }}>
+                      <span style={{ fontWeight: 700 }}>{r.name}</span>
+                      {r.city && <span style={{ color: "#a8a2b0" }}> · {r.city}</span>}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={S.resultsBar}>
+              <div style={S.resultsHeader}>{hasQuery ? t.found(sortedResults.length) : t.popularSalons}</div>
+              <label style={S.sortWrap}>
+                <span style={{ color: "#a8a2b0", fontSize: 12 }}>{t.sortLabel}</span>
+                <select value={sort} onChange={e => setSort(e.target.value as SortKey)} style={S.sortSelect}>
+                  <option value="rating">{t.sortRating}</option>
+                  <option value="newest">{t.sortNewest}</option>
+                  <option value="name">{t.sortNameAZ}</option>
+                </select>
+              </label>
+            </div>
             <div style={S.grid} className="biz-grid">
-              {results.map(b => <BusinessCard key={b.id} biz={b}/>)}
+              {sortedResults.map(b => <BusinessCard key={b.id} biz={b} fav={favs.includes(b.slug)} onToggleFav={onToggleFav}/>)}
             </div>
           </>
         )}
@@ -362,16 +405,33 @@ export default function MarketplacePage() {
 }
 
 /* ══ BUSINESS CARD ══ */
-function BusinessCard({ biz }: { biz: PublicBusiness }) {
+function BusinessCard({ biz, fav, onToggleFav }: { biz: PublicBusiness; fav?: boolean; onToggleFav?: (slug: string) => void }) {
   const { t } = useTranslation();
   const bizCats    = biz.categories && biz.categories.length > 0 ? biz.categories : [biz.category].filter(Boolean);
   const primaryCat = bizCats[0];
+  const photo      = biz.photos && biz.photos.length > 0 ? biz.photos[0] : null;
+
+  const go = (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || (e as React.MouseEvent).button) return;
+    e.preventDefault();
+    navigate(`/${biz.slug}`);
+  };
 
   return (
-    <div className="biz-card" style={S.card} onClick={() => navigate(`/${biz.slug}`)}>
+    <a className="biz-card" href={`/${biz.slug}`} style={{ ...S.card, textDecoration: "none", color: "inherit", display: "block" }} onClick={go}>
       <div style={{ ...S.cardBanner, background: BANNERS[biz.banner] || BANNERS.brand }}>
+        {photo && (
+          <img src={photo} alt="" loading="lazy" style={S.cardBannerImg}
+            onError={e => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}/>
+        )}
         {biz.verified && (
           <span style={S.verBadge}><BadgeCheck size={12}/> {t.verified}</span>
+        )}
+        {onToggleFav && (
+          <button style={S.favBtn} aria-label={t.favorites} aria-pressed={!!fav}
+            onClick={e => { e.preventDefault(); e.stopPropagation(); onToggleFav(biz.slug); }}>
+            <Heart size={15} fill={fav ? "#e0399e" : "none"} color={fav ? "#e0399e" : "#fff"}/>
+          </button>
         )}
       </div>
       <div style={S.cardBody}>
@@ -409,7 +469,7 @@ function BusinessCard({ biz }: { biz: PublicBusiness }) {
           <span style={S.bookBtn}>{t.book} <ChevronRight size={13}/></span>
         </div>
       </div>
-    </div>
+    </a>
   );
 }
 
@@ -460,7 +520,13 @@ const S: Record<string, CSSProperties> = {
 
   // Results
   results:       { maxWidth:960, margin:"0 auto", padding:"8px 20px 64px" },
-  resultsHeader: { fontSize:13.5, color:"#8b8194", fontWeight:500, marginBottom:18 },
+  resultsBar:    { display:"flex", justifyContent:"space-between", alignItems:"center", gap:12, marginBottom:18, flexWrap:"wrap" as const },
+  resultsHeader: { fontSize:13.5, color:"#8b8194", fontWeight:500 },
+  sortWrap:      { display:"flex", alignItems:"center", gap:6 },
+  sortSelect:    { border:"1.5px solid #efe9ee", borderRadius:10, padding:"6px 10px", fontSize:13, fontWeight:600, color:"#52525b", background:"#fff", cursor:"pointer", fontFamily:"'Inter',system-ui,sans-serif" },
+  stripHeader:   { display:"flex", alignItems:"center", gap:6, fontSize:12, fontWeight:700, color:"#8b8194", textTransform:"uppercase" as const, letterSpacing:"0.06em", marginBottom:12 },
+  recentRow:     { display:"flex", flexWrap:"wrap" as const, gap:8 },
+  recentChip:    { display:"inline-block", padding:"8px 14px", borderRadius:999, background:"#fff", border:"1.5px solid #efe9ee", fontSize:13, color:"#1a1320", textDecoration:"none", cursor:"pointer" },
   grid:          { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:18 },
   skelCard:      { background:"#fff", borderRadius:26, overflow:"hidden", border:"1px solid #efe9ee" },
 
@@ -483,7 +549,9 @@ const S: Record<string, CSSProperties> = {
 
   // Business card
   card:        { background:"#fff", borderRadius:26, overflow:"hidden", cursor:"pointer", boxShadow:"0 2px 8px rgba(26,19,32,.05)", border:"1px solid #efe9ee", transition:"transform .2s ease,box-shadow .2s ease" },
-  cardBanner:  { height:88, position:"relative" as const },
+  cardBanner:  { height:88, position:"relative" as const, overflow:"hidden" },
+  cardBannerImg:{ position:"absolute" as const, inset:0, width:"100%", height:"100%", objectFit:"cover" as const },
+  favBtn:      { position:"absolute" as const, top:8, right:8, width:30, height:30, borderRadius:999, border:"none", background:"rgba(0,0,0,.35)", backdropFilter:"blur(6px)", display:"grid", placeItems:"center", cursor:"pointer", padding:0 },
   verBadge:    { position:"absolute" as const, bottom:8, left:10, display:"flex", alignItems:"center", gap:4, background:"rgba(0,0,0,.40)", backdropFilter:"blur(6px)", color:"#fff", fontSize:10.5, fontWeight:700, padding:"3px 9px", borderRadius:999 },
   cardBody:    { padding:"14px 18px 18px" },
   cardName:    { fontSize:15, fontWeight:700, letterSpacing:"-0.02em", marginBottom:4, color:"#1a1320" },

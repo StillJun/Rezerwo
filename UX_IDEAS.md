@@ -121,48 +121,24 @@ Backend: `slotsForDate()` вынесен как общий хелпер; `/slots
 
 ---
 
-## Этап UX-4 — Маркетплейс: поиск, фильтры, выдача
+## Этап UX-4 — Маркетплейс: поиск, фильтры, выдача ✅ (4.3 частично)
 
-- [ ] **4.1 · Показывать бизнесы сразу при заходе (M)**
-  - Что: на первый рендер (`!searched`) — грузить подборку: verified + с отзывами, лимит ~12.
-    Заголовок «Популярные салоны». Опционально `navigator.geolocation` → ближайший город.
-  - Зачем: сейчас `MarketplacePage.tsx:307` — пустой экран с подсказкой, пока не нажмёшь поиск.
-  - Backend: `GET /public/businesses` без параметров → сортировка по `verified DESC, avg_rating DESC NULLS LAST`.
+Новый модуль `lib/marketMemory.ts` (последний поиск, недавние, избранное — всё в `localStorage`).
 
-- [ ] **4.2 · Сортировка выдачи (S)**
-  - Что: селектор «По рейтингу / Открыто сейчас / Есть окна сегодня».
-  - Где: `MarketplacePage.tsx` `S.resultsHeader`.
-  - i18n: `t.sortBy*`.
+- [x] **4.1 · Бизнесы сразу при заходе** — `MarketplacePage` грузит выдачу на mount (`loading` стартует `true`),
+  заголовок `t.popularSalons` пока фильтры пусты. Empty-state теперь с чипами городов.
+- [x] **4.2 · Сортировка** — селектор «Wg oceny / Najnowsze / Wg nazwy», клиентская сортировка `sortedResults`.
+- [ ] **4.3 · Фильтры** — ⬜ отложено: язык/удобства/цена. `languages`/`amenities` уже в payload
+  (можно сделать клиентски), цена требует `min_price` в API. Вынести в отдельный коммит.
+- [x] **4.4 · Фото в карточке** — `biz.photos[0]` фоном карточки (`cardBannerImg`), градиент — fallback, `loading="lazy"`.
+- [x] **4.5 · Недавние + избранное** — `pushRecent()` на открытии страницы бизнеса; секции «Обране» и
+  «Нещодавно переглянуті» над выдачей (только когда фильтры пусты); сердечко на карточке (`toggleFav`).
+- [x] **4.6 · Память поиска** — `rz_search` (город+категория), восстанавливается на mount.
+- [x] **4.7 · Язык из `?lang=`** — `i18n/index.ts` `getInitialLang()`: `?lang=` → сохранённый → браузер.
+- [x] **4.8 · Карточка как `<a href>`** — средняя/Ctrl-кнопка мыши работает нативно, SPA-навигация по обычному клику.
 
-- [ ] **4.3 · Фильтры (M)**
-  - Что: язык обслуживания (`biz.languages` уже есть), удобства (`biz.amenities` уже есть),
-    ценовой диапазон (min service price — нужен в API), «принимает сегодня».
-  - Backend: расширить `GET /public/businesses` параметрами; `languages && amenities` уже в БД.
-
-- [ ] **4.4 · Фото портфолио в карточке (M)**
-  - Что: если у бизнеса есть `photos[]` — показывать первое фото как фон карточки вместо градиента
-    (градиент — fallback). Опционально мини-карусель на hover.
-  - Зачем: `BusinessCard` сейчас всегда просто градиент — это главный фактор клика.
-  - Где: `MarketplacePage.tsx:372` (`S.cardBanner`). Проверить, что `photos` в `PublicBusiness` из списка.
-
-- [ ] **4.5 · «Недавно просмотренные» + «Избранное» (M)**
-  - Что: `localStorage` — список последних открытых бизнесов (slug+name+city) и избранных (звёздочка на карточке).
-    Секции над выдачей на главной. Без аккаунта.
-  - i18n: `t.recentlyViewed`, `t.favorites`, `t.addFavorite`.
-
-- [ ] **4.6 · Запоминать город и категорию (S)**
-  - Что: `localStorage` `rz_search` — восстанавливать город/категорию при возврате на главную.
-
-- [ ] **4.7 · Автоопределение языка (S)**
-  - Что: при первом визите — `navigator.language` → `pl/en/ru/ua` (иначе `pl`). Учитывать `?lang=`.
-  - Где: `frontend/src/i18n/index.ts` `LanguageProvider` (проверить, нет ли уже).
-
-- [ ] **4.8 · Карточка бизнеса как ссылка (S, пересечение с UX-7)**
-  - Что: `<a href="/{slug}">` вместо `<div onClick>` — средняя кнопка мыши, «открыть в новой вкладке», SEO.
-  - Где: `MarketplacePage.tsx:371`.
-
-**Новые i18n ключи UX-4:** `popularSalons`, `sortByRating`, `sortByOpen`, `sortByToday`, `recentlyViewed`,
-`favorites`, `addFavorite`, `filterLanguage`, `filterAmenities`, `filterPrice`, `acceptsToday`.
+**i18n ключи UX-4 (pl/en/ru/ua):** `popularSalons`, `recentlyViewed`, `favorites`, `sortLabel`,
+`sortRating`, `sortNewest`, `sortNameAZ`, `filtersBtn`, `clearFilters`.
 
 ---
 

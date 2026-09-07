@@ -127,6 +127,17 @@ export const pl = {
   mv_salonPage:        "Strona salonu",
   mv_keepBtn:          "Zostaw bez zmian",
 
+  // UX: marketplace discovery
+  popularSalons:   "Popularne salony",
+  recentlyViewed:  "Ostatnio oglądane",
+  favorites:       "Ulubione",
+  sortLabel:       "Sortuj",
+  sortRating:      "Wg oceny",
+  sortNewest:      "Najnowsze",
+  sortNameAZ:      "Wg nazwy (A–Z)",
+  filtersBtn:      "Filtry",
+  clearFilters:    "Wyczyść",
+
   // waitlist
   waitlistTitle: "Lista oczekujących",
   waitlistSub: (svc?: string) => svc ? `Brak wolnych terminów na ${svc}? Zostaw dane — powiadomimy Cię, gdy pojawi się wolne miejsce.` : "Salon jest zajęty? Zostaw dane — powiadomimy Cię.",
