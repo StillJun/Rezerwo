@@ -99,6 +99,14 @@ export const ru: T = {
   share:             "Поделиться",
   linkCopied:        "Ссылка скопирована",
 
+  // UX: booking flow
+  earliestSlot:          "Ближайшее свободное",
+  dayFull:               "Мест нет",
+  slotsMorning:          "Утро",
+  slotsAfternoon:        "День",
+  slotsEvening:          "Вечер",
+  confirmRequiredNotice: "Этот салон подтверждает записи вручную — обычно в течение нескольких часов.",
+
   waitlistTitle: "Лист ожидания",
   waitlistSub: (svc?: string) => svc ? `Нет свободного времени на ${svc}? Оставьте данные — мы уведомим вас.` : "Салон занят? Оставьте данные — мы уведомим вас.",
   waitlistSuccess: "Вы добавлены в лист ожидания. Мы уведомим вас, когда появится свободное время.",

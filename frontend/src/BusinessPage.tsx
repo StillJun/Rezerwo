@@ -96,7 +96,32 @@ function formatDate(d: string, months: string[]) {
 }
 
 /* ========== BOOKING WIZARD ========== */
-type WizardStep = "service"|"master"|"date"|"slots"|"details"|"done";
+type WizardStep = "resolve"|"service"|"master"|"date"|"slots"|"details"|"done";
+
+/* Remember the last service + master a client picked for this salon (per tab session),
+   so reopening the wizard doesn't lose the most annoying choices. No PII here. */
+interface WizardMemory { serviceId: number; masterId: number|null; masterName: string }
+function loadWizMemory(slug: string): WizardMemory|null {
+  try {
+    const raw = sessionStorage.getItem(`rz_wiz_${slug}`);
+    return raw ? JSON.parse(raw) as WizardMemory : null;
+  } catch { return null; }
+}
+function saveWizMemory(slug: string, m: WizardMemory): void {
+  try { sessionStorage.setItem(`rz_wiz_${slug}`, JSON.stringify(m)); } catch { /* ignore */ }
+}
+
+/** Split slot indices into morning / afternoon / evening buckets. */
+function bucketSlots(mins: number[], times: string[]) {
+  const b = { morning: [] as [number,string][], afternoon: [] as [number,string][], evening: [] as [number,string][] };
+  mins.forEach((m, i) => {
+    const entry: [number,string] = [m, times[i]];
+    if (m < 12 * 60) b.morning.push(entry);
+    else if (m < 17 * 60) b.afternoon.push(entry);
+    else b.evening.push(entry);
+  });
+  return b;
+}
 
 interface WizardState {
   service: PublicService|null;
@@ -121,26 +146,43 @@ function BookingWizard({ biz, initService, onClose }: {
 }) {
   const { t } = useTranslation();
   const a11yRef = useModalA11y(onClose);
-  const [step, setStep] = useState<WizardStep>(initService ? "date" : "service");
   const remembered = useMemo(() => loadClient(), []);
+  // Restore last service/master for this salon when the client didn't come in via a service button
+  const restored = useMemo(() => {
+    if (initService) return null;
+    const mem = loadWizMemory(biz.slug);
+    if (!mem) return null;
+    const svc = (biz.services || []).find(s => s.id === mem.serviceId);
+    return svc ? { svc, mem } : null;
+  }, [biz.slug, biz.services, initService]);
+
+  const [step, setStep] = useState<WizardStep>(
+    initService ? "resolve" : restored ? "date" : "service"
+  );
   const [state, setState] = useState<WizardState>({
-    service: initService, masterId: null, masterName: "",
+    service: initService || restored?.svc || null,
+    masterId: restored?.mem.masterId ?? null,
+    masterName: restored?.mem.masterName ?? "",
     date: isoToday(), slot: null,
     name: remembered.name, phone: remembered.phone, email: remembered.email, comment: "",
   });
   const [slots, setSlots] = useState<{ mins: number[]; times: string[] }>({ mins:[], times:[] });
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [avail, setAvail] = useState<Record<string, number> | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const [result, setResult] = useState<BookingResult|null>(null);
   const [bookingTerms, setBookingTerms] = useState(false);
   const [masters, setMasters] = useState<PublicMaster[]>([]);
+  const [mastersLoaded, setMastersLoaded] = useState(false);
 
   const set = (k: keyof WizardState, v: unknown) => setState(p=>({...p,[k]:v}));
 
   // Fetch all active masters once on open
   useEffect(() => {
-    api.publicMasters(biz.slug).then(setMasters).catch(() => {});
+    api.publicMasters(biz.slug)
+      .then(setMasters).catch(() => {})
+      .finally(() => setMastersLoaded(true));
   }, [biz.slug]);
 
   // Capable masters for the currently selected service
@@ -148,6 +190,14 @@ function BookingWizard({ biz, initService, onClose }: {
     ? masters.filter(m => m.serviceIds.includes(state.service!.id))
     : [];
   const hasMasterChoice = capableMasters.length >= 2;
+
+  // "resolve" gate: entered via a service button — wait for masters, then route to
+  // the master step (if there's a real choice) or straight to the date step.
+  useEffect(() => {
+    if (step === "resolve" && mastersLoaded) {
+      setStep(capableMasters.length >= 2 ? "master" : "date");
+    }
+  }, [step, mastersLoaded, capableMasters.length]);
 
   // Load slots when date / service / master changes
   useEffect(() => {
@@ -158,6 +208,18 @@ function BookingWizard({ biz, initService, onClose }: {
       .catch(() => setSlots({mins:[],times:[]}))
       .finally(() => setSlotsLoading(false));
   }, [step, state.service, state.date, state.masterId, biz.slug]);
+
+  // Load 14-day availability per service/master combo, for the date picker
+  const svcId = state.service?.id;
+  useEffect(() => {
+    if (svcId == null) return;
+    let cancelled = false;
+    setAvail(null);
+    api.availability(biz.slug, svcId, state.masterId ?? undefined, 14)
+      .then(d => { if (!cancelled) setAvail(d.availability); })
+      .catch(() => { if (!cancelled) setAvail(null); });
+    return () => { cancelled = true; };
+  }, [svcId, state.masterId, biz.slug]);
 
   const book = async () => {
     if (!state.service || state.slot == null || !state.name.trim() || !state.phone.trim()) {
@@ -195,16 +257,17 @@ function BookingWizard({ biz, initService, onClose }: {
   const groups: Record<string,PublicService[]> = {};
   services.forEach(s => { (groups[s.grp||t.services] ||= []).push(s); });
 
-  // Step numbering depends on whether master choice is available
-  const stepNumMap: Record<WizardStep,number> = hasMasterChoice
-    ? {service:1, master:2, date:3, slots:4, details:5, done:6}
-    : {service:1, master:1, date:2, slots:3, details:4, done:5};
-  const totalSteps = hasMasterChoice ? 5 : 4;
-  const stepNum = stepNumMap[step] || 1;
-
-  const prev: Record<WizardStep,WizardStep> = hasMasterChoice
-    ? {service:"service", master:"service", date:"master", slots:"date", details:"slots", done:"done"}
-    : {service:"service", master:"service", date:"service", slots:"date", details:"slots", done:"done"};
+  // Visible step sequence — service step is skipped when the client arrived via a
+  // service button or a restored choice; master step appears only on a real choice.
+  const skipService = !!initService || !!restored;
+  const seq: WizardStep[] = [
+    ...(skipService ? [] : ["service" as const]),
+    ...(hasMasterChoice ? ["master" as const] : []),
+    "date", "slots", "details",
+  ];
+  const stepNum = Math.max(1, seq.indexOf(step) + 1);
+  const totalSteps = seq.length;
+  const goBack = () => { const i = seq.indexOf(step); if (i > 0) setStep(seq[i - 1]); };
 
   return (
     <div style={S.overlay} className="overlay-sheet" onClick={onClose}>
@@ -212,25 +275,30 @@ function BookingWizard({ biz, initService, onClose }: {
         style={S.wizard} className="rise wizard-sheet" onClick={e=>e.stopPropagation()}>
         {/* wizard header */}
         <div style={S.wizHead}>
-          {step!=="done" && stepNum>1 && (
-            <button style={S.backBtn} onClick={()=>setStep(prev[step])} aria-label={t.back}>
+          {step!=="done" && step!=="resolve" && stepNum>1 && (
+            <button style={S.backBtn} onClick={goBack} aria-label={t.back}>
               <ChevronLeft size={16}/>
             </button>
           )}
           <div style={{flex:1}}>
             <div style={{fontSize:13,fontWeight:700,color:ACC}}>{biz.name}</div>
-            {step!=="done" && (
+            {step!=="done" && step!=="resolve" && (
               <div style={{fontSize:11.5,color:"#a8a2b0"}}>{t.step(stepNum, totalSteps)}</div>
             )}
           </div>
-          <button style={S.closeBtn} onClick={onClose}><X size={18}/></button>
+          <button style={S.closeBtn} onClick={onClose} aria-label={t.close}><X size={18}/></button>
         </div>
 
         {/* progress bar */}
-        {step!=="done" && (
+        {step!=="done" && step!=="resolve" && (
           <div style={S.progress}>
             <div style={{...S.progressFill,width:`${(stepNum/totalSteps)*100}%`}}/>
           </div>
+        )}
+
+        {/* STEP: resolve (waiting for masters after entering via a service button) */}
+        {step==="resolve" && (
+          <div style={S.empty}>{t.checkingSlots}</div>
         )}
 
         {/* STEP: choose service */}
@@ -251,6 +319,7 @@ function BookingWizard({ biz, initService, onClose }: {
                           masterId: auto ? auto.id : null,
                           masterName: auto ? auto.name : "",
                         }));
+                        saveWizMemory(biz.slug, { serviceId: s.id, masterId: auto?.id ?? null, masterName: auto?.name ?? "" });
                         setStep(capable.length >= 2 ? "master" : "date");
                       }}>
                       <div style={{flex:1,textAlign:"left"}}>
@@ -281,7 +350,11 @@ function BookingWizard({ biz, initService, onClose }: {
 
             {/* Any available option */}
             <button className="svc-option" style={S.masterCard}
-              onClick={()=>{ set("masterId", null); set("masterName", ""); setStep("date"); }}>
+              onClick={()=>{
+                set("masterId", null); set("masterName", "");
+                saveWizMemory(biz.slug, { serviceId: state.service!.id, masterId: null, masterName: "" });
+                setStep("date");
+              }}>
               <div style={S.masterAvatarAny}>✦</div>
               <div style={{flex:1,textAlign:"left"}}>
                 <div style={{fontSize:14,fontWeight:700}}>{t.anyMaster}</div>
@@ -291,7 +364,11 @@ function BookingWizard({ biz, initService, onClose }: {
 
             {capableMasters.map(master=>(
               <button key={master.id} className="svc-option" style={S.masterCard}
-                onClick={()=>{ set("masterId", master.id); set("masterName", master.name); setStep("date"); }}>
+                onClick={()=>{
+                  set("masterId", master.id); set("masterName", master.name);
+                  saveWizMemory(biz.slug, { serviceId: state.service!.id, masterId: master.id, masterName: master.name });
+                  setStep("date");
+                }}>
                 <div style={S.masterAvatar}>
                   {master.photo
                     ? <img src={master.photo} style={S.masterAvatarImg}
@@ -313,7 +390,11 @@ function BookingWizard({ biz, initService, onClose }: {
         )}
 
         {/* STEP: choose date */}
-        {step==="date" && state.service && (
+        {step==="date" && state.service && (() => {
+          const dates = Array.from({length:14},(_,i)=>addDays(isoToday(),i));
+          const firstFree = avail ? dates.find(d => (avail[d] ?? 1) > 0) : null;
+          const goToDate = (d: string) => { set("date",d); set("slot",null); setStep("slots"); };
+          return (
           <div>
             <h3 style={S.stepTitle}>{t.chooseDate}</h3>
             <div style={S.svcSummary}>
@@ -322,23 +403,32 @@ function BookingWizard({ biz, initService, onClose }: {
               {state.masterName && <span style={{color:ACC}}> · {state.masterName}</span>}
             </div>
 
+            {firstFree && (
+              <button style={S.earliestBtn} onClick={()=>goToDate(firstFree)}>
+                ⚡ {t.earliestSlot}: {formatDate(firstFree, t.months)}
+              </button>
+            )}
+
             <div style={S.datePicker} className="date-picker">
-              {Array.from({length:14},(_,i)=>{
-                const d = addDays(isoToday(),i);
+              {dates.map(d=>{
                 const dt = new Date(d+"T00:00:00");
                 const selected = state.date===d;
+                const full = avail ? (avail[d] ?? 1) === 0 : false;
                 return (
-                  <button key={d} className="date-chip" style={{...S.dateChip,...(selected?S.dateChipOn:{})}}
-                    onClick={()=>{ set("date",d); set("slot",null); setStep("slots"); }}>
+                  <button key={d} className="date-chip"
+                    style={{...S.dateChip,...(selected?S.dateChipOn:{}),...(full&&!selected?S.dateChipFull:{})}}
+                    onClick={()=>goToDate(d)}>
                     <span style={{fontSize:11,opacity:0.7}}>{t.dayNames[dt.getDay()]}</span>
                     <span style={{fontSize:17,fontWeight:800,lineHeight:1}}>{dt.getDate()}</span>
                     <span style={{fontSize:11,opacity:0.7}}>{t.months.slice(1)[dt.getMonth()]}</span>
+                    {full && <span style={S.dateChipFullLbl}>{t.dayFull}</span>}
                   </button>
                 );
               })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* STEP: choose slot */}
         {step==="slots" && state.service && (
@@ -359,16 +449,27 @@ function BookingWizard({ biz, initService, onClose }: {
                 </span>
               </div>
             )}
-            {!slotsLoading && slots.mins.length>0 && (
-              <div style={S.slotGrid} className="slot-grid">
-                {slots.mins.map((m,i)=>(
-                  <button key={m} className="slot-btn" style={{...S.slotBtn,...(state.slot===m?S.slotBtnOn:{})}}
-                    onClick={()=>{ set("slot",m); setStep("details"); }}>
-                    {slots.times[i]}
-                  </button>
-                ))}
-              </div>
-            )}
+            {!slotsLoading && slots.mins.length>0 && (() => {
+              const b = bucketSlots(slots.mins, slots.times);
+              const buckets: [string, [number,string][]][] = [
+                [t.slotsMorning, b.morning], [t.slotsAfternoon, b.afternoon], [t.slotsEvening, b.evening],
+              ];
+              const filled = buckets.filter(([,arr]) => arr.length);
+              const multi = filled.length > 1;
+              return filled.map(([label, arr]) => (
+                <div key={label} style={{marginBottom:10}}>
+                  {multi && <div style={S.slotBucketLbl}>{label}</div>}
+                  <div style={S.slotGrid} className="slot-grid">
+                    {arr.map(([m, time])=>(
+                      <button key={m} className="slot-btn" style={{...S.slotBtn,...(state.slot===m?S.slotBtnOn:{})}}
+                        onClick={()=>{ set("slot",m); setStep("details"); }}>
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ));
+            })()}
             <button style={S.textBtn} onClick={()=>setStep("date")}>
               <ChevronLeft size={14}/> {t.chooseDate}
             </button>
@@ -379,11 +480,22 @@ function BookingWizard({ biz, initService, onClose }: {
         {step==="details" && state.service && state.slot!=null && (
           <div>
             <h3 style={S.stepTitle}>{t.yourData}</h3>
-            <div style={S.svcSummary}>
-              <span style={{fontWeight:700}}>{state.service.name}</span>
-              <span style={{color:"#a8a2b0"}}> · {formatDate(state.date, t.months)}, {minToTime(state.slot)}</span>
-              {state.masterName && <span style={{color:ACC}}> · {state.masterName}</span>}
+            <div style={S.summaryCard}>
+              <div style={S.summaryRow}>
+                <span style={S.summaryV}>{state.service.name}</span>
+                <span style={{color:ACC,fontWeight:800}}>{fmtPrice(state.service.price, t.p_priceOnSite)}</span>
+              </div>
+              <div style={S.summaryRow}>
+                <span style={{color:"#71717a"}}>{formatDate(state.date, t.months)}, {minToTime(state.slot)}</span>
+                {state.masterName && <span style={{color:ACC}}>{state.masterName}</span>}
+              </div>
+              <div style={{fontSize:11.5,color:"#a8a2b0",marginTop:2}}>
+                {fmtDur(state.service.duration, t.p_svcDurationHours, t.p_svcDurationMins)}
+              </div>
             </div>
+            {biz.confirmRequired && (
+              <div style={S.confirmNotice}>{t.confirmRequiredNotice}</div>
+            )}
 
             <label style={S.lbl}>{t.fullName}</label>
             <input style={S.input} value={state.name} onChange={e=>set("name",e.target.value)}
@@ -955,7 +1067,7 @@ export default function BusinessPage({ slug }: { slug: string }) {
 
         {/* CTA + service request + waitlist */}
         <div style={S.ctaBox}>
-          <button className="btn-primary" style={S.ctaMain} onClick={()=>setBooking(services[0]||null)}>
+          <button className="btn-primary" style={S.ctaMain} onClick={()=>setBooking("open")}>
             {t.bookVisit}
           </button>
           <button style={S.ctaSecondary} onClick={()=>setWaitlist("open")}>
@@ -1050,11 +1162,20 @@ const S: Record<string, CSSProperties> = {
   masterAvatarImg:     { width:"100%", height:"100%", objectFit:"cover" as const, position:"absolute" as const, inset:0 },
   masterInitialsStyle: { fontSize:16, fontWeight:700, color:"#7c3aed" },
   svcSummary: { background:"#f4f0f8", borderRadius:12, padding:"9px 14px", fontSize:13, marginBottom:14, color:"#1a1320" },
+  summaryCard:  { background:"#f4f0f8", borderRadius:14, padding:"12px 16px", marginBottom:12 },
+  summaryRow:   { display:"flex", justifyContent:"space-between", alignItems:"center", gap:10, fontSize:13.5, fontWeight:600, marginBottom:3 },
+  summaryV:     { color:"#1a1320" },
+  confirmNotice:{ background:"#fff7ed", color:"#9a3412", fontSize:12.5, lineHeight:1.5, padding:"10px 14px", borderRadius:12, marginBottom:6 },
+
+  earliestBtn:  { display:"block", width:"100%", padding:"10px 14px", borderRadius:12, border:"1.5px solid #efe9ee", background:"#fff", color:ACC, fontSize:13, fontWeight:700, cursor:"pointer", fontFamily:font, marginBottom:10, textAlign:"left" as const },
 
   datePicker: { display:"flex", gap:8, overflowX:"auto" as const, paddingBottom:8, marginBottom:4 },
-  dateChip:   { display:"flex", flexDirection:"column" as const, alignItems:"center", gap:3, padding:"10px 12px", borderRadius:14, border:"1.5px solid #efe9ee", background:"#fbf7f4", cursor:"pointer", minWidth:56, fontFamily:font },
+  dateChip:   { display:"flex", flexDirection:"column" as const, alignItems:"center", gap:3, padding:"10px 12px", borderRadius:14, border:"1.5px solid #efe9ee", background:"#fbf7f4", cursor:"pointer", minWidth:56, fontFamily:font, position:"relative" as const },
   dateChipOn: { background:ACC, color:"#fff", borderColor:ACC },
+  dateChipFull:{ opacity:0.45 },
+  dateChipFullLbl:{ fontSize:8.5, fontWeight:700, color:"#dc2626", textTransform:"uppercase" as const, letterSpacing:0.3 },
 
+  slotBucketLbl:{ fontSize:11, fontWeight:700, color:"#8b8194", textTransform:"uppercase" as const, letterSpacing:0.6, margin:"4px 0 6px" },
   slotGrid:   { display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8, marginBottom:12 },
   slotBtn:    { padding:"11px 0", borderRadius:12, border:"1.5px solid #efe9ee", background:"#fbf7f4", cursor:"pointer", fontSize:14, fontWeight:700, fontFamily:font, color:"#1a1320" },
   slotBtnOn:  { background:ACC, color:"#fff", borderColor:ACC },

@@ -99,6 +99,14 @@ export const en: T = {
   share:             "Share",
   linkCopied:        "Link copied",
 
+  // UX: booking flow
+  earliestSlot:          "Earliest available",
+  dayFull:               "Fully booked",
+  slotsMorning:          "Morning",
+  slotsAfternoon:        "Afternoon",
+  slotsEvening:          "Evening",
+  confirmRequiredNotice: "This salon confirms bookings manually — usually within a few hours.",
+
   waitlistTitle: "Waiting list",
   waitlistSub: (svc?: string) => svc ? `No free slots for ${svc}? Leave your details and we'll notify you.` : "Salon is busy? Leave your details and we'll notify you.",
   waitlistSuccess: "You've been added to the waiting list. We'll notify you when a slot is available.",

@@ -34,6 +34,7 @@ export interface PublicBusiness {
   instagram: string; about: string; banner: string;
   hours: Record<string, [string, string]>; photos: string[];
   verified: boolean; services?: PublicService[];
+  confirmRequired?: boolean;
   avgRating?: number | null; reviewCount?: number;
   contacts?: BusinessContacts;
   amenities?: string[];

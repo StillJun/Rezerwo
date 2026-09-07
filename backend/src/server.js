@@ -179,6 +179,12 @@ function minToTime(min) {
 function todayPoland() {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Warsaw" });
 }
+// Add n days to a YYYY-MM-DD string. Noon UTC avoids any DST boundary drift.
+function addDaysStr(dateStr, n) {
+  const d = new Date(dateStr + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 function nowMinPoland() {
   const t = new Date().toLocaleTimeString("sv-SE", { timeZone: "Europe/Warsaw", hour12: false });
   const [h, m] = t.split(":").map(Number);
@@ -213,6 +219,38 @@ function calcSlots(hours, bookedAppts, serviceMin, dateStr, blockedIntervals = [
     slots.push(s);
   }
   return slots;
+}
+
+// Free slots for one service on one date. Shared by the /slots and /availability
+// endpoints. `masterIdParam` optional — restrict to one master; otherwise union
+// over every capable master (slot free if ANY of them is free).
+async function slotsForDate(b, svc, dateStr, masterIdParam) {
+  const masters = masterIdParam
+    ? await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
+               WHERE m.id=$1 AND m.business_id=$2 AND m.is_active=TRUE AND ms.service_id=$3`,
+              [masterIdParam, b.id, svc.id])
+    : await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
+               WHERE m.business_id=$1 AND m.is_active=TRUE AND ms.service_id=$2
+               ORDER BY m.sort, m.id`,
+              [b.id, svc.id]);
+
+  if (!masters.length) {
+    const [appts, blockedRows] = await Promise.all([
+      q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')", [b.id, dateStr]),
+      q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND master_id IS NULL", [b.id, dateStr]),
+    ]);
+    return calcSlots(b.hours, appts, svc.duration, dateStr, blockedRows);
+  }
+
+  const slotSet = new Set();
+  await Promise.all(masters.map(async (master) => {
+    const [appts, blockedRows] = await Promise.all([
+      q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')", [b.id, dateStr, master.id]),
+      q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND (master_id=$3 OR master_id IS NULL)", [b.id, dateStr, master.id]),
+    ]);
+    calcSlots(master.working_hours, appts, svc.duration, dateStr, blockedRows).forEach(s => slotSet.add(s));
+  }));
+  return Array.from(slotSet).sort((a, z) => a - z);
 }
 
 // Efficient single-slot check used at booking time
@@ -254,6 +292,7 @@ const publicBizClient = (b) => ({
   city: b.city, district: b.district, address: b.address, phone: b.phone,
   instagram: b.instagram, about: b.about, banner: b.banner,
   hours: b.hours, photos: b.photos, verified: b.verified,
+  confirmRequired: b.confirm_required !== false,
   contacts:  b.contacts  || {},
   amenities: b.amenities || [],
   languages: b.languages || [],
@@ -964,37 +1003,30 @@ app.get("/api/public/businesses/:slug/slots", async (req, res) => {
     const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
     if (!svc) return res.status(404).json({ error: "Usługa nie znaleziona" });
 
-    // Get capable masters (who can perform this service and are active)
-    const masters = master_id
-      ? await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
-                 WHERE m.id=$1 AND m.business_id=$2 AND m.is_active=TRUE AND ms.service_id=$3`,
-                [master_id, b.id, service_id])
-      : await q(`SELECT m.* FROM masters m JOIN master_services ms ON ms.master_id=m.id
-                 WHERE m.business_id=$1 AND m.is_active=TRUE AND ms.service_id=$2
-                 ORDER BY m.sort, m.id`,
-                [b.id, service_id]);
-
-    if (!masters.length) {
-      // Fallback: no master_services data → legacy business-level calculation
-      const [appts, blockedRows] = await Promise.all([
-        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND status IN ('pending','confirmed')", [b.id, date]),
-        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND master_id IS NULL", [b.id, date]),
-      ]);
-      const slots = calcSlots(b.hours, appts, svc.duration, date, blockedRows);
-      return res.json({ slots, duration: svc.duration, slotTimes: slots.map(minToTime) });
-    }
-
-    // Per-master slot calculation → union (slot available if ANY capable master is free)
-    const slotSet = new Set();
-    await Promise.all(masters.map(async (master) => {
-      const [appts, blockedRows] = await Promise.all([
-        q("SELECT start_min, duration FROM appointments WHERE business_id=$1 AND date=$2 AND master_id=$3 AND status IN ('pending','confirmed')", [b.id, date, master.id]),
-        q("SELECT start_min, duration FROM blocked_slots WHERE business_id=$1 AND date=$2 AND (master_id=$3 OR master_id IS NULL)", [b.id, date, master.id]),
-      ]);
-      calcSlots(master.working_hours, appts, svc.duration, date, blockedRows).forEach(s => slotSet.add(s));
-    }));
-    const slots = Array.from(slotSet).sort((a, b) => a - b);
+    const slots = await slotsForDate(b, svc, date, master_id);
     res.json({ slots, duration: svc.duration, slotTimes: slots.map(minToTime) });
+  } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
+});
+
+// Free-slot counts for a range of days — powers the date picker (grey out full days,
+// "earliest available" jump). Returns { "YYYY-MM-DD": <count>, ... }.
+app.get("/api/public/businesses/:slug/availability", async (req, res) => {
+  try {
+    const { service_id, master_id } = req.query;
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 30);
+    if (!service_id) return res.status(400).json({ error: "service_id jest wymagane" });
+    const [b] = await q("SELECT * FROM businesses WHERE slug=$1 AND status='approved' AND is_visible=TRUE", [req.params.slug]);
+    if (!b) return res.status(404).json({ error: "Nie znaleziono" });
+    const [svc] = await q("SELECT * FROM services WHERE id=$1 AND business_id=$2", [service_id, b.id]);
+    if (!svc) return res.status(404).json({ error: "Usługa nie znaleziona" });
+
+    const start = todayPoland();
+    const dates = Array.from({ length: days }, (_, i) => addDaysStr(start, i));
+    const counts = await Promise.all(dates.map(d => slotsForDate(b, svc, d, master_id).then(s => s.length)));
+    const out = {};
+    dates.forEach((d, i) => { out[d] = counts[i]; });
+    res.set("Cache-Control", "public, max-age=60");
+    res.json({ availability: out, duration: svc.duration });
   } catch (e) { console.error(e); res.status(500).json({ error: "Błąd serwera" }); }
 });
 

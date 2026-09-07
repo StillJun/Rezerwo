@@ -99,6 +99,14 @@ export const ua: T = {
   share:             "Поділитися",
   linkCopied:        "Посилання скопійовано",
 
+  // UX: booking flow
+  earliestSlot:          "Найближче вільне",
+  dayFull:               "Місць немає",
+  slotsMorning:          "Ранок",
+  slotsAfternoon:        "День",
+  slotsEvening:          "Вечір",
+  confirmRequiredNotice: "Цей салон підтверджує записи вручну — зазвичай протягом кількох годин.",
+
   waitlistTitle: "Список очікування",
   waitlistSub: (svc?: string) => svc ? `Немає вільного часу для ${svc}? Залиште дані — ми повідомимо вас.` : "Салон зайнятий? Залиште дані — ми повідомимо вас.",
   waitlistSuccess: "Вас додано до списку очікування. Ми повідомимо вас, коли з'явиться вільний час.",

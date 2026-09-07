@@ -135,6 +135,11 @@ export const api = {
     if (masterId) url += `&master_id=${masterId}`;
     return req<{ slots: number[]; slotTimes: string[]; duration: number }>(url);
   },
+  availability: (slug: string, serviceId: number, masterId?: number, days = 14) => {
+    let url = `/public/businesses/${slug}/availability?service_id=${serviceId}&days=${days}`;
+    if (masterId) url += `&master_id=${masterId}`;
+    return req<{ availability: Record<string, number>; duration: number }>(url);
+  },
   book: (slug: string, data: {
     service_id: number; client_name: string; client_phone: string;
     client_email?: string; comment?: string; date: string; start_min: number; master_id?: number;

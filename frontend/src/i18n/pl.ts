@@ -100,6 +100,14 @@ export const pl = {
   share:             "Udostępnij",
   linkCopied:        "Link skopiowany",
 
+  // UX: booking flow
+  earliestSlot:          "Najbliższy wolny termin",
+  dayFull:               "Brak miejsc",
+  slotsMorning:          "Rano",
+  slotsAfternoon:        "Popołudnie",
+  slotsEvening:          "Wieczór",
+  confirmRequiredNotice: "Ten salon potwierdza rezerwacje ręcznie — zwykle w ciągu kilku godzin.",
+
   // waitlist
   waitlistTitle: "Lista oczekujących",
   waitlistSub: (svc?: string) => svc ? `Brak wolnych terminów na ${svc}? Zostaw dane — powiadomimy Cię, gdy pojawi się wolne miejsce.` : "Salon jest zajęty? Zostaw dane — powiadomimy Cię.",
